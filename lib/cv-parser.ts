@@ -233,18 +233,30 @@ export function parseTextToCV(text: string): CVParseResult {
  * Extract personal information from text
  */
 function extractPersonalInfo(text: string): PersonalInfo {
-  // More flexible patterns to catch various CV formats
-  const nameMatch = text.match(/(?:name|full name|fullname):\s*([^\n\r]+)/i);
-  const jobTitleMatch = text.match(/(?:job title|position|role|title|occupation|profession):\s*([^\n\r]+)/i);
-  const emailMatch = text.match(/(?:email|e-mail|e mail):\s*([^\n\r@]+@[^\n\r]+)/i);
-  const phoneMatch = text.match(/(?:phone|tel|telephone|mobile|cell):\s*([^\n\r]+)/i);
-  const locationMatch = text.match(/(?:location|address|city|location):\s*([^\n\r]+)/i);
+  // Extract name from the first line (assuming it's the first non-empty line)
+  const lines = text.split('\n').filter(line => line.trim());
+  const firstLine = lines[0] || '';
+  
+  // Try to extract name from the first line (before any contact info)
+  const nameMatch = firstLine.match(/^([^|@\d]+?)(?:\s*\||\s*@|\s*\d|$)/);
+  
+  // Look for job title in the experience section
+  const jobTitleMatch = text.match(/(?:^|\n)([^|\n]+?)\s*\|\s*[^|\n]+(?:\s*–|\s*to|\s*-)/im);
+  
+  // Look for email
+  const emailMatch = text.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  
+  // Look for phone number
+  const phoneMatch = text.match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/);
+  
+  // Look for location/address
+  const locationMatch = text.match(/(?:^|\n)([^|\n]+?),\s*[^|\n]+,\s*[A-Z]{2}\s*\d{5}/im);
 
   return {
     fullName: nameMatch ? nameMatch[1].trim() : '',
     jobTitle: jobTitleMatch ? jobTitleMatch[1].trim() : '',
     email: emailMatch ? emailMatch[1].trim() : '',
-    phone: phoneMatch ? phoneMatch[1].trim() : '',
+    phone: phoneMatch ? `(${phoneMatch[1]}) ${phoneMatch[2]}-${phoneMatch[3]}` : '',
     location: locationMatch ? locationMatch[1].trim() : ''
   };
 }
@@ -253,8 +265,22 @@ function extractPersonalInfo(text: string): PersonalInfo {
  * Extract summary from text
  */
 function extractSummary(text: string): string {
-  const summaryMatch = text.match(/(?:summary|profile|objective|about|overview):\s*([^\n\r]+(?:\n[^\n\r]+)*)/i);
-  return summaryMatch ? summaryMatch[1].trim() : '';
+  // Look for profile/summary section
+  const profileMatch = text.match(/(?:profile|summary|objective):\s*\n([^]*?)(?=\n\s*(?:experience|education|skills|activities|interests):)/i);
+  if (profileMatch) {
+    return profileMatch[1].trim();
+  }
+  
+  // Fallback: look for any paragraph that seems like a summary
+  const lines = text.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line.length > 50 && !line.includes('|') && !line.includes('@') && !line.match(/^\d/)) {
+      return line;
+    }
+  }
+  
+  return '';
 }
 
 /**
@@ -262,19 +288,28 @@ function extractSummary(text: string): string {
  */
 function extractExperience(text: string): Experience[] {
   const experiences: Experience[] = [];
-  // More flexible patterns for experience extraction
-  const experienceRegex = /(?:company|employer|organization):\s*([^\n\r]+)\s*(?:position|title|role|job):\s*([^\n\r]+)/gi;
   
-  let match;
-  while ((match = experienceRegex.exec(text)) !== null) {
-    experiences.push({
-      title: match[2].trim(),
-      company: match[1].trim(),
-      location: '',
-      startDate: '',
-      endDate: '',
-      description: ''
-    });
+  // Look for experience section
+  const experienceSection = text.match(/(?:experience|work history|employment):\s*\n([^]*?)(?=\n\s*(?:education|skills|activities|interests):)/i);
+  
+  if (experienceSection) {
+    const experienceText = experienceSection[1];
+    const lines = experienceText.split('\n');
+    
+    for (const line of lines) {
+      // Match pattern: "Job Title | Company | Date Range"
+      const match = line.match(/^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
+      if (match && match[1].trim() && match[2].trim()) {
+        experiences.push({
+          title: match[1].trim(),
+          company: match[2].trim(),
+          location: '',
+          startDate: '',
+          endDate: '',
+          description: ''
+        });
+      }
+    }
   }
   
   return experiences;
@@ -285,17 +320,26 @@ function extractExperience(text: string): Experience[] {
  */
 function extractEducation(text: string): Education[] {
   const education: Education[] = [];
-  // More flexible patterns for education extraction
-  const educationRegex = /(?:institution|university|school|college):\s*([^\n\r]+)\s*(?:degree|qualification|course):\s*([^\n\r]+)/gi;
   
-  let match;
-  while ((match = educationRegex.exec(text)) !== null) {
-    education.push({
-      degree: match[2].trim(),
-      institution: match[1].trim(),
-      location: '',
-      graduationDate: ''
-    });
+  // Look for education section
+  const educationSection = text.match(/(?:education|academic|qualifications):\s*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience):)/i);
+  
+  if (educationSection) {
+    const educationText = educationSection[1];
+    const lines = educationText.split('\n');
+    
+    for (const line of lines) {
+      // Match pattern: "Degree | Date | Institution"
+      const match = line.match(/^([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+)/);
+      if (match && match[1].trim() && match[3].trim()) {
+        education.push({
+          degree: match[1].trim(),
+          institution: match[3].trim(),
+          location: '',
+          graduationDate: match[2].trim()
+        });
+      }
+    }
   }
   
   return education;
@@ -306,13 +350,18 @@ function extractEducation(text: string): Education[] {
  */
 function extractSkills(text: string): string {
   const skills: string[] = [];
-  // More flexible patterns for skills extraction
-  const skillRegex = /(?:skills|technologies|tools|competencies|expertise):\s*([^\n\r]+)/gi;
   
-  let match;
-  while ((match = skillRegex.exec(text)) !== null) {
-    const skillNames = match[1].split(/[,;]/).map(s => s.trim()).filter(s => s);
-    skills.push(...skillNames);
+  // Look for skills section
+  const skillsSection = text.match(/(?:skills|abilities|competencies|expertise):\s*\n([^]*?)(?=\n\s*(?:activities|interests|experience|education):)/i);
+  
+  if (skillsSection) {
+    const skillsText = skillsSection[1];
+    const lines = skillsText.split('\n');
+    
+    for (const line of lines) {
+      const lineSkills = line.split(/[,;]/).map(s => s.trim()).filter(s => s && s.length > 2);
+      skills.push(...lineSkills);
+    }
   }
   
   return skills.join(', ');
