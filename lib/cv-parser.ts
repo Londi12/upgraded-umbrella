@@ -195,11 +195,22 @@ export async function parseCV(buffer: Buffer): Promise<CVParseResult> {
  */
 export function parseTextToCV(text: string): CVParseResult {
   try {
+    console.log('Starting CV parsing with text:', text.substring(0, 200) + '...'); // Debug log
+    
     const personalInfo = extractPersonalInfo(text);
+    console.log('Extracted personal info:', personalInfo); // Debug log
+    
     const summary = extractSummary(text);
+    console.log('Extracted summary:', summary.substring(0, 100) + '...'); // Debug log
+    
     const experience = extractExperience(text);
+    console.log('Extracted experience:', experience); // Debug log
+    
     const education = extractEducation(text);
+    console.log('Extracted education:', education); // Debug log
+    
     const skills = extractSkills(text);
+    console.log('Extracted skills:', skills); // Debug log
 
     const cvData: CVData = {
       personalInfo,
@@ -211,6 +222,8 @@ export function parseTextToCV(text: string): CVParseResult {
     };
 
     const confidence = calculateConfidence(cvData);
+    console.log('Final CV data:', cvData); // Debug log
+    console.log('Confidence score:', confidence); // Debug log
 
     return {
       success: true,
@@ -289,17 +302,23 @@ function extractSummary(text: string): string {
 function extractExperience(text: string): Experience[] {
   const experiences: Experience[] = [];
   
-  // Look for experience section
-  const experienceSection = text.match(/(?:experience|work history|employment):\s*\n([^]*?)(?=\n\s*(?:education|skills|activities|interests):)/i);
+  // Look for experience section with more flexible patterns
+  const experienceSection = text.match(/(?:experience|work history|employment|work experience):\s*\n([^]*?)(?=\n\s*(?:education|skills|activities|interests|projects):)/is);
   
   if (experienceSection) {
     const experienceText = experienceSection[1];
+    console.log('Experience section found:', experienceText); // Debug log
+    
     const lines = experienceText.split('\n');
     
     for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
       // Match pattern: "Job Title | Company | Date Range"
-      const match = line.match(/^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
+      const match = trimmedLine.match(/^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
       if (match && match[1].trim() && match[2].trim()) {
+        console.log('Experience match:', match); // Debug log
         experiences.push({
           title: match[1].trim(),
           company: match[2].trim(),
@@ -310,6 +329,8 @@ function extractExperience(text: string): Experience[] {
         });
       }
     }
+  } else {
+    console.log('No experience section found'); // Debug log
   }
   
   return experiences;
@@ -321,17 +342,23 @@ function extractExperience(text: string): Experience[] {
 function extractEducation(text: string): Education[] {
   const education: Education[] = [];
   
-  // Look for education section
-  const educationSection = text.match(/(?:education|academic|qualifications):\s*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience):)/i);
+  // Look for education section with more flexible patterns
+  const educationSection = text.match(/(?:education|academic|qualifications|academics):\s*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience|projects):)/is);
   
   if (educationSection) {
     const educationText = educationSection[1];
+    console.log('Education section found:', educationText); // Debug log
+    
     const lines = educationText.split('\n');
     
     for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+      
       // Match pattern: "Degree | Date | Institution"
-      const match = line.match(/^([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+)/);
+      const match = trimmedLine.match(/^([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+)/);
       if (match && match[1].trim() && match[3].trim()) {
+        console.log('Education match:', match); // Debug log
         education.push({
           degree: match[1].trim(),
           institution: match[3].trim(),
@@ -340,6 +367,8 @@ function extractEducation(text: string): Education[] {
         });
       }
     }
+  } else {
+    console.log('No education section found'); // Debug log
   }
   
   return education;
