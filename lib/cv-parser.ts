@@ -5,6 +5,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 
 // Configure PDF.js worker for server-side usage
 if (typeof window === 'undefined') {
+  // For server-side rendering, we need to handle PDF.js differently
   const pdfjsWorker = require('pdfjs-dist/build/pdf.worker.entry');
   (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
   
@@ -86,41 +87,61 @@ export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
+    console.log('Starting PDF text extraction...');
+    
     const loadingTask = pdfjsLib.getDocument({ data: buffer });
     const pdf = await loadingTask.promise;
+    console.log(`PDF loaded with ${pdf.numPages} pages`);
+    
     let text = '';
     
     for (let i = 1; i <= pdf.numPages; i++) {
+      console.log(`Processing page ${i}...`);
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       
-      // Better text extraction with positioning
+      // Better text extraction with positioning and formatting
       const items = textContent.items as any[];
       let lastY = 0;
       let lineText = '';
+      let pageText = '';
       
-      for (const item of items) {
+      // Sort items by Y position (top to bottom)
+      const sortedItems = items.sort((a, b) => b.transform[5] - a.transform[5]);
+      
+      for (const item of sortedItems) {
         const y = item.transform[5]; // Y position
+        const x = item.transform[4]; // X position
         
         // If Y position changes significantly, it's a new line
-        if (Math.abs(y - lastY) > 5) {
+        if (Math.abs(y - lastY) > 8) {
           if (lineText.trim()) {
-            text += lineText.trim() + '\n';
+            pageText += lineText.trim() + '\n';
           }
           lineText = item.str;
           lastY = y;
         } else {
-          lineText += ' ' + item.str;
+          // Same line, add space if there's a significant X gap
+          const lastItem = sortedItems[sortedItems.indexOf(item) - 1];
+          if (lastItem && Math.abs(x - lastItem.transform[4]) > 20) {
+            lineText += ' ' + item.str;
+          } else {
+            lineText += item.str;
+          }
         }
       }
       
       // Add the last line
       if (lineText.trim()) {
-        text += lineText.trim() + '\n';
+        pageText += lineText.trim() + '\n';
       }
       
-      text += '\n'; // Page separator
+      text += pageText + '\n'; // Page separator
     }
+    
+    console.log('PDF text extraction completed');
+    console.log('Extracted text length:', text.length);
+    console.log('First 200 characters:', text.substring(0, 200));
     
     if (!text.trim()) {
       throw new Error('No text extracted from PDF');
@@ -129,7 +150,7 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     return text;
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
-    throw new Error('Failed to extract text from PDF');
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -320,29 +341,71 @@ function extractPersonalInfo(text: string): PersonalInfo {
   const lines = cleanText.split('\n').filter(line => line.trim());
   const firstLine = lines[0] || '';
   
-  // Try to extract name from the first line (before any contact info)
-  const nameMatch = firstLine.match(/^([^|@\d\n\r]+?)(?:\s*\||\s*@|\s*\d|$)/);
+  console.log('First line for name extraction:', firstLine); // Debug log
+  
+  // Try multiple patterns for name extraction
+  let fullName = '';
+  
+  // Pattern 1: Name before any contact info (email, phone, etc.)
+  const nameMatch1 = firstLine.match(/^([^|@\d\n\r]+?)(?:\s*\||\s*@|\s*\d|$)/);
+  if (nameMatch1 && nameMatch1[1].trim().length > 2) {
+    fullName = nameMatch1[1].trim();
+  }
+  
+  // Pattern 2: Look for capitalized name pattern
+  if (!fullName) {
+    const nameMatch2 = firstLine.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+    if (nameMatch2) {
+      fullName = nameMatch2[1].trim();
+    }
+  }
+  
+  // Pattern 3: Look for name in the first few lines
+  if (!fullName) {
+    for (let i = 0; i < Math.min(3, lines.length); i++) {
+      const line = lines[i].trim();
+      const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+      if (nameMatch && nameMatch[1].length > 3) {
+        fullName = nameMatch[1].trim();
+        break;
+      }
+    }
+  }
+  
+  console.log('Extracted name:', fullName); // Debug log
   
   // Look for job title in the experience section or near the top
+  let jobTitle = '';
   const jobTitleMatch = cleanText.match(/(?:^|\n)([^|\n\r]+?)\s*\|\s*[^|\n\r]+(?:\s*–|\s*to|\s*-)/im);
+  if (jobTitleMatch) {
+    jobTitle = jobTitleMatch[1].trim();
+  }
   
   // Look for email with more flexible pattern
   const emailMatch = cleanText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  const email = emailMatch ? emailMatch[1].trim() : '';
   
-  // Look for phone number with various formats
-  const phoneMatch = cleanText.match(/\(?(\d{3})\)?[\s.-]?(\d{3})[\s.-]?(\d{4})/);
+  // Look for phone number with various formats (including South African)
+  const phoneMatch = cleanText.match(/(?:^|\s)(?:\+27|0)?[\s.-]?(\d{1,3})[\s.-]?(\d{3})[\s.-]?(\d{4})(?:\s|$)/);
+  const phone = phoneMatch ? `+27 ${phoneMatch[1]} ${phoneMatch[2]} ${phoneMatch[3]}` : '';
   
   // Look for location/address with more flexible patterns
+  let location = '';
   const locationMatch = cleanText.match(/(?:^|\n)([^|\n\r]+?),\s*[^|\n\r]+,\s*[A-Z]{2}\s*\d{5}/im) ||
                        cleanText.match(/(?:^|\n)([^|\n\r]+?),\s*[^|\n\r]+,\s*[A-Z]{2}/im) ||
                        cleanText.match(/(?:^|\n)([^|\n\r]+?),\s*[A-Z]{2}\s*\d{5}/im);
+  if (locationMatch) {
+    location = locationMatch[1].trim();
+  }
+
+  console.log('Extracted personal info:', { fullName, jobTitle, email, phone, location }); // Debug log
 
   return {
-    fullName: nameMatch ? nameMatch[1].trim() : '',
-    jobTitle: jobTitleMatch ? jobTitleMatch[1].trim() : '',
-    email: emailMatch ? emailMatch[1].trim() : '',
-    phone: phoneMatch ? `(${phoneMatch[1]}) ${phoneMatch[2]}-${phoneMatch[3]}` : '',
-    location: locationMatch ? locationMatch[1].trim() : ''
+    fullName,
+    jobTitle,
+    email,
+    phone,
+    location
   };
 }
 
@@ -375,11 +438,11 @@ function extractExperience(text: string): Experience[] {
   const experiences: Experience[] = [];
   
   // Look for experience section with more flexible patterns
-  const experienceSection = text.match(/(?:experience|work history|employment|work experience):\s*\n([^]*?)(?=\n\s*(?:education|skills|activities|interests|projects):)/is);
+  const experienceSection = text.match(/(?:experience|work history|employment|work experience|professional experience|career history):\s*\n([^]*?)(?=\n\s*(?:education|skills|activities|interests|projects|academic|qualifications):)/is);
   
   if (experienceSection) {
     const experienceText = experienceSection[1];
-    console.log('Experience section found:', experienceText); // Debug log
+    console.log('Experience section found:', experienceText.substring(0, 200) + '...'); // Debug log
     
     const lines = experienceText.split('\n');
     
@@ -415,11 +478,11 @@ function extractEducation(text: string): Education[] {
   const education: Education[] = [];
   
   // Look for education section with more flexible patterns
-  const educationSection = text.match(/(?:education|academic|qualifications|academics):\s*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience|projects):)/is);
+  const educationSection = text.match(/(?:education|academic|qualifications|academics|academic background):\s*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience|projects|work):)/is);
   
   if (educationSection) {
     const educationText = educationSection[1];
-    console.log('Education section found:', educationText); // Debug log
+    console.log('Education section found:', educationText.substring(0, 200) + '...'); // Debug log
     
     const lines = educationText.split('\n');
     
@@ -427,15 +490,15 @@ function extractEducation(text: string): Education[] {
       const trimmedLine = line.trim();
       if (!trimmedLine) continue;
       
-      // Match pattern: "Degree | Date | Institution"
-      const match = trimmedLine.match(/^([^|]+?)\s*\|\s*([^|]+?)\s*\|\s*([^|]+)/);
-      if (match && match[1].trim() && match[3].trim()) {
+      // Match pattern: "Degree | Institution | Date"
+      const match = trimmedLine.match(/^([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
+      if (match && match[1].trim() && match[2].trim()) {
         console.log('Education match:', match); // Debug log
         education.push({
           degree: match[1].trim(),
-          institution: match[3].trim(),
+          institution: match[2].trim(),
           location: '',
-          graduationDate: match[2].trim()
+          graduationDate: match[3] ? match[3].trim() : ''
         });
       }
     }
@@ -450,22 +513,54 @@ function extractEducation(text: string): Education[] {
  * Extract skills from text
  */
 function extractSkills(text: string): string {
-  const skills: string[] = [];
-  
-  // Look for skills section
-  const skillsSection = text.match(/(?:skills|abilities|competencies|expertise):\s*\n([^]*?)(?=\n\s*(?:activities|interests|experience|education):)/i);
+  // Look for skills section with more flexible patterns
+  const skillsSection = text.match(/(?:skills|technical skills|competencies|expertise|key skills|core competencies):\s*\n([^]*?)(?=\n\s*(?:experience|education|activities|interests|projects|work|academic):)/is);
   
   if (skillsSection) {
     const skillsText = skillsSection[1];
-    const lines = skillsText.split('\n');
+    console.log('Skills section found:', skillsText.substring(0, 200) + '...'); // Debug log
     
-    for (const line of lines) {
-      const lineSkills = line.split(/[,;]/).map(s => s.trim()).filter(s => s && s.length > 2);
-      skills.push(...lineSkills);
+    // Clean up the skills text
+    let skills = skillsText
+      .replace(/\n/g, ', ') // Replace newlines with commas
+      .replace(/,\s*,/g, ',') // Remove double commas
+      .replace(/^\s*,\s*/, '') // Remove leading comma
+      .replace(/\s*,\s*$/, '') // Remove trailing comma
+      .trim();
+    
+    // If skills are pipe-separated, convert to comma-separated
+    if (skills.includes('|')) {
+      skills = skills.replace(/\s*\|\s*/g, ', ');
     }
+    
+    console.log('Extracted skills:', skills); // Debug log
+    return skills;
   }
   
-  return skills.join(', ');
+  // Fallback: look for common skill keywords in the text
+  const skillKeywords = [
+    'JavaScript', 'Python', 'Java', 'C++', 'C#', 'PHP', 'Ruby', 'Go', 'Rust', 'Swift',
+    'React', 'Angular', 'Vue', 'Node.js', 'Express', 'Django', 'Flask', 'Laravel',
+    'HTML', 'CSS', 'SASS', 'LESS', 'Bootstrap', 'Tailwind', 'Material-UI',
+    'SQL', 'MySQL', 'PostgreSQL', 'MongoDB', 'Redis', 'Elasticsearch',
+    'AWS', 'Azure', 'Google Cloud', 'Docker', 'Kubernetes', 'Jenkins',
+    'Git', 'GitHub', 'GitLab', 'Bitbucket', 'Jira', 'Confluence',
+    'Agile', 'Scrum', 'Kanban', 'DevOps', 'CI/CD', 'Microservices',
+    'Machine Learning', 'AI', 'Data Science', 'Analytics', 'Statistics',
+    'Project Management', 'Leadership', 'Communication', 'Problem Solving'
+  ];
+  
+  const foundSkills = skillKeywords.filter(skill => 
+    text.toLowerCase().includes(skill.toLowerCase())
+  );
+  
+  if (foundSkills.length > 0) {
+    console.log('Found skills from keywords:', foundSkills); // Debug log
+    return foundSkills.join(', ');
+  }
+  
+  console.log('No skills section found'); // Debug log
+  return '';
 }
 
 /**
