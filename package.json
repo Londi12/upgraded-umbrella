@@ -2,7 +2,6 @@
   "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
-  // Force Vercel to use latest commit
   "scripts": {
     "dev": "next dev",
     "build": "next build",
