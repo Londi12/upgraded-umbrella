@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { ArrowLeft, Download, Eye, Save, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, Download, Eye, Save, AlertCircle, ChevronLeft, ChevronRight, Edit3 } from "lucide-react"
 import Link from "next/link"
 import { generateCVPDF, downloadBlob } from "@/lib/pdf-utils"
 import type { CVData } from "@/types/cv-types"
@@ -549,7 +549,7 @@ export default function CreateCVPage() {
                 className={`flex-1 ${activeTab === 'form' ? 'bg-gray-100' : ''}`}
                 onClick={() => setActiveTab('form')}
               >
-                <Edit className="h-4 w-4 mr-2" />
+                <Edit3 className="h-4 w-4 mr-2" />
                 Edit CV
               </Button>
               <Button

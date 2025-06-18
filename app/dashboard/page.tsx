@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { FileText, Plus, Download, Edit, Trash2, Info } from "lucide-react"
+import { FileText, Plus, Download, Edit3, Trash2, Info } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getSavedCVs, getSavedCoverLetters, deleteCV, deleteCoverLetter } from "@/lib/user-data-service"
 import type { SavedCV, SavedCoverLetter } from "@/lib/user-data-service"
@@ -189,7 +189,7 @@ export default function DashboardPage() {
                   <div className="flex space-x-2">
                     <Link href="/create">
                       <Button size="sm" className="bg-amber-600 hover:bg-amber-700">
-                        <Edit className="h-4 w-4 mr-1" />
+                        <Edit3 className="h-4 w-4 mr-1" />
                         Continue Editing
                       </Button>
                     </Link>
@@ -251,7 +251,7 @@ export default function DashboardPage() {
                     <div className="flex space-x-2">
                       <Link href={`/create?cv=${cv.id}`} className="flex-1">
                         <Button variant="outline" size="sm" className="w-full">
-                          <Edit className="h-4 w-4 mr-1" />
+                          <Edit3 className="h-4 w-4 mr-1" />
                           Edit
                         </Button>
                       </Link>
