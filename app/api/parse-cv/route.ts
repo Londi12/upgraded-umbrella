@@ -21,13 +21,33 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
     
+      console.log(`Processing ${file.name} (${fileType}) - size: ${buffer.length} bytes`);
     const result = await cvParser.parseCV(buffer);
 
-    if (!result.success) {
-      return NextResponse.json({ error: result.error }, { status: 500 });
+    // Log template detection result
+    if (result.success) {
+      if (result.ownTemplate) {
+        console.log(`Detected our own template: ${result.templateType} (confidence: ${result.confidence}%)`);
+      } else {
+        console.log(`Parsed external CV (confidence: ${result.confidence}%)`);
+      }
     }
 
-    return NextResponse.json({ data: result.data, confidence: result.confidence });
+    if (!result.success) {
+      return NextResponse.json({ 
+        error: result.error,
+        rawText: result.rawText,  // Include raw text even when parsing fails
+        confidence: result.confidence || 0
+      }, { status: 500 });
+    }
+
+    return NextResponse.json({ 
+      data: result.data, 
+      confidence: result.confidence,
+      rawText: result.rawText,    // Include raw text for debugging
+      ownTemplate: result.ownTemplate || false, // Indicate if it's our own template
+      templateType: result.templateType || null  // Include the detected template type
+    });
   } catch (error) {
     console.error('Error parsing CV:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';

@@ -53,6 +53,18 @@ export enum CVFileType {
   UNKNOWN = 'unknown'
 }
 
+// Template types to match the ones from CV-types
+export enum TemplateType {
+  PROFESSIONAL = 'professional',
+  MODERN = 'modern',
+  CREATIVE = 'creative',
+  SIMPLE = 'simple',
+  EXECUTIVE = 'executive',
+  TECHNICAL = 'technical',
+  GRADUATE = 'graduate',
+  DIGITAL = 'digital'
+}
+
 // Ensure the enum is properly exported
 if (typeof CVFileType === 'undefined') {
   // Fallback in case of enum issues
@@ -73,6 +85,8 @@ export interface CVParseResult {
   rawText?: string;
   error?: string;
   confidence: number; // 0-100 indicating confidence in the parsing accuracy
+  ownTemplate?: boolean; // Whether this is one of our own templates
+  templateType?: string; // The template type if it's one of our own templates
 }
 
 /**
@@ -110,6 +124,42 @@ export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
     const isText = isTextFile(buffer);
     return isText ? CVFileType.TXT : CVFileType.UNKNOWN; // Directly return enum value
   }
+}
+
+/**
+ * Detects if a text contains markers for our own templates
+ * @param text The extracted text content
+ * @returns Object indicating if it's our template and which type
+ */
+export function detectOwnTemplateFromText(text: string): {isOwnTemplate: boolean, templateType?: TemplateType} {
+  // Template signatures - these would be unique text that only appears in our templates
+  const templateSignatures = {
+    [TemplateType.PROFESSIONAL]: ['Corporate Professional Template', 'CV generated using Corporate Professional template'],
+    [TemplateType.MODERN]: ['Modern Minimalist Template', 'CV generated using Modern Minimalist template'],
+    [TemplateType.CREATIVE]: ['Creative Design Template', 'CV generated using Creative Design template'],
+    [TemplateType.SIMPLE]: ['Simple Clean Template', 'CV generated using Simple Clean template'],
+    [TemplateType.EXECUTIVE]: ['Executive Elite Template', 'CV generated using Executive Elite template'],
+    [TemplateType.TECHNICAL]: ['Technical Expert Template', 'CV generated using Technical Expert template'],
+    [TemplateType.GRADUATE]: ['Graduate Entry Template', 'CV generated using Graduate Entry template'],
+    [TemplateType.DIGITAL]: ['Digital Portfolio Template', 'CV generated using Digital Portfolio template']
+  };
+
+  // Check each template type
+  for (const [templateType, signatures] of Object.entries(templateSignatures)) {
+    for (const signature of signatures) {
+      if (text.includes(signature)) {
+        return {
+          isOwnTemplate: true,
+          templateType: templateType as TemplateType
+        };
+      }
+    }
+  }
+
+  // If no template signature is found
+  return {
+    isOwnTemplate: false
+  };
 }
 
 /**
@@ -204,7 +254,386 @@ export function extractTextFromTXT(buffer: Buffer): string {
     throw new Error('Failed to extract text from TXT');
   }
 }
+import pdfParse from 'pdf-parse';
+import * as mammoth from 'mammoth';
+import { FileTypeResult, fileTypeFromBuffer } from 'file-type';
+import type { CVData, Education, Experience, PersonalInfo, Project, Skill } from '@/types/cv-types';
 
+export enum CVFileType {
+  PDF = 'pdf',
+  DOCX = 'docx',
+  TXT = 'txt',
+  UNKNOWN = 'unknown'
+}
+
+export type TemplateType = 'professional' | 'modern' | 'minimal' | 'creative';
+
+interface CVParseResult {
+  success: boolean;
+  data?: CVData;
+  rawText: string;
+  confidence: number;
+  error?: string;
+  ownTemplate?: boolean;
+  templateType?: string;
+}
+
+/**
+ * Detects the file type from a buffer
+ */
+export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
+  // First try file-type library for mime detection
+  try {
+    const fileType: FileTypeResult | undefined = await fileTypeFromBuffer(buffer);
+
+    if (fileType) {
+      if (fileType.mime === 'application/pdf') return CVFileType.PDF;
+      if (fileType.mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        return CVFileType.DOCX;
+      }
+    }
+  } catch (error) {
+    console.error('Error detecting file type:', error);
+  }
+
+  // Fallback to simple header checks
+  if (buffer.slice(0, 5).toString() === '%PDF-') {
+    return CVFileType.PDF;
+  }
+
+  if (buffer.slice(0, 4).toString() === 'PK\u0003\u0004') {
+    return CVFileType.DOCX;
+  }
+
+  // Text by default for any plain text
+  // This is a fallback, assuming text if we can't detect anything else
+  return CVFileType.TXT;
+}
+
+/**
+ * Extracts text from a buffer based on its file type
+ */
+async function extractText(buffer: Buffer, fileType: CVFileType): Promise<string> {
+  try {
+    switch (fileType) {
+      case CVFileType.PDF:
+        const pdfData = await pdfParse(buffer);
+        return pdfData.text;
+
+      case CVFileType.DOCX:
+        const result = await mammoth.extractRawText({ buffer });
+        return result.value;
+
+      case CVFileType.TXT:
+        return buffer.toString('utf8');
+
+      default:
+        throw new Error('Unsupported file format');
+    }
+  } catch (error) {
+    console.error('Error extracting text:', error);
+    throw error;
+  }
+}
+
+/**
+ * Checks if the text is from our own CV template
+ */
+function detectOwnTemplate(text: string): { isOwnTemplate: boolean; templateType?: string } {
+  // Look for our template marker comment
+  const markerMatch = text.match(/<!-- CV generated using (\w+) template \((\w+)\) -->/);
+
+  if (markerMatch) {
+    const templateName = markerMatch[1];
+    const templateType = markerMatch[2];
+
+    return {
+      isOwnTemplate: true,
+      templateType: templateType
+    };
+  }
+
+  return { isOwnTemplate: false };
+}
+
+/**
+ * Parses CV data from text when we know it's our own template
+ */
+function parseOwnTemplateCV(text: string, templateType: string): CVData {
+  // For our own templates, we can have a more structured approach
+  // based on the template we know was used
+
+  // This is a simplified implementation - in a real app, you'd have more
+  // template-specific parsing logic
+
+  const personalInfo: PersonalInfo = {
+    name: extractField(text, 'name', templateType) || '',
+    email: extractField(text, 'email', templateType) || '',
+    phone: extractField(text, 'phone', templateType) || '',
+    location: extractField(text, 'location', templateType) || '',
+    website: extractField(text, 'website', templateType) || '',
+    linkedIn: extractField(text, 'linkedin', templateType) || '',
+  };
+
+  // Extract other sections as needed
+  const summary = extractSection(text, 'summary', templateType) || '';
+
+  // For sections with multiple items like experience and education,
+  // we would need more sophisticated parsing based on template structure
+  const experiences: Experience[] = extractExperienceSection(text, templateType);
+  const education: Education[] = extractEducationSection(text, templateType);
+  const skills: Skill[] = extractSkillsSection(text, templateType);
+
+  return {
+    personalInfo,
+    summary,
+    experience: experiences,
+    education: education,
+    skills,
+    projects: [],
+  };
+}
+
+/**
+ * Extract a specific field based on template patterns
+ */
+function extractField(text: string, fieldName: string, templateType: string): string | null {
+  // This would be customized for each template type
+  // Here's a simple example
+  const patterns: Record<string, Record<string, RegExp>> = {
+    'professional': {
+      'name': /NAME:\s*([^\n]+)/i,
+      'email': /EMAIL:\s*([^\n]+)/i,
+      'phone': /PHONE:\s*([^\n]+)/i,
+      'location': /LOCATION:\s*([^\n]+)/i,
+      'website': /WEBSITE:\s*([^\n]+)/i,
+      'linkedin': /LINKEDIN:\s*([^\n]+)/i,
+    },
+    'modern': {
+      // Different patterns for modern template
+      'name': /([^\n]+)\nCONTACT INFORMATION/i,
+      'email': /Email:\s*([^\n]+)/i,
+      // Add other fields
+    },
+    // Add other templates
+  };
+
+  // Default to professional template patterns if template not found
+  const templatePatterns = patterns[templateType] || patterns['professional'];
+  const pattern = templatePatterns[fieldName];
+
+  if (!pattern) return null;
+
+  const match = text.match(pattern);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Extract a whole section based on template patterns
+ */
+function extractSection(text: string, sectionName: string, templateType: string): string | null {
+  // Simple example implementation
+  const patterns: Record<string, Record<string, { start: RegExp, end: RegExp }>> = {
+    'professional': {
+      'summary': {
+        start: /SUMMARY\s*\n/i,
+        end: /EXPERIENCE\s*\n/i
+      },
+      // Add other sections
+    },
+    // Add other templates
+  };
+
+  const templatePatterns = patterns[templateType] || patterns['professional'];
+  const sectionPattern = templatePatterns[sectionName];
+
+  if (!sectionPattern) return null;
+
+  const startMatch = text.match(sectionPattern.start);
+  if (!startMatch) return null;
+
+  const startIndex = startMatch.index! + startMatch[0].length;
+  const endMatch = text.substring(startIndex).match(sectionPattern.end);
+
+  if (!endMatch) return text.substring(startIndex).trim();
+
+  return text.substring(startIndex, startIndex + endMatch.index!).trim();
+}
+
+/**
+ * Extract experience entries
+ */
+function extractExperienceSection(text: string, templateType: string): Experience[] {
+  // Simplified implementation
+  // In a real app, this would use more sophisticated parsing based on the template structure
+  const experiences: Experience[] = [];
+
+  // Simple pattern matching for experience entries
+  const experienceRegex = /COMPANY:\s*([^\n]+)\s*POSITION:\s*([^\n]+)\s*DURATION:\s*([^\n]+)/gi;
+
+  let match;
+  while ((match = experienceRegex.exec(text)) !== null) {
+    experiences.push({
+      company: match[1].trim(),
+      position: match[2].trim(),
+      startDate: '', // Would need more parsing
+      endDate: '',   // Would need more parsing
+      description: '',
+      highlights: [],
+      location: ''
+    });
+  }
+
+  return experiences;
+}
+
+/**
+ * Extract education entries
+ */
+function extractEducationSection(text: string, templateType: string): Education[] {
+  // Simplified implementation
+  const education: Education[] = [];
+
+  // Simple pattern matching for education entries
+  const educationRegex = /INSTITUTION:\s*([^\n]+)\s*DEGREE:\s*([^\n]+)\s*YEAR:\s*([^\n]+)/gi;
+
+  let match;
+  while ((match = educationRegex.exec(text)) !== null) {
+    education.push({
+      institution: match[1].trim(),
+      degree: match[2].trim(),
+      fieldOfStudy: '',
+      startDate: '',
+      endDate: match[3].trim(),
+      gpa: '',
+      location: ''
+    });
+  }
+
+  return education;
+}
+
+/**
+ * Extract skills
+ */
+function extractSkillsSection(text: string, templateType: string): Skill[] {
+  // Simplified implementation
+  const skills: Skill[] = [];
+
+  // Find the skills section
+  const skillsSection = extractSection(text, 'skills', templateType) || '';
+
+  // Split by commas or new lines
+  const skillsList = skillsSection.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+
+  // Convert to skill objects
+  return skillsList.map(name => ({
+    name,
+    level: 'Intermediate' // Default level
+  }));
+
+  return skills;
+}
+
+/**
+ * Main function to parse CV from any supported format
+ */
+export async function parseCV(buffer: Buffer): Promise<CVParseResult> {
+  try {
+    // Detect file type
+    const fileType = await detectFileType(buffer);
+
+    // Extract text from the file
+    const text = await extractText(buffer, fileType);
+
+    // Check if this is our own template
+    const { isOwnTemplate, templateType } = detectOwnTemplate(text);
+
+    let cvData: CVData | undefined;
+    let confidence = 0;
+
+    if (isOwnTemplate && templateType) {
+      // Use specialized parsing for our own templates
+      cvData = parseOwnTemplateCV(text, templateType);
+      confidence = 90; // High confidence for our own templates
+    } else {
+      // Use generic parsing for external CVs
+      // In a real app, you would implement a more sophisticated parser here
+      // that uses AI to extract structured data
+
+      // This is a placeholder for demo purposes
+      cvData = {
+        personalInfo: {
+          name: extractGenericField(text, 'name') || '',
+          email: extractGenericField(text, 'email') || '',
+          phone: extractGenericField(text, 'phone') || '',
+          location: '',
+          website: '',
+          linkedIn: ''
+        },
+        summary: '',
+        experience: [],
+        education: [],
+        skills: [],
+        projects: []
+      };
+
+      confidence = 30; // Low confidence for generic parsing
+    }
+
+    return {
+      success: true,
+      data: cvData,
+      rawText: text,
+      confidence,
+      ownTemplate: isOwnTemplate,
+      templateType
+    };
+  } catch (error) {
+    console.error('Error parsing CV:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      rawText: '',
+      confidence: 0
+    };
+  }
+}
+
+/**
+ * Generic field extraction for non-template CVs
+ */
+function extractGenericField(text: string, fieldType: string): string | null {
+  // Very basic extraction - in a real app you would use more sophisticated techniques
+  // like NLP, machine learning, or pattern matching
+
+  const patterns: Record<string, RegExp[]> = {
+    'name': [
+      /^([A-Z][a-z]+(\s[A-Z][a-z]+)+)\s*$/m, // Name at start of line
+      /NAME:\s*([^\n]+)/i,
+    ],
+    'email': [
+      /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/i,
+      /EMAIL:\s*([^\n]+)/i,
+      /E-MAIL:\s*([^\n]+)/i,
+    ],
+    'phone': [
+      /(\+?\d{1,3}[-.\s]?\(?\d{1,3}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,4})/,
+      /PHONE:\s*([^\n]+)/i,
+      /MOBILE:\s*([^\n]+)/i,
+      /TEL:\s*([^\n]+)/i,
+    ],
+  };
+
+  const fieldPatterns = patterns[fieldType] || [];
+
+  for (const pattern of fieldPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return match[1].trim();
+  }
+
+  return null;
+}
 /**
  * Extract text from a file based on its type
  */
@@ -824,6 +1253,14 @@ export async function parseCV(buffer: Buffer): Promise<CVParseResult> {
         error: 'Unsupported file type. Please upload a PDF, DOCX, or TXT file.',
         confidence: 0
       };
+    }
+
+    // Check if this is one of our own templates
+    const templateDetection = await detectOwnTemplate(buffer, fileType);
+
+    // If this is one of our own templates, use specialized parsing
+    if (templateDetection.isOwnTemplate && templateDetection.templateType) {
+      return parseOwnTemplate(buffer, fileType, templateDetection.templateType);
     }
     
     // Extract text from the file

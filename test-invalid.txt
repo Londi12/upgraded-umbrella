@@ -1,0 +1,3 @@
+This is not a valid CV file.
+It contains no structured information.
+Just random text that should result in low confidence or parsing errors.

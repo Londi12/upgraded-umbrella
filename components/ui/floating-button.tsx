@@ -30,8 +30,8 @@ export function FloatingButton({
 
   return (
     <motion.div 
-      className="fixed z-50"
-      style={positionStyles[position]}
+      className="absolute z-50"
+      style={{...positionStyles[position]}}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, ease: "easeOut" }}

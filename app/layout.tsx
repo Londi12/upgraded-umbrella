@@ -20,7 +20,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="light" style={{ colorScheme: 'light' }} suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="light">
           <AuthProvider>
             <div className="relative flex min-h-screen flex-col">

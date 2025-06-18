@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { ArrowLeft, Download, Eye, Save, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { generateCVPDF, downloadBlob } from "@/lib/pdf-utils"
@@ -22,11 +22,15 @@ import { CVPreview } from "@/components/cv-preview"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getUserProfile, createOrUpdateUserProfile, saveCV } from "@/lib/user-data-service"
 import { useAuth } from "@/contexts/auth-context"
-import { ATSScoringPanel } from '@/components/ats-scoring-panel'
+import { ATSFloatingPanel } from '@/components/cv-ats-floating-panel'
+import { CVParserDebugPanel } from '@/components/cv-parser-debug-panel'
+import { CVTemplateDetectionMessage } from '@/components/cv-template-detection-message'
+import { OwnTemplateFormAction } from '@/components/own-template-form-action'
 import { parseCV } from "@/lib/cv-parser"
 
 export default function CreateCVPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const templateId = searchParams.get("template") || "1"
   const [showOnboarding, setShowOnboarding] = useState<boolean>(true)
 
@@ -90,7 +94,19 @@ export default function CreateCVPage() {
   // Load user profile on component mount
   useEffect(() => {
     const loadUserProfile = async () => {
-      if (!isConfigured || !user) return
+      if (!isConfigured || !user) {
+        // Try to load from localStorage if no user is authenticated
+        const savedData = localStorage.getItem('cv-draft');
+        if (savedData) {
+          try {
+            const parsedData = JSON.parse(savedData);
+            setFormData(parsedData);
+          } catch (e) {
+            console.error('Error parsing saved CV data', e);
+          }
+        }
+        return;
+      }
 
       setIsLoadingProfile(true)
       const { data: profile } = await getUserProfile()
@@ -112,13 +128,46 @@ export default function CreateCVPage() {
     }
   }, [user, isConfigured, showOnboarding])
 
+  // Auto-save to localStorage periodically
+  useEffect(() => {
+    if (showOnboarding) return;
+
+    // Save immediately on form changes
+    localStorage.setItem('cv-draft', JSON.stringify(formData));
+
+    // Also set up periodic saving
+    const autoSaveInterval = setInterval(() => {
+      localStorage.setItem('cv-draft', JSON.stringify(formData));
+    }, 30000); // Every 30 seconds
+
+    return () => clearInterval(autoSaveInterval);
+  }, [formData, showOnboarding])
+
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
   const [isParsingCV, setIsParsingCV] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
+  const [rawCVText, setRawCVText] = useState<string>('')
+  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
+  const [parserConfidence, setParserConfidence] = useState<number | undefined>(undefined)
+  const [isOwnTemplate, setIsOwnTemplate] = useState<boolean>(false)
+  const [detectedTemplateType, setDetectedTemplateType] = useState<string | undefined>(undefined)
+  const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
 
   const [activeSection, setActiveSection] = useState<string>('personal')
   const sections = ['personal', 'summary', 'experience', 'education', 'skills']
+
+  const handleSwitchToDetectedTemplate = () => {
+    if (!detectedTemplateType) return;
+
+    // Find the template ID from the detected template type
+    const templateId = Object.keys(templateMap).find(
+      id => templateMap[id].type === detectedTemplateType
+    ) || "1";
+
+    setSelectedTemplate(templateMap[templateId]);
+  }
   
   const getProgress = () => {
     let completed = 0;
@@ -229,7 +278,11 @@ export default function CreateCVPage() {
   }
 
   const handleSaveProfile = async () => {
-    if (!isConfigured || !user) return
+    if (!isConfigured || !user) {
+      // Redirect to login with a return path
+      router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`);
+      return;
+    }
 
     setIsSaving(true)
     const { error } = await createOrUpdateUserProfile(formData)
@@ -237,12 +290,20 @@ export default function CreateCVPage() {
     if (error) {
       console.error("Error saving profile:", error)
       setError("Failed to save profile data")
+    } else {
+      // Show success message
+      setSuccess("Profile saved successfully!");
+      setTimeout(() => setSuccess(null), 3000); // Clear after 3 seconds
     }
     setIsSaving(false)
   }
 
   const handleSaveCV = async () => {
-    if (!isConfigured || !user) return
+    if (!isConfigured || !user) {
+      // Redirect to login with a return path
+      router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`);
+      return;
+    }
 
     const cvName = `${formData.personalInfo.fullName || "My CV"} - ${selectedTemplate.name}`
 
@@ -260,6 +321,9 @@ export default function CreateCVPage() {
     } else {
       // Also save the profile data for future use
       await handleSaveProfile()
+      // Show success message
+      setSuccess("CV saved successfully!");
+      setTimeout(() => setSuccess(null), 3000); // Clear after 3 seconds
     }
     setIsSaving(false)
   }
@@ -270,6 +334,8 @@ export default function CreateCVPage() {
 
     setIsParsingCV(true);
     setParseError(null);
+    setIsOwnTemplate(false);
+    setDetectedTemplateType(undefined);
 
     try {
       const uploadFormData = new FormData();
@@ -282,10 +348,38 @@ export default function CreateCVPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('CV parsing failed:', errorData);
+        // Store the raw text even if parsing fails
+        setRawCVText(errorData.rawText || '');
         throw new Error(`API request failed: ${errorData.error || response.status}`);
       }
 
       const result = await response.json();
+
+      // Store the raw text and confidence for debugging
+      if (result.rawText) {
+        setRawCVText(result.rawText);
+      }
+
+      if (result.confidence !== undefined) {
+        setParserConfidence(result.confidence);
+      }
+
+      // Handle template detection
+      if (result.ownTemplate) {
+        setIsOwnTemplate(true);
+        // Extract template type from data if available
+        if (typeof result.templateType === 'string') {
+          setDetectedTemplateType(result.templateType);
+
+          // If it matches our current template, show a special message
+          if (result.templateType === selectedTemplate.type) {
+            console.log(`Detected same template type as currently selected: ${result.templateType}`);
+          }
+        }
+      } else {
+        setIsOwnTemplate(false);
+        setDetectedTemplateType(undefined);
+      }
 
       if (result.data && result.data.personalInfo) {
         setFormData({
@@ -382,8 +476,11 @@ export default function CreateCVPage() {
             </h1>
           </div>
           <div className="flex items-center gap-2">
-            {isConfigured && user && (
+            {isConfigured && user ? (
               <>
+                <div className="text-sm text-gray-600 mr-2 hidden md:block">
+                  Signed in as <span className="font-medium">{user.email}</span>
+                </div>
                 <Button variant="outline" size="sm" onClick={handleSaveProfile} disabled={isSaving || isLoadingProfile}>
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Profile"}
@@ -393,6 +490,15 @@ export default function CreateCVPage() {
                   {isSaving ? "Saving..." : "Save CV"}
                 </Button>
               </>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`)}
+              >
+                <Save className="h-4 w-4 mr-2" />
+                Sign in to save
+              </Button>
             )}
             <Button
               className="bg-emerald-600 hover:bg-emerald-700"
@@ -420,10 +526,44 @@ export default function CreateCVPage() {
             <AlertDescription className="text-red-800">{parseError}</AlertDescription>
           </Alert>
         )}
+        {success && (
+          <Alert className="mb-6 border-green-200 bg-green-50">
+            <AlertCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          </Alert>
+        )}
+
+        {isOwnTemplate && (
+          <CVTemplateDetectionMessage 
+            isOwnTemplate={isOwnTemplate}
+            templateType={detectedTemplateType}
+          />
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Toggle button for mobile view - only show on small screens */}
+          <div className="block lg:hidden mb-4">
+            <div className="flex space-x-2">
+              <Button
+                variant="outline"
+                className={`flex-1 ${activeTab === 'form' ? 'bg-gray-100' : ''}`}
+                onClick={() => setActiveTab('form')}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit CV
+              </Button>
+              <Button
+                variant="outline"
+                className={`flex-1 ${activeTab === 'preview' ? 'bg-gray-100' : ''}`}
+                onClick={() => setActiveTab('preview')}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Preview
+              </Button>
+            </div>
+          </div>
           {/* Form Section */}
-          <div>
+          <div className={`${activeTab === 'preview' ? 'hidden lg:block' : ''}`}>
             {isLoadingProfile && (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
@@ -438,6 +578,15 @@ export default function CreateCVPage() {
                   <Progress value={getProgress()} className="h-2" />
                   <p className="text-sm text-gray-500 mt-1">{Math.round(getProgress())}% Complete</p>
                 </div>
+
+                {/* Show template mismatch action if needed */}
+                <OwnTemplateFormAction
+                  isOwnTemplate={isOwnTemplate}
+                  detectedTemplateType={detectedTemplateType}
+                  currentTemplateType={selectedTemplate.type}
+                  cvData={formData as CVData}
+                  onSelectDetectedTemplate={handleSwitchToDetectedTemplate}
+                />
                 <div className="bg-white p-4 rounded-lg shadow-sm">
                   <h2 className="text-lg font-medium mb-2">Upload Existing CV</h2>
                   <p className="text-sm text-gray-600 mb-3">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
@@ -448,6 +597,17 @@ export default function CreateCVPage() {
                     disabled={isParsingCV}
                     className="mb-2"
                   />
+                  <div className="mt-2 flex justify-end">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setShowDebugPanel(true)}
+                      disabled={!rawCVText}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      View Parser Debug Info
+                    </Button>
+                  </div>
                   <div 
                     className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mt-4 hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
                     onDrop={(e) => {
@@ -733,7 +893,7 @@ export default function CreateCVPage() {
           </div>
 
           {/* Preview Section */}
-          <div className="relative">
+          <div className={`relative ${activeTab === 'form' ? 'hidden lg:block' : ''}`}>
             <div className="sticky top-20">
               <div className="bg-white border rounded-lg p-4 mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-medium">Preview</h2>
@@ -742,19 +902,27 @@ export default function CreateCVPage() {
                   Full Preview
                 </Button>
               </div>
-              <div className="border rounded-lg overflow-hidden" id="cv-preview">
+              <div className="border rounded-lg overflow-hidden relative" id="cv-preview">
                 <div className="aspect-[1/1.414] overflow-auto">
                   <CVPreview template={selectedTemplate.type} className="w-full h-full" userData={formData} />
                 </div>
+                <ATSFloatingPanel 
+                  cvData={formData as CVData}
+                  currentSection={activeSection}
+                />
               </div>
             </div>
-            <ATSScoringPanel 
-              cvData={formData as CVData}
-              currentSection={activeSection}
-            />
           </div>
         </div>
       </div>
+
+      {/* Debug panel */}
+      <CVParserDebugPanel
+        rawText={rawCVText}
+        confidence={parserConfidence}
+        isOpen={showDebugPanel}
+        onClose={() => setShowDebugPanel(false)}
+      />
     </div>
   )
 }
