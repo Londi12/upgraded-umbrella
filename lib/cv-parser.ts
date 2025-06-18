@@ -1,7 +1,6 @@
 import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
 import mammoth from 'mammoth';
 import { fileTypeFromBuffer } from 'file-type';
-import pdfParse from 'pdf-parse';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 
 // Configure PDF.js worker for server-side usage
@@ -83,12 +82,28 @@ export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
 }
 
 /**
- * Extract text from a PDF file
+ * Extract text from a PDF file using pdfjs-dist
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
   try {
-    const pdfData = await pdfParse(buffer);
-    return pdfData.text;
+    const loadingTask = pdfjsLib.getDocument({ data: buffer });
+    const pdf = await loadingTask.promise;
+    let text = '';
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      text += pageText + '\n';
+    }
+    
+    if (!text.trim()) {
+      throw new Error('No text extracted from PDF');
+    }
+    
+    return text;
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw new Error('Failed to extract text from PDF');
