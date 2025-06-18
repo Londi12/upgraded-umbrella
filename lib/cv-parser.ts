@@ -233,18 +233,19 @@ export function parseTextToCV(text: string): CVParseResult {
  * Extract personal information from text
  */
 function extractPersonalInfo(text: string): PersonalInfo {
-  const nameMatch = text.match(/(?:name|full name):\s*([^\n]+)/i);
-  const emailMatch = text.match(/(?:email|e-mail):\s*([^\n@]+@[^\n]+)/i);
-  const phoneMatch = text.match(/(?:phone|tel|telephone):\s*([^\n]+)/i);
-  const locationMatch = text.match(/(?:location|address|city):\s*([^\n]+)/i);
+  // More flexible patterns to catch various CV formats
+  const nameMatch = text.match(/(?:name|full name|fullname):\s*([^\n\r]+)/i);
+  const jobTitleMatch = text.match(/(?:job title|position|role|title|occupation|profession):\s*([^\n\r]+)/i);
+  const emailMatch = text.match(/(?:email|e-mail|e mail):\s*([^\n\r@]+@[^\n\r]+)/i);
+  const phoneMatch = text.match(/(?:phone|tel|telephone|mobile|cell):\s*([^\n\r]+)/i);
+  const locationMatch = text.match(/(?:location|address|city|location):\s*([^\n\r]+)/i);
 
   return {
-    name: nameMatch ? nameMatch[1].trim() : '',
+    fullName: nameMatch ? nameMatch[1].trim() : '',
+    jobTitle: jobTitleMatch ? jobTitleMatch[1].trim() : '',
     email: emailMatch ? emailMatch[1].trim() : '',
     phone: phoneMatch ? phoneMatch[1].trim() : '',
-    location: locationMatch ? locationMatch[1].trim() : '',
-    website: '',
-    linkedIn: ''
+    location: locationMatch ? locationMatch[1].trim() : ''
   };
 }
 
@@ -252,7 +253,7 @@ function extractPersonalInfo(text: string): PersonalInfo {
  * Extract summary from text
  */
 function extractSummary(text: string): string {
-  const summaryMatch = text.match(/(?:summary|profile|objective):\s*([^\n]+(?:\n[^\n]+)*)/i);
+  const summaryMatch = text.match(/(?:summary|profile|objective|about|overview):\s*([^\n\r]+(?:\n[^\n\r]+)*)/i);
   return summaryMatch ? summaryMatch[1].trim() : '';
 }
 
@@ -261,18 +262,18 @@ function extractSummary(text: string): string {
  */
 function extractExperience(text: string): Experience[] {
   const experiences: Experience[] = [];
-  const experienceRegex = /(?:company|employer):\s*([^\n]+)\s*(?:position|title|role):\s*([^\n]+)/gi;
+  // More flexible patterns for experience extraction
+  const experienceRegex = /(?:company|employer|organization):\s*([^\n\r]+)\s*(?:position|title|role|job):\s*([^\n\r]+)/gi;
   
   let match;
   while ((match = experienceRegex.exec(text)) !== null) {
     experiences.push({
+      title: match[2].trim(),
       company: match[1].trim(),
-      position: match[2].trim(),
+      location: '',
       startDate: '',
       endDate: '',
-      description: '',
-      highlights: [],
-      location: ''
+      description: ''
     });
   }
   
@@ -284,18 +285,16 @@ function extractExperience(text: string): Experience[] {
  */
 function extractEducation(text: string): Education[] {
   const education: Education[] = [];
-  const educationRegex = /(?:institution|university|school):\s*([^\n]+)\s*(?:degree|qualification):\s*([^\n]+)/gi;
+  // More flexible patterns for education extraction
+  const educationRegex = /(?:institution|university|school|college):\s*([^\n\r]+)\s*(?:degree|qualification|course):\s*([^\n\r]+)/gi;
   
   let match;
   while ((match = educationRegex.exec(text)) !== null) {
     education.push({
-      institution: match[1].trim(),
       degree: match[2].trim(),
-      field: '',
-      startDate: '',
-      endDate: '',
-      gpa: '',
-      location: ''
+      institution: match[1].trim(),
+      location: '',
+      graduationDate: ''
     });
   }
   
@@ -305,23 +304,18 @@ function extractEducation(text: string): Education[] {
 /**
  * Extract skills from text
  */
-function extractSkills(text: string): Skill[] {
-  const skills: Skill[] = [];
-  const skillRegex = /(?:skills|technologies|tools):\s*([^\n]+)/gi;
+function extractSkills(text: string): string {
+  const skills: string[] = [];
+  // More flexible patterns for skills extraction
+  const skillRegex = /(?:skills|technologies|tools|competencies|expertise):\s*([^\n\r]+)/gi;
   
   let match;
   while ((match = skillRegex.exec(text)) !== null) {
     const skillNames = match[1].split(/[,;]/).map(s => s.trim()).filter(s => s);
-    skillNames.forEach(name => {
-      skills.push({
-        name,
-        category: inferSkillCategory(name),
-        level: 'intermediate'
-      });
-    });
+    skills.push(...skillNames);
   }
   
-  return skills;
+  return skills.join(', ');
 }
 
 /**
@@ -352,13 +346,14 @@ function inferSkillCategory(skill: string): string {
 function calculateConfidence(cvData: CVData): number {
   let score = 0;
   
-  if (cvData.personalInfo.name) score += 20;
+  if (cvData.personalInfo.fullName) score += 20;
+  if (cvData.personalInfo.jobTitle) score += 15;
   if (cvData.personalInfo.email) score += 15;
   if (cvData.personalInfo.phone) score += 10;
   if (cvData.summary) score += 15;
-  if (cvData.experience.length > 0) score += 20;
+  if (cvData.experience.length > 0) score += 15;
   if (cvData.education.length > 0) score += 10;
-  if (cvData.skills.length > 0) score += 10;
+  if (typeof cvData.skills === 'string' && cvData.skills.trim()) score += 10;
   
   return Math.min(score, 100);
 }
