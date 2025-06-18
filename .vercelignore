@@ -1,0 +1,4 @@
+# Force fresh deployment
+.next
+node_modules
+.git 
