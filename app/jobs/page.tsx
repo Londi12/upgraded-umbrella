@@ -11,14 +11,17 @@ import { PageHeader } from "@/components/ui/page-header"
 import { mockJobListings, getJobMatches, type JobListing, type JobMatch } from "@/lib/job-matching-service"
 import { getSavedCVs } from "@/lib/user-data-service"
 import type { SavedCV } from "@/lib/user-data-service"
+import { getAIJobMatches, enhanceJobWithAI, type AIJobMatch } from "@/lib/ai-job-service"
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobListing[]>(mockJobListings)
   const [jobMatches, setJobMatches] = useState<JobMatch[]>([])
+  const [aiMatches, setAIMatches] = useState<AIJobMatch[]>([])
   const [savedCVs, setSavedCVs] = useState<SavedCV[]>([])
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedLocation, setSelectedLocation] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [aiEnabled, setAIEnabled] = useState(true)
 
   useEffect(() => {
     const loadData = async () => {
@@ -53,6 +56,12 @@ export default function JobsPage() {
           if (mostRecentCV.cv_data) {
             const matches = getJobMatches(mostRecentCV.cv_data, 30)
             setJobMatches(matches)
+            
+            // Get AI matches
+            if (aiEnabled) {
+              const aiMatches = await getAIJobMatches(mostRecentCV.cv_data, mockJobListings)
+              setAIMatches(aiMatches)
+            }
           }
         } else {
           // Check localStorage for saved CVs
@@ -63,6 +72,12 @@ export default function JobsPage() {
               setSavedCVs(parsedCVs)
               const matches = getJobMatches(parsedCVs[0].cvData, 30)
               setJobMatches(matches)
+              
+              // Get AI matches
+              if (aiEnabled) {
+                const aiMatches = await getAIJobMatches(parsedCVs[0].cvData, mockJobListings)
+                setAIMatches(aiMatches)
+              }
             }
           }
         }
@@ -132,14 +147,27 @@ export default function JobsPage() {
                 <h2 className="text-2xl font-bold text-gray-900">
                   {filteredJobs.length} Job{filteredJobs.length !== 1 ? 's' : ''} Found
                 </h2>
-                <div className="text-sm text-gray-600">
-                  Sorted by relevance
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input 
+                      type="checkbox" 
+                      checked={aiEnabled} 
+                      onChange={(e) => setAIEnabled(e.target.checked)}
+                      className="rounded"
+                    />
+                    AI Matching
+                  </label>
+                  <div className="text-sm text-gray-600">
+                    Sorted by {aiEnabled ? 'AI relevance' : 'relevance'}
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-4">
                 {filteredJobs.map((job) => {
                   const match = jobMatches.find(m => m.job.id === job.id)
+                  const aiMatch = aiMatches.find(m => m.jobId === job.id)
+                  const enhancedJob = enhanceJobWithAI(job, aiMatch)
                   
                   return (
                     <Card key={job.id} className="border border-gray-200 hover:shadow-lg transition-shadow">
@@ -160,18 +188,27 @@ export default function JobsPage() {
                               </div>
                             </div>
                           </div>
-                          {match && (
+                          {(match || aiMatch) && (
                             <div className="text-right">
-                              <div className="text-2xl font-bold text-green-600">{match.matchScore}%</div>
-                              <div className="text-xs text-gray-500">Match</div>
+                              <div className="text-2xl font-bold text-green-600">
+                                {aiMatch ? aiMatch.matchScore : match?.matchScore}%
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {aiMatch ? 'AI Match' : 'Match'}
+                              </div>
                             </div>
                           )}
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-4">
-                        {match && (
+                        {(match || aiMatch) && (
                           <div>
-                            <Progress value={match.matchScore} className="h-2" />
+                            <Progress value={aiMatch ? aiMatch.matchScore : match?.matchScore || 0} className="h-2" />
+                            {aiMatch && (
+                              <div className="mt-2 p-2 bg-blue-50 rounded text-sm text-blue-800">
+                                <strong>AI Insight:</strong> {aiMatch.reasoning}
+                              </div>
+                            )}
                           </div>
                         )}
                         
@@ -195,21 +232,28 @@ export default function JobsPage() {
                           </Badge>
                         </div>
 
-                        {match && match.matchedKeywords.length > 0 && (
+                        {((match && match.matchedKeywords.length > 0) || (aiMatch && aiMatch.skillsMatch.length > 0)) && (
                           <div>
                             <div className="text-sm font-medium text-gray-700 mb-2">Your Matching Skills:</div>
                             <div className="flex flex-wrap gap-1">
-                              {match.matchedKeywords.slice(0, 6).map((keyword) => (
+                              {(aiMatch ? aiMatch.skillsMatch : match?.matchedKeywords || []).slice(0, 6).map((keyword) => (
                                 <Badge key={keyword} variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
                                   {keyword}
                                 </Badge>
                               ))}
-                              {match.matchedKeywords.length > 6 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{match.matchedKeywords.length - 6} more
-                                </Badge>
-                              )}
                             </div>
+                            {aiMatch && aiMatch.skillsGap.length > 0 && (
+                              <div className="mt-2">
+                                <div className="text-sm font-medium text-gray-700 mb-1">Skills to Develop:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {aiMatch.skillsGap.map((skill) => (
+                                    <Badge key={skill} variant="outline" className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
 
