@@ -18,7 +18,10 @@ export function CVTemplateDetectionMessage({ isOwnTemplate, templateType }: CVTe
     'executive': 'Executive Elite',
     'technical': 'Technical Expert',
     'graduate': 'Graduate Entry',
-    'digital': 'Digital Portfolio'
+    'digital': 'Digital Portfolio',
+    'sa-professional': 'South African Professional',
+    'sa-modern': 'South African Modern',
+    'sa-executive': 'South African Executive'
   };
 
   const templateName = templateType ? templateNames[templateType] || templateType : 'one of our templates';

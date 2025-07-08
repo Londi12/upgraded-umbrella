@@ -58,31 +58,33 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <Link href="/" className="flex items-center justify-center space-x-2 mb-6">
-            <div className="flex items-center justify-center w-10 h-10 bg-emerald-600 rounded-lg">
-              <FileText className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">CVKonnekt</span>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
-          <p className="mt-2 text-sm text-gray-600">Sign in to your account to access your saved CVs</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <Link href="/" className="flex items-center justify-center space-x-2 mb-6">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900">CVKonnekt</span>
+            </Link>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Welcome back</h2>
+            <p className="text-slate-600">Sign in to save your CV and access job matching</p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>Enter your email and password to access your account</CardDescription>
-          </CardHeader>
-          <CardContent>
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-xl text-slate-900">Sign In to CVKonnekt</CardTitle>
+              <CardDescription className="text-slate-600">
+                Access your saved CVs and personalized job matches
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
             {!isConfigured && (
               <Alert className="mb-4 border-blue-200 bg-blue-50">
                 <Info className="h-4 w-4 text-blue-600" />
                 <AlertDescription className="text-blue-800">
-                  <strong>Demo Mode:</strong> Authentication is not configured in this environment. Click "Demo Login"
-                  to explore the dashboard.
+                  <strong>Demo Mode:</strong> Try CVKonnekt with demo login - no registration required!
                 </AlertDescription>
               </Alert>
             )}
@@ -129,26 +131,36 @@ function LoginForm() {
               </div>
 
               {isConfigured ? (
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
               ) : (
-                <Button type="button" onClick={handleDemoLogin} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  Demo Login
+                <Button type="button" onClick={handleDemoLogin} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                  Continue with Demo
                 </Button>
               )}
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="mt-6 text-center space-y-4">
+              <p className="text-sm text-slate-600">
                 Don't have an account?{" "}
-                <Link href="/signup" className="text-emerald-600 hover:text-emerald-500 font-medium">
-                  Sign up
+                <Link href="/signup" className="text-blue-600 hover:text-blue-500 font-medium">
+                  Sign up free
                 </Link>
               </p>
+              <div className="pt-4 border-t border-slate-200">
+                <p className="text-xs text-slate-500 mb-2">✨ What you get with CVKonnekt:</p>
+                <div className="text-xs text-slate-600 space-y-1">
+                  <div>• 11+ Professional CV templates</div>
+                  <div>• ATS optimization scoring</div>
+                  <div>• Smart job matching</div>
+                  <div>• Application tracking</div>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

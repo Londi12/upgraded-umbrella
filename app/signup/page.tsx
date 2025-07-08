@@ -64,12 +64,12 @@ export default function SignUpPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8">
-          <Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full">
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-6 w-6 text-emerald-600" />
+              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="h-6 w-6 text-green-600" />
               </div>
               <CardTitle>{isConfigured ? "Check your email" : "Demo Account Created"}</CardTitle>
               <CardDescription>
@@ -85,7 +85,7 @@ export default function SignUpPage() {
                   : "You can now explore the dashboard and CV builder features."}
               </p>
               <Link href={isConfigured ? "/login" : "/dashboard"}>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
                   {isConfigured ? "Back to Sign In" : "Go to Dashboard"}
                 </Button>
               </Link>
@@ -97,24 +97,27 @@ export default function SignUpPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <Link href="/" className="flex items-center justify-center space-x-2 mb-6">
-            <div className="flex items-center justify-center w-10 h-10 bg-emerald-600 rounded-lg">
-              <FileText className="h-6 w-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold text-gray-900">CVKonnekt</span>
-          </Link>
-          <h2 className="text-3xl font-bold text-gray-900">Create your account</h2>
-          <p className="mt-2 text-sm text-gray-600">Join thousands of South Africans building professional CVs</p>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-md mx-auto">
+          <div className="text-center mb-8">
+            <Link href="/" className="flex items-center justify-center space-x-2 mb-6">
+              <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg">
+                <FileText className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900">CVKonnekt</span>
+            </Link>
+            <h2 className="text-3xl font-bold text-slate-900 mb-2">Create your account</h2>
+            <p className="text-slate-600">Join thousands of South Africans building professional CVs</p>
+          </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign Up</CardTitle>
-            <CardDescription>Create your free account to save and manage your CVs</CardDescription>
-          </CardHeader>
+          <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+            <CardHeader className="text-center pb-4">
+              <CardTitle className="text-xl text-slate-900">Join CVKonnekt</CardTitle>
+              <CardDescription className="text-slate-600">
+                Create your free account to save CVs and access job matching
+              </CardDescription>
+            </CardHeader>
           <CardContent>
             {!isConfigured && (
               <Alert className="mb-4 border-blue-200 bg-blue-50">
@@ -175,26 +178,27 @@ export default function SignUpPage() {
               </div>
 
               {isConfigured ? (
-                <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700" disabled={loading}>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading}>
                   {loading ? "Creating account..." : "Create Account"}
                 </Button>
               ) : (
-                <Button type="button" onClick={handleDemoSignup} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  Demo Sign Up
+                <Button type="button" onClick={handleDemoSignup} className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800">
+                  Start Free Trial
                 </Button>
               )}
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-slate-600">
                 Already have an account?{" "}
-                <Link href="/login" className="text-emerald-600 hover:text-emerald-500 font-medium">
+                <Link href="/login" className="text-blue-600 hover:text-blue-500 font-medium">
                   Sign in
                 </Link>
               </p>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )

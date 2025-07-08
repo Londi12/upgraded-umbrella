@@ -1,3 +1,4 @@
+"use client"
 import type { CoverLetterData, TemplateType } from "@/types/cv-types"
 
 interface CoverLetterPreviewProps {
@@ -60,7 +61,7 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
       case "modern":
         return (
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
-            <div className="bg-emerald-600 text-white p-4">
+            <div className="bg-blue-600 text-white p-4">
               <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName || "Sarah Johnson"}</h1>
               <p className="text-sm opacity-90">
                 {userData?.personalInfo?.email || "sarah@email.com"} •{" "}
@@ -96,7 +97,7 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
                 </p>
               </div>
 
-              <div className="bg-emerald-50 p-3 rounded">
+              <div className="bg-blue-50 p-3 rounded">
                 <p className="text-xs text-gray-700">
                   {userData?.letterContent?.closing ||
                     "I would love the opportunity to bring my design expertise to your team and help create exceptional user experiences for your products."}
@@ -105,7 +106,7 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
 
               <div className="text-sm text-gray-800">
                 <p>{userData?.letterContent?.signature || "Best regards,"}</p>
-                <p className="font-medium mt-1 text-emerald-600">
+                <p className="font-medium mt-1 text-blue-600">
                   {userData?.personalInfo?.fullName || "Sarah Johnson"}
                 </p>
               </div>
@@ -331,6 +332,185 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
               <div className="text-sm text-gray-800">
                 <p>{userData?.letterContent?.signature || "Best regards,"}</p>
                 <p className="font-medium mt-1 text-blue-600">{userData?.personalInfo?.fullName || "David Engineer"}</p>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "sa-professional":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            {/* Header with South African flag colors */}
+            <div className="bg-gradient-to-r from-green-600 via-yellow-400 to-red-600 h-2"></div>
+            <div className="p-4 space-y-3">
+              <div className="border-b border-gray-200 pb-3">
+                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName || "Thabo Nkosi"}</h1>
+                <p className="text-sm text-gray-600">
+                  {userData?.personalInfo?.jobTitle || "Financial Manager"}
+                </p>
+                <div className="flex flex-wrap gap-2 text-xs text-gray-500 mt-2">
+                  <span>{userData?.personalInfo?.email || "thabo.nkosi@email.co.za"}</span>
+                  <span>{userData?.personalInfo?.phone || "072 123 4567"}</span>
+                  <span>{userData?.personalInfo?.location || "Johannesburg, South Africa"}</span>
+                  <span>ID: {userData?.personalInfo?.idNumber || "8001015009087"}</span>
+                </div>
+              </div>
+
+              <div className="text-xs text-gray-600 text-right">
+                <p>{userData?.letterContent?.date || "15 December 2024"}</p>
+              </div>
+
+              <div className="text-xs text-gray-600">
+                <p>{userData?.recipientInfo?.name || "Ms. Nomsa Dlamini"}</p>
+                <p>{userData?.recipientInfo?.title || "Human Resources Manager"}</p>
+                <p>{userData?.recipientInfo?.company || "South African Financial Services"}</p>
+                <p>{userData?.recipientInfo?.address || "Sandton, Johannesburg"}</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-800 mb-2">
+                  {userData?.letterContent?.greeting || "Dear Ms. Dlamini,"}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.opening ||
+                    "I am writing to express my interest in the Financial Manager position at South African Financial Services, as advertised on Careers24. With my CA(SA) qualification and over eight years of experience in financial management within the South African context, I am confident in my ability to contribute significantly to your organization."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.body ||
+                    "Throughout my career at Standard Bank, I have developed expertise in financial reporting, tax compliance, and strategic financial planning in accordance with South African regulatory requirements. I have successfully led teams through SARS audits and implemented cost-saving measures that resulted in a 15% reduction in operational expenses."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.closing ||
+                    "I would welcome the opportunity to discuss how my skills and experience align with your requirements. Thank you for considering my application."}
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-800">
+                <p>{userData?.letterContent?.signature || "Kind regards,"}</p>
+                <p className="font-medium mt-2">{userData?.personalInfo?.fullName || "Thabo Nkosi"}</p>
+                <p className="text-xs text-gray-600">{userData?.personalInfo?.professionalRegistration || "CA(SA)"}</p>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "sa-modern":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            {/* Header with South African flag colors */}
+            <div className="bg-blue-600 p-4">
+              <div className="h-1 bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 mb-3"></div>
+              <h1 className="text-lg font-bold text-white">{userData?.personalInfo?.fullName || "Lerato Moloi"}</h1>
+              <p className="text-sm text-white opacity-90">
+                {userData?.personalInfo?.email || "lerato@email.co.za"} •{" "}
+                {userData?.personalInfo?.phone || "083 456 7890"}
+              </p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="text-xs text-gray-600">
+                <p>{userData?.letterContent?.date || "15 December 2024"}</p>
+                <p className="mt-2">
+                  {userData?.recipientInfo?.title || "Talent Acquisition"}
+                  <br />
+                  {userData?.recipientInfo?.company || "South African Tech"}
+                  <br />
+                  {userData?.recipientInfo?.address || "Cape Town, Western Cape"}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-blue-600 mb-2">
+                  {userData?.letterContent?.greeting || "Dear Hiring Team,"}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.opening ||
+                    "I'm excited to apply for the Project Manager position at South African Tech. As a certified PMP with experience managing technology projects in the South African market, I was thrilled to see your focus on digital transformation initiatives."}
+                </p>
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded">
+                <p className="text-xs text-gray-700">
+                  {userData?.letterContent?.body ||
+                    "In my current role at Vodacom, I led the implementation of a new customer management system that improved service delivery times by 30% and received recognition from the Technology Innovation Awards South Africa. I have extensive experience working with diverse teams and stakeholders across multiple provinces."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.closing ||
+                    "I would appreciate the opportunity to discuss how my project management expertise can help South African Tech achieve its strategic objectives."}
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-800">
+                <p>{userData?.letterContent?.signature || "Best regards,"}</p>
+                <p className="font-medium mt-1 text-blue-600">
+                  {userData?.personalInfo?.fullName || "Lerato Moloi"}
+                </p>
+                <p className="text-xs text-gray-500">
+                  ID: {userData?.personalInfo?.idNumber || "9001020123081"}
+                </p>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "sa-executive":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="bg-gray-900 text-white p-3">
+              <div className="h-1 bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 mb-3"></div>
+              <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName || "Dr. Sipho Mabaso"}</h1>
+              <p className="text-sm opacity-90">{userData?.personalInfo?.email || "sipho.mabaso@executive.co.za"}</p>
+            </div>
+            <div className="p-4 space-y-3">
+              <div className="text-xs text-gray-600 text-right">
+                <p>{userData?.letterContent?.date || "15 December 2024"}</p>
+              </div>
+
+              <div className="text-xs text-gray-600">
+                <p>{userData?.recipientInfo?.title || "Chairperson and Board of Directors"}</p>
+                <p>{userData?.recipientInfo?.company || "South African Holdings Ltd"}</p>
+                <p>{userData?.recipientInfo?.address || "Sandton, Gauteng"}</p>
+              </div>
+
+              <div>
+                <p className="text-sm font-medium text-gray-800 mb-2">
+                  {userData?.letterContent?.greeting || "Dear Board Members,"}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.opening ||
+                    "I am writing to express my interest in the Chief Executive Officer position at South African Holdings Ltd. With over 15 years of executive leadership experience in the South African market and a proven track record of driving organizational growth in challenging economic conditions, I am confident in my ability to lead your company into its next phase of success."}
+                </p>
+              </div>
+
+              <div className="bg-gray-50 p-3 rounded border-l-4 border-gray-900">
+                <p className="text-xs text-gray-700">
+                  {userData?.letterContent?.body ||
+                    "In my current role as CEO at Johannesburg Investments, I led a comprehensive transformation strategy that resulted in a 45% revenue growth despite the economic challenges posed by the COVID-19 pandemic. Additionally, I successfully expanded operations into five new African markets, establishing strong partnerships with local businesses and government entities."}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs text-gray-600">
+                  {userData?.letterContent?.closing ||
+                    "I would welcome the opportunity to discuss my vision for South African Holdings Ltd and how my leadership approach aligns with your strategic objectives for growth across the African continent."}
+                </p>
+              </div>
+
+              <div className="text-sm text-gray-800">
+                <p>{userData?.letterContent?.signature || "Respectfully,"}</p>
+                <p className="font-medium mt-2 text-gray-900">
+                  {userData?.personalInfo?.fullName || "Dr. Sipho Mabaso"}
+                </p>
+                <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "Chief Executive Officer"}</p>
+                <p className="text-xs text-gray-600">{userData?.personalInfo?.professionalRegistration || "MBA, PhD"}</p>
               </div>
             </div>
           </div>

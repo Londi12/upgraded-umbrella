@@ -41,7 +41,10 @@ export enum TemplateType {
   EXECUTIVE = 'executive',
   TECHNICAL = 'technical',
   GRADUATE = 'graduate',
-  DIGITAL = 'digital'
+  DIGITAL = 'digital',
+  SA_PROFESSIONAL = 'sa-professional',
+  SA_MODERN = 'sa-modern',
+  SA_EXECUTIVE = 'sa-executive'
 }
 
 /**
@@ -250,7 +253,10 @@ function detectOwnTemplate(text: string): { isOwnTemplate: boolean; templateType
     { type: TemplateType.EXECUTIVE, patterns: ['executive template', 'executive elite', 'cvkonnekt executive'] },
     { type: TemplateType.TECHNICAL, patterns: ['technical template', 'technical expert', 'cvkonnekt technical'] },
     { type: TemplateType.GRADUATE, patterns: ['graduate template', 'graduate entry', 'cvkonnekt graduate'] },
-    { type: TemplateType.DIGITAL, patterns: ['digital template', 'digital portfolio', 'cvkonnekt digital'] }
+    { type: TemplateType.DIGITAL, patterns: ['digital template', 'digital portfolio', 'cvkonnekt digital'] },
+    { type: TemplateType.SA_PROFESSIONAL, patterns: ['sa professional template', 'sa corporate professional', 'cvkonnekt sa professional', 'south african professional'] },
+    { type: TemplateType.SA_MODERN, patterns: ['sa modern template', 'sa modern minimalist', 'cvkonnekt sa modern', 'south african modern'] },
+    { type: TemplateType.SA_EXECUTIVE, patterns: ['sa executive template', 'sa executive elite', 'cvkonnekt sa executive', 'south african executive'] }
   ];
 
   const lowerText = text.toLowerCase();
@@ -414,7 +420,36 @@ function extractPersonalInfo(text: string): PersonalInfo {
     jobTitle = summaryMatch[1].trim();
   }
 
-  // If not found, look for job title in the experience section or near the top
+  // Look for job title patterns in the first few lines after the name
+  if (!jobTitle) {
+    for (let i = 1; i < Math.min(8, lines.length); i++) {
+      const line = lines[i].trim();
+
+      // Skip lines that look like contact info or addresses
+      if (line.includes('@') ||
+          line.includes('|') ||
+          line.match(/\(\d{3}\)/) ||
+          line.match(/\d+\s+\w+\s+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)/i) ||
+          line.match(/^\d+\s/) || // Starts with a number (likely address)
+          line.includes(',') && line.match(/\d{5}/) // Contains zip code
+         ) {
+        continue;
+      }
+
+      // Look for job title patterns - professional titles
+      if ((line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/) ||
+           line.match(/Manager|Director|Engineer|Developer|Analyst|Coordinator|Specialist|Assistant|Executive|Officer|Consultant|Administrator|Supervisor|Lead|Senior|Junior/i)) &&
+          line.length < 60 &&
+          line.length > 5 &&
+          !line.match(/\d{4}/) && // Not a date
+          !line.match(/Profile|Summary|Experience|Education|Skills|Contact/i)) { // Not a section header
+        jobTitle = line;
+        break;
+      }
+    }
+  }
+
+  // If still not found, look for job title in the experience section
   if (!jobTitle) {
     const jobTitleMatch = cleanText.match(/(?:^|\n)([^|\n\r]+?)\s*\|\s*[^|\n\r]+(?:\s*–|\s*to|\s*-)/im) ||
                           cleanText.match(/(?:job title|position|role)[\s:]*([^\n]+)/i);
@@ -454,25 +489,33 @@ function extractPersonalInfo(text: string): PersonalInfo {
   // Look for location/address with more flexible patterns
   let location = '';
 
-  // Try multiple location patterns
+  // Try multiple location patterns, being more specific to avoid job titles
   const locationPatterns = [
-    // Standard US address format
-    /(?:^|\n)([^|\n\r]+?),\s*[^|\n\r]+,\s*[A-Z]{2}\s*\d{5}/im,
-    // City, State format
-    /(?:^|\n)([^|\n\r]+?),\s*[^|\n\r]+,\s*[A-Z]{2}/im,
+    // Full address with street number and zip
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)[^|\n\r]*?,\s*[^|\n\r]+?,\s*[A-Z]{2}\s*\d{5})/im,
+    // Street address with city and state
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)[^|\n\r]*?,\s*[^|\n\r]+?,\s*[A-Z]{2})/im,
     // Just street address
-    /(?:^|\n)(\d+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr))/im,
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr))/im,
+    // City, State, ZIP format
+    /([A-Z][a-z]+,\s*[A-Z]{2}\s*\d{5})/,
+    // City, State format
+    /([A-Z][a-z]+,\s*[A-Z]{2})/,
     // Address labeled
-    /(?:address|location)[\s:]*([^\n]+)/i,
-    // Look for a line with just a city name or city, country
-    /(?:^|\n)([A-Z][a-z]+(?:,\s*[A-Z][a-z]+)?)\s*$/m
+    /(?:address|location)[\s:]*([^\n]+)/i
   ];
 
   for (const pattern of locationPatterns) {
     const match = cleanText.match(pattern);
     if (match && match[1]) {
-      location = match[1].trim();
-      break;
+      const potentialLocation = match[1].trim();
+      // Make sure it's not a job title or name
+      if (!potentialLocation.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/) ||
+          potentialLocation.includes(',') ||
+          potentialLocation.match(/\d/)) {
+        location = potentialLocation;
+        break;
+      }
     }
   }
 
@@ -493,14 +536,17 @@ function extractPersonalInfo(text: string): PersonalInfo {
 function extractSummary(text: string): string {
   // Look for profile/summary section with more flexible patterns
   const profilePatterns = [
-    // Standard section header with content
+    // Standard section header with content until next major section
     /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*(?:experience|education|skills|activities|interests|work|employment):)/i,
 
-    // Section header without clear end marker
-    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*\n)/i,
+    // Look for PROFESSIONAL SUMMARY as a standalone header until next major section
+    /PROFESSIONAL\s+SUMMARY\s*\n+([^]*?)(?=\n\s*(?:EXPERIENCE|EDUCATION|SKILLS|WORK|EMPLOYMENT):)/i,
 
-    // Look for PROFESSIONAL SUMMARY as a standalone header
-    /PROFESSIONAL\s+SUMMARY\s*\n+([^]*?)(?=\n\s*(?:EXPERIENCE|EDUCATION|SKILLS|WORK|EMPLOYMENT):)/i
+    // Section header without clear end marker but ending at a capitalized section header
+    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/i,
+
+    // Section header with content until double newline (less strict fallback)
+    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*\n)/i
   ];
 
   for (const pattern of profilePatterns) {
@@ -511,6 +557,7 @@ function extractSummary(text: string): string {
         .replace(/^\s*[-•*]\s*/gm, '') // Remove bullet points
         .replace(/\n+/g, ' '); // Join multiple lines
 
+      console.log('Summary found with pattern:', summary.substring(0, 100) + '...'); // Debug log
       return summary;
     }
   }
@@ -518,13 +565,15 @@ function extractSummary(text: string): string {
   // Fallback: look for any paragraph that seems like a summary
   // Usually appears near the top of the document after the contact info
   const lines = text.split('\n');
-  const startLine = Math.min(10, lines.length); // Look in the first 10 lines
+  const startLine = Math.min(15, lines.length); // Look in the first 15 lines (increased from 10)
 
+  // Look for a substantial paragraph in the first few lines
   for (let i = 0; i < startLine; i++) {
     const line = lines[i].trim();
     // Look for a substantial paragraph that's likely to be a summary
     if (line.length > 50 && !line.includes('|') && !line.includes('@') && !line.match(/^\d/) && 
         !line.match(/^(education|experience|skills|work|employment)/i)) {
+      console.log('Summary found in first lines:', line.substring(0, 100) + '...'); // Debug log
       return line;
     }
   }
@@ -532,11 +581,24 @@ function extractSummary(text: string): string {
   // Second fallback: look for a longer paragraph anywhere in the first part of the document
   const firstThird = lines.slice(0, Math.floor(lines.length / 3));
   for (const line of firstThird) {
-    if (line.length > 100) {
+    if (line.length > 80) { // Reduced from 100 to catch more potential summaries
+      console.log('Summary found in first third:', line.substring(0, 100) + '...'); // Debug log
       return line;
     }
   }
 
+  // Third fallback: try to find multiple consecutive lines that might form a summary
+  for (let i = 0; i < startLine; i++) {
+    if (lines[i].trim().length > 30 && lines[i+1] && lines[i+1].trim().length > 30) {
+      const combinedLines = lines.slice(i, i+3).join(' ').trim();
+      if (combinedLines.length > 60) {
+        console.log('Summary found from consecutive lines:', combinedLines.substring(0, 100) + '...'); // Debug log
+        return combinedLines;
+      }
+    }
+  }
+
+  console.log('No summary found'); // Debug log
   return '';
 }
 
@@ -556,8 +618,13 @@ function extractExperience(text: string): Experience[] {
     /EXPERIENCE\s*\n([^]*?)(?=\n\s*(?:EDUCATION|SKILLS|ACTIVITIES|INTERESTS|PROJECTS|ACADEMIC|QUALIFICATIONS))/is,
     /EMPLOYMENT\s*\n([^]*?)(?=\n\s*(?:EDUCATION|SKILLS|ACTIVITIES|INTERESTS|PROJECTS|ACADEMIC|QUALIFICATIONS))/is,
 
-    // Headers without clear end marker
-    /(?:experience|work history|employment|work experience|professional experience|career history)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is
+    // Headers without clear end marker but ending at a capitalized section header
+    /(?:experience|work history|employment|work experience|professional experience|career history)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is,
+
+    // Experience section at the end of the document
+    /(?:experience|work history|employment|work experience|professional experience|career history)[:.\s]*\n([^]*?)$/is,
+    /WORK EXPERIENCE\s*\n([^]*?)$/is,
+    /EXPERIENCE\s*\n([^]*?)$/is
   ];
 
   let experienceText = '';
@@ -571,22 +638,64 @@ function extractExperience(text: string): Experience[] {
   }
 
   if (experienceText) {
-    // Try different formats for experience entries
+    // Split experience text into lines and process each line that contains pipes
+    const lines = experienceText.split('\n');
 
-    // Format 1: Pipe-separated entries (Job Title | Company | Date Range)
-    const pipeEntries = experienceText.match(/([^|\n]+?)\s*\|\s*([^|\n]+?)(?:\s*\|\s*([^|\n]+))?/g);
-    if (pipeEntries && pipeEntries.length > 0) {
-      for (const entry of pipeEntries) {
-        const match = entry.match(/([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
-        if (match && match[1].trim() && match[2].trim()) {
-          console.log('Experience pipe match:', match); // Debug log
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Skip empty lines or lines without pipes
+      if (!trimmedLine || !trimmedLine.includes('|')) {
+        continue;
+      }
+
+      // Split by pipe and clean up each part
+      const parts = trimmedLine.split('|').map(part => part.trim()).filter(part => part.length > 0);
+
+      if (parts.length >= 2) {
+        let title = parts[0];
+        let company = parts[1];
+        let location = '';
+        let startDate = '';
+        let endDate = '';
+        let uncertain = false;
+
+        // Enhanced date pattern to catch more formats
+        const datePattern = /(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2})\s*(?:–|—|-|to)\s*(?:Present|Current|Now|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2}))|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2})|\d{4}\s*(?:–|—|-|to)\s*(?:\d{4}|Present|Current|Now)|\d{4}/i;
+
+        // Check remaining parts for dates and locations
+        const remainingParts = parts.slice(2);
+
+        for (const part of remainingParts) {
+          if (datePattern.test(part)) {
+            // Parse the date range
+            const dateMatch = part.match(datePattern);
+            if (dateMatch) {
+              const fullDate = dateMatch[0];
+              if (fullDate.includes('–') || fullDate.includes('-') || fullDate.includes('to')) {
+                const dateParts = fullDate.split(/\s*(?:-|to|–|—)\s*/);
+                startDate = dateParts[0]?.trim() || '';
+                endDate = dateParts[1]?.trim() || '';
+              } else {
+                startDate = fullDate;
+              }
+            }
+          } else if (part.length > 2 && !part.match(/^\d+$/)) {
+            // Likely a location if it's not just numbers
+            location = part;
+          }
+        }
+
+        // Only add if we have meaningful title and company
+        if (title.length > 1 && company.length > 1) {
           experiences.push({
-            title: match[1].trim(),
-            company: match[2].trim(),
-            location: '',
-            startDate: '',
-            endDate: match[3] ? match[3].trim() : '',
-            description: ''
+            title,
+            company,
+            location,
+            startDate,
+            endDate,
+            description: '',
+            uncertain
           });
         }
       }
@@ -606,7 +715,7 @@ function extractExperience(text: string): Experience[] {
 
         // Enhanced date pattern to match formats like "September 20XX – Present"
         const dateMatch = line.match(/(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))\s*(?:-|to|–|—)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:Present|Current|Now|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))/i) ||
-                          line.match(/((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2,4})\s*(?:–|-|to)\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2,4}|Present)/i);
+                          line.match(/((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2}(?:XX|\d{2}))\s*(?:–|-|to)\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2}(?:XX|\d{2})|Present)/i);
 
         const companyMatch = line.match(/^(?:at|with)?\s*([A-Z][A-Za-z0-9\s&.,]+)(?:\s*[-–—]\s*|\s*,\s*|\s+in\s+)([A-Za-z\s,]+)$/);
 
@@ -730,12 +839,14 @@ function extractEducation(text: string): Education[] {
     /ACADEMIC\s*\n([^]*?)(?=\n\s*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK))/is,
     /QUALIFICATIONS\s*\n([^]*?)(?=\n\s*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK))/is,
 
-    // Headers without clear end marker
+    // Headers without clear end marker but ending at a capitalized section header
     /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is,
 
     // Education section at the end of the document
     /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)$/is,
-    /EDUCATION\s*\n([^]*?)$/is
+    /EDUCATION\s*\n([^]*?)$/is,
+    /ACADEMIC\s*\n([^]*?)$/is,
+    /QUALIFICATIONS\s*\n([^]*?)$/is
   ];
 
   let educationText = '';
@@ -749,20 +860,53 @@ function extractEducation(text: string): Education[] {
   }
 
   if (educationText) {
-    // Try different formats for education entries
+    // Split education text into lines and process each line that contains pipes
+    const lines = educationText.split('\n');
 
-    // Format 1: Pipe-separated entries (Degree | Institution | Date)
-    const pipeEntries = educationText.match(/([^|\n]+?)\s*\|\s*([^|\n]+?)(?:\s*\|\s*([^|\n]+))?/g);
-    if (pipeEntries && pipeEntries.length > 0) {
-      for (const entry of pipeEntries) {
-        const match = entry.match(/([^|]+?)\s*\|\s*([^|]+?)(?:\s*\|\s*([^|]+))?/);
-        if (match && match[1].trim() && match[2].trim()) {
-          console.log('Education pipe match:', match); // Debug log
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Skip empty lines or lines without pipes
+      if (!trimmedLine || !trimmedLine.includes('|')) {
+        continue;
+      }
+
+      // Split by pipe and clean up each part
+      const parts = trimmedLine.split('|').map(part => part.trim()).filter(part => part.length > 0);
+
+      if (parts.length >= 2) {
+        let degree = parts[0];
+        let institution = parts[1];
+        let location = '';
+        let graduationDate = '';
+        let uncertain = false;
+
+        // Enhanced date pattern for education (including XX format)
+        const datePattern = /(?:(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2})|\d{4}|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}XX)/i;
+
+        // Check remaining parts for dates and locations
+        const remainingParts = parts.slice(2);
+
+        for (const part of remainingParts) {
+          if (datePattern.test(part)) {
+            const dateMatch = part.match(datePattern);
+            if (dateMatch) {
+              graduationDate = dateMatch[0];
+            }
+          } else if (part.length > 2 && !part.match(/^\d+$/)) {
+            // Likely a location if it's not just numbers
+            location = part;
+          }
+        }
+
+        // Only add if we have meaningful degree and institution
+        if (degree.length > 1 && institution.length > 1) {
           education.push({
-            degree: match[1].trim(),
-            institution: match[2].trim(),
-            location: '',
-            graduationDate: match[3] ? match[3].trim() : ''
+            degree,
+            institution,
+            location,
+            graduationDate,
+            uncertain
           });
         }
       }
@@ -932,7 +1076,7 @@ function extractEducation(text: string): Education[] {
 /**
  * Extract skills from text
  */
-function extractSkills(text: string): string {
+function extractSkills(text: string): Skill[] {
   // Look for skills section with more flexible patterns
   const skillsPatterns = [
     // Standard skills section
@@ -942,7 +1086,7 @@ function extractSkills(text: string): string {
     /SKILLS\s*\n([^]*?)(?=\n\s*(?:EXPERIENCE|EDUCATION|WORK|EMPLOYMENT):)/is,
 
     // Skills section without clear end marker
-    /(?:skills|technical skills|competencies|expertise|key skills|core competencies)[:.\s]*\n([^]*?)(?=\n\s*\n)/is,
+    /(?:skills|technical skills|competencies|expertise|key skills|core competencies)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is,
 
     // Skills section at the end of the document
     /(?:skills|technical skills|competencies|expertise|key skills|core competencies|abilities)[:.\s]*\n([^]*?)$/is,
@@ -960,6 +1104,8 @@ function extractSkills(text: string): string {
     }
   }
 
+  const skillsArray: Skill[] = [];
+
   if (skillsText) {
     // Extract skills from bullet points or lines
     const skillLines = skillsText.split('\n')
@@ -967,36 +1113,58 @@ function extractSkills(text: string): string {
       .filter(line => line.length > 0)
       .map(line => line.replace(/^[-•*]\s*/, '')); // Remove bullet points
 
-    // Clean up the skills text
-    let skills = '';
-
-    // Check if skills are already comma-separated
+    // Process skills based on format
     if (skillsText.includes(',')) {
-      skills = skillsText
+      // If skills are comma-separated
+      const commaSkills = skillsText
         .replace(/\n/g, ', ') // Replace newlines with commas
         .replace(/,\s*,/g, ',') // Remove double commas
         .replace(/^\s*,\s*/, '') // Remove leading comma
         .replace(/\s*,\s*$/, '') // Remove trailing comma
-        .trim();
+        .trim()
+        .split(',')
+        .map(skill => skill.trim())
+        .filter(skill => skill.length > 0);
+
+      commaSkills.forEach(skill => {
+        skillsArray.push({
+          name: skill,
+          category: inferSkillCategory(skill)
+        });
+      });
     } else if (skillsText.includes('|')) {
       // If skills are pipe-separated
-      skills = skillsText
-        .replace(/\s*\|\s*/g, ', ')
-        .replace(/\n/g, ', ')
-        .replace(/,\s*,/g, ',')
-        .replace(/^\s*,\s*/, '')
-        .replace(/\s*,\s*$/, '')
-        .trim();
+      const pipeSkills = skillsText
+        .split('|')
+        .map(skill => skill.trim())
+        .filter(skill => skill.length > 0);
+
+      pipeSkills.forEach(skill => {
+        skillsArray.push({
+          name: skill,
+          category: inferSkillCategory(skill)
+        });
+      });
     } else {
       // If skills are on separate lines
-      skills = skillLines.join(', ');
+      skillLines.forEach(skill => {
+        if (skill.length > 0) {
+          skillsArray.push({
+            name: skill,
+            category: inferSkillCategory(skill)
+          });
+        }
+      });
     }
 
-    console.log('Extracted skills from section:', skills); // Debug log
-    return skills;
+    console.log('Extracted skills from section:', skillsArray.length); // Debug log
+
+    if (skillsArray.length > 0) {
+      return skillsArray;
+    }
   }
 
-  // If no dedicated skills section found, try to extract skills from the entire text
+  // If no dedicated skills section found or no skills extracted, try to extract skills from the entire text
   // First, look for phrases that are likely to be skills
   const skillPhrases = [];
 
@@ -1059,14 +1227,16 @@ function extractSkills(text: string): string {
   // Combine all found skills
   const allSkills = [...new Set([...extractedPhrases, ...foundSkills])];
 
-  if (allSkills.length > 0) {
-    const skillsString = allSkills.join(', ');
-    console.log('Extracted skills from text:', skillsString); // Debug log
-    return skillsString;
-  }
+  // Convert to Skill objects
+  allSkills.forEach(skill => {
+    skillsArray.push({
+      name: skill,
+      category: inferSkillCategory(skill)
+    });
+  });
 
-  console.log('No skills found'); // Debug log
-  return '';
+  console.log('Extracted skills:', skillsArray.length); // Debug log
+  return skillsArray;
 }
 
 /**
@@ -1106,7 +1276,11 @@ function calculateConfidence(cvData: CVData, isOwnTemplate: boolean): number {
   if (cvData.summary) score += 12;
   if (cvData.experience.length > 0) score += 15;
   if (cvData.education.length > 0) score += 10;
-  if (typeof cvData.skills === 'string' && cvData.skills.trim()) score += 8;
+  if (typeof cvData.skills === 'string' && cvData.skills.trim()) {
+    score += 8;
+  } else if (Array.isArray(cvData.skills) && cvData.skills.length > 0) {
+    score += 8;
+  }
 
   // Bonus for our own templates (they should have higher confidence)
   if (isOwnTemplate) {

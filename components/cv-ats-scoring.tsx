@@ -31,38 +31,7 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
 
   // Calculate scores for each section
   const scores = useMemo(() => {
-    // Create a default score structure while we implement the full function
-    const defaultScore: ATSScore = {
-      overallScore: 70, // Default overall score
-      sections: {
-        personal: { 
-          score: 80, 
-          feedback: [], 
-          suggestions: ['Make sure your contact information is complete'] 
-        },
-        summary: { 
-          score: 65, 
-          feedback: ['Your summary could be more detailed'], 
-          suggestions: ['Add specific accomplishments', 'Use industry keywords'] 
-        },
-        experience: { 
-          score: 75, 
-          feedback: [], 
-          suggestions: ['Quantify your achievements', 'Use action verbs'] 
-        },
-        education: { 
-          score: 90, 
-          feedback: [], 
-          suggestions: [] 
-        },
-        skills: { 
-          score: 60, 
-          feedback: ['Consider adding more skills'], 
-          suggestions: ['Add technical skills', 'Add soft skills'] 
-        },
-      }
-    };
-    return defaultScore;
+    return calculateATSScores(cvData);
   }, [cvData])
 
   // Calculate job match score when job description is provided

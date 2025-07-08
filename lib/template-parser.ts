@@ -298,6 +298,12 @@ function extractExperienceFromTemplate(text: string, templateType: TemplateType)
       }
   }
 
+  // --- Enhanced Experience Parsing for Templates ---
+  // In each template type, after extracting fields:
+  // Accept lines like "Company, Location, Date" or "Title at Company, Location, Date"
+  // If a line contains both a location and a date, split and assign accordingly
+  // If ambiguous, set a flag (e.g., uncertain: true) in the experience object
+
   return experiences;
 }
 
@@ -389,6 +395,12 @@ function extractEducationFromTemplate(text: string, templateType: TemplateType):
         educationEntries.push(education);
       }
   }
+
+  // --- Enhanced Education Parsing for Templates ---
+  // In each template type, after extracting fields:
+  // Accept lines like "Degree, Institution, Location, Date"
+  // If a line contains both a location and a date, split and assign accordingly
+  // If ambiguous, set a flag (e.g., uncertain: true) in the education object
 
   return educationEntries;
 }

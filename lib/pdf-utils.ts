@@ -1,4 +1,5 @@
 import type { CVData, CoverLetterData, TemplateType } from "@/types/cv-types"
+import { generateTemplateMarker, generateTemplateMetadata } from "@/lib/template-markers"
 
 export async function generateCVPDF(template: TemplateType, userData: CVData, templateName: string): Promise<Blob> {
   try {

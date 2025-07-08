@@ -8,8 +8,21 @@ export interface ATSScore {
       score: number;
       maxScore: number;
       feedback: string[];
+      suggestions: DetailedSuggestion[];
+      priority: 'high' | 'medium' | 'low';
     };
   };
+}
+
+export interface DetailedSuggestion {
+  type: 'add' | 'modify' | 'remove' | 'format';
+  section: string;
+  field?: string;
+  current?: string;
+  suggested: string;
+  reason: string;
+  impact: 'high' | 'medium' | 'low';
+  examples?: string[];
 }
 
 const REQUIRED_SECTIONS = ['experience', 'education', 'skills', 'contact'];
@@ -19,6 +32,25 @@ const ACTION_VERBS = [
   'generated', 'launched', 'maintained', 'negotiated', 'organized', 'performed', 'produced',
   'reduced', 'resolved', 'secured', 'supervised', 'transformed', 'utilized', 'validated'
 ];
+
+// Industry-specific keywords for better matching
+const INDUSTRY_KEYWORDS = {
+  'technology': ['software', 'programming', 'development', 'coding', 'database', 'cloud', 'api', 'agile', 'scrum'],
+  'finance': ['financial', 'accounting', 'budget', 'analysis', 'compliance', 'audit', 'risk', 'investment'],
+  'marketing': ['campaign', 'brand', 'digital', 'social media', 'analytics', 'seo', 'content', 'strategy'],
+  'healthcare': ['patient', 'clinical', 'medical', 'treatment', 'diagnosis', 'healthcare', 'nursing'],
+  'education': ['teaching', 'curriculum', 'student', 'learning', 'assessment', 'education', 'training'],
+  'sales': ['revenue', 'targets', 'clients', 'negotiation', 'pipeline', 'crm', 'prospecting', 'closing']
+};
+
+// Common ATS parsing issues
+const ATS_FORMATTING_RULES = {
+  'avoid_tables': 'Avoid using tables for layout as they confuse ATS systems',
+  'avoid_headers_footers': 'Keep important information out of headers and footers',
+  'use_standard_fonts': 'Use standard fonts like Arial, Calibri, or Times New Roman',
+  'avoid_graphics': 'Avoid graphics, images, and complex formatting',
+  'use_standard_sections': 'Use standard section headings like "Experience", "Education", "Skills"'
+};
 
 export const calculateATSScore = (cvData: CVData, jobDescription?: string): ATSScore => {
   const sections: ATSScore['sections'] = {};

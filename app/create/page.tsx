@@ -1,15 +1,31 @@
 "use client"
-
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
+import {
+ Maximize2,
+ ArrowLeft,
+ Download,
+ Eye,
+ Save,
+ AlertCircle,
+ ChevronLeft,
+ ChevronRight,
+ Edit3,
+ BarChart2,
+ Brain
+} from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { ArrowLeft, Download, Eye, Save, AlertCircle, ChevronLeft, ChevronRight, Edit3 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogTrigger
+} from "@/components/ui/dialog"
 import Link from "next/link"
+import { CVPreview } from "@/components/cv-preview"
 import { generateCVPDF, downloadBlob } from "@/lib/pdf-utils"
 import type { CVData } from "@/types/cv-types"
-import { type TemplateType } from '@/types/cv-types'
-import { OnboardingWizard } from "@/components/onboarding-wizard"
 import { Progress } from "@/components/ui/progress"
 
 import { Button } from "@/components/ui/button"
@@ -17,30 +33,22 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ATSScoringPanel } from "@/components/cv-scoring-panel"
+import { ApplicationTracker } from "@/components/application-tracker"
+import { JobMatching } from "@/components/job-matching"
+import { WorkingATSScore } from "@/components/working-ats-score"
+import { WorkingSaveButton } from "@/components/working-save-button"
 import { Textarea } from "@/components/ui/textarea"
-import { CVPreview } from "@/components/cv-preview"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getUserProfile, createOrUpdateUserProfile, saveCV } from "@/lib/user-data-service"
 import { useAuth } from "@/contexts/auth-context"
-import { ATSFloatingPanel } from '@/components/cv-ats-floating-panel'
-import { CVParserDebugPanel } from '@/components/cv-parser-debug-panel'
-import { CVTemplateDetectionMessage } from '@/components/cv-template-detection-message'
-import { OwnTemplateFormAction } from '@/components/own-template-form-action'
+import { trackCVInteraction } from '@/lib/analytics-service'
 import { parseCV } from "@/lib/cv-parser"
 
 export default function CreateCVPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const templateId = searchParams.get("template") || "1"
-  const [showOnboarding, setShowOnboarding] = useState<boolean>(true)
-
-  useEffect(() => {
-    // Check if the user has completed onboarding before, but only on client side
-    if (typeof window !== 'undefined') {
-      const hasCompletedOnboarding = localStorage.getItem("hasCompletedOnboarding")
-      setShowOnboarding(!hasCompletedOnboarding)
-    }
-  }, [])
 
   // Map template IDs to template types
   const templateMap: Record<string, any> = {
@@ -52,6 +60,9 @@ export default function CreateCVPage() {
     "6": { type: "technical", name: "Technical Expert" },
     "7": { type: "graduate", name: "Graduate Entry" },
     "8": { type: "digital", name: "Digital Portfolio" },
+    "9": { type: "sa-professional", name: "SA Professional" },
+    "10": { type: "sa-modern", name: "SA Modern" },
+    "11": { type: "sa-executive", name: "SA Executive" },
   }
 
   const [selectedTemplate, setSelectedTemplate] = useState(templateMap[templateId] || templateMap["1"])
@@ -64,7 +75,11 @@ export default function CreateCVPage() {
       email: "",
       phone: "",
       location: "",
-    },
+      idNumber: "",
+      linkedIn: "",
+      professionalRegistration: "",
+      languages: [],
+    } as CVData['personalInfo'],
     summary: "",
     experience: [
       {
@@ -74,6 +89,8 @@ export default function CreateCVPage() {
         startDate: "",
         endDate: "",
         description: "",
+        isLearnership: false,
+        isInternship: false,
       },
     ],
     education: [
@@ -82,6 +99,9 @@ export default function CreateCVPage() {
         institution: "",
         location: "",
         graduationDate: "",
+        nqfLevel: undefined as number | undefined,
+        saqa: "",
+        internationalEquivalence: "",
       },
     ],
     skills: "",
@@ -123,15 +143,11 @@ export default function CreateCVPage() {
       setIsLoadingProfile(false)
     }
 
-    if (!showOnboarding) {
-      loadUserProfile()
-    }
-  }, [user, isConfigured, showOnboarding])
+    loadUserProfile()
+  }, [user, isConfigured])
 
   // Auto-save to localStorage periodically
   useEffect(() => {
-    if (showOnboarding) return;
-
     // Save immediately on form changes
     localStorage.setItem('cv-draft', JSON.stringify(formData));
 
@@ -141,34 +157,20 @@ export default function CreateCVPage() {
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(autoSaveInterval);
-  }, [formData, showOnboarding])
+  }, [formData])
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isParsingCV, setIsParsingCV] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
-  const [rawCVText, setRawCVText] = useState<string>('')
-  const [showDebugPanel, setShowDebugPanel] = useState<boolean>(false)
-  const [parserConfidence, setParserConfidence] = useState<number | undefined>(undefined)
-  const [isOwnTemplate, setIsOwnTemplate] = useState<boolean>(false)
-  const [detectedTemplateType, setDetectedTemplateType] = useState<string | undefined>(undefined)
-  const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
+
+
+  const [showPreviewDialog, setShowPreviewDialog] = useState(false)
 
   const [activeSection, setActiveSection] = useState<string>('personal')
   const sections = ['personal', 'summary', 'experience', 'education', 'skills']
 
-  const handleSwitchToDetectedTemplate = () => {
-    if (!detectedTemplateType) return;
-
-    // Find the template ID from the detected template type
-    const templateId = Object.keys(templateMap).find(
-      id => templateMap[id].type === detectedTemplateType
-    ) || "1";
-
-    setSelectedTemplate(templateMap[templateId]);
-  }
-  
   const getProgress = () => {
     let completed = 0;
     if (formData.personalInfo.fullName && formData.personalInfo.jobTitle) completed++;
@@ -237,6 +239,8 @@ export default function CreateCVPage() {
           startDate: "",
           endDate: "",
           description: "",
+          isLearnership: false,
+          isInternship: false,
         },
       ],
     })
@@ -244,10 +248,13 @@ export default function CreateCVPage() {
 
   const handleEducationChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
+    const parsedValue = name === 'nqfLevel'
+      ? value ? parseInt(value) : undefined
+      : value
     const updatedEducation = [...formData.education]
     updatedEducation[index] = {
       ...updatedEducation[index],
-      [name]: value,
+      [name]: parsedValue,
     }
     setFormData({
       ...formData,
@@ -265,6 +272,9 @@ export default function CreateCVPage() {
           institution: "",
           location: "",
           graduationDate: "",
+          nqfLevel: undefined as number | undefined,
+          saqa: "",
+          internationalEquivalence: "",
         },
       ],
     })
@@ -308,7 +318,7 @@ export default function CreateCVPage() {
     const cvName = `${formData.personalInfo.fullName || "My CV"} - ${selectedTemplate.name}`
 
     setIsSaving(true)
-    const { error } = await saveCV({
+    const { data: savedCV, error } = await saveCV({
       name: cvName,
       template_type: selectedTemplate.type,
       template_name: selectedTemplate.name,
@@ -319,6 +329,11 @@ export default function CreateCVPage() {
       console.error("Error saving CV:", error)
       setError("Failed to save CV")
     } else {
+      // Track CV creation for analytics
+      if (savedCV?.id) {
+        await trackCVInteraction(savedCV.id, 'view')
+      }
+
       // Also save the profile data for future use
       await handleSaveProfile()
       // Show success message
@@ -334,8 +349,6 @@ export default function CreateCVPage() {
 
     setIsParsingCV(true);
     setParseError(null);
-    setIsOwnTemplate(false);
-    setDetectedTemplateType(undefined);
 
     try {
       const uploadFormData = new FormData();
@@ -348,38 +361,12 @@ export default function CreateCVPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('CV parsing failed:', errorData);
-        // Store the raw text even if parsing fails
-        setRawCVText(errorData.rawText || '');
         throw new Error(`API request failed: ${errorData.error || response.status}`);
       }
 
       const result = await response.json();
+      
 
-      // Store the raw text and confidence for debugging
-      if (result.rawText) {
-        setRawCVText(result.rawText);
-      }
-
-      if (result.confidence !== undefined) {
-        setParserConfidence(result.confidence);
-      }
-
-      // Handle template detection
-      if (result.ownTemplate) {
-        setIsOwnTemplate(true);
-        // Extract template type from data if available
-        if (typeof result.templateType === 'string') {
-          setDetectedTemplateType(result.templateType);
-
-          // If it matches our current template, show a special message
-          if (result.templateType === selectedTemplate.type) {
-            console.log(`Detected same template type as currently selected: ${result.templateType}`);
-          }
-        }
-      } else {
-        setIsOwnTemplate(false);
-        setDetectedTemplateType(undefined);
-      }
 
       if (result.data && result.data.personalInfo) {
         setFormData({
@@ -405,7 +392,7 @@ export default function CreateCVPage() {
     } catch (err) {
       console.error("Error parsing CV:", err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
-      setParseError(`Failed to parse CV: ${errorMessage}. Debug Info: Check the browser console for detailed error logs. There might be an issue with the file processing library. Please try a different file format or enter your details manually.`);
+      setParseError(`Failed to parse CV: ${errorMessage}. Please try a different file format or enter your details manually.`);
     } finally {
       setIsParsingCV(false);
     }
@@ -436,74 +423,103 @@ export default function CreateCVPage() {
     handleSectionChange(section);
   };
 
-  const handleOnboardingComplete = (onboardingData: { careerLevel: string; industry: string; jobTitle: string }, templateType: TemplateType) => {
-    // Find the template ID from the type
-    const newTemplateId = Object.keys(templateMap).find(id => templateMap[id].type === templateType) || "1"
-    setSelectedTemplate(templateMap[newTemplateId])
-    setFormData({
-      ...formData,
-      personalInfo: {
-        ...formData.personalInfo,
-        jobTitle: onboardingData.jobTitle,
-      },
-    })
-    setShowOnboarding(false)
-    localStorage.setItem("hasCompletedOnboarding", "true")
+  // Track CV interactions for analytics
+  const trackInteraction = async (type: 'view' | 'download' | 'share') => {
+    if (isConfigured && user) {
+      try {
+        await trackCVInteraction('current-cv', type)
+      } catch (error) {
+        console.error('Failed to track interaction:', error)
+      }
+    }
   }
 
-  const handleSkipOnboarding = () => {
-    setShowOnboarding(false)
-    localStorage.setItem("hasCompletedOnboarding", "true")
-  }
-
-  if (showOnboarding) {
-    return <OnboardingWizard onComplete={handleOnboardingComplete} onSkip={handleSkipOnboarding} />
+  // Enhanced download with tracking
+  const handleDownloadPDFWithTracking = async () => {
+    await trackInteraction('download')
+    await handleDownloadPDF()
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <div className="bg-gray-50 border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
+    <>
+      <div className="flex flex-col min-h-screen bg-slate-50">
+        <div className="page-container flex flex-col min-h-screen">
+          <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 border-b border-slate-700 shadow-lg">
+            <div className="container mx-auto px-6 py-6 flex items-center justify-between">
+              <div className="flex items-center gap-6">
             <Link href="/cv-templates">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-blue-200 transition-all duration-200">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Templates
               </Button>
             </Link>
-            <h1 className="text-xl font-semibold">
-              Creating CV with <span className="text-emerald-600">{selectedTemplate.name}</span> template
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-bold text-white tracking-tight">
+                CV Builder
+              </h1>
+              <p className="text-blue-200 text-sm font-medium">
+                Creating with <span className="text-cyan-300 font-semibold">{selectedTemplate.name}</span> template
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             {isConfigured && user ? (
               <>
-                <div className="text-sm text-gray-600 mr-2 hidden md:block">
-                  Signed in as <span className="font-medium">{user.email}</span>
+                <div className="text-sm text-blue-200 mr-3 hidden md:block">
+                  <span className="text-white font-medium">{user.email}</span>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleSaveProfile} disabled={isSaving || isLoadingProfile}>
+                <Button variant="outline" size="sm" onClick={handleSaveProfile} disabled={isSaving || isLoadingProfile} className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Profile"}
                 </Button>
-                <Button variant="outline" size="sm" onClick={handleSaveCV} disabled={isSaving || isLoadingProfile}>
+                <Button variant="outline" size="sm" onClick={handleSaveCV} disabled={isSaving || isLoadingProfile} className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save CV"}
                 </Button>
               </>
             ) : (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`)}
-              >
-                <Save className="h-4 w-4 mr-2" />
-                Sign in to save
-              </Button>
+              <WorkingSaveButton 
+                cvData={formData as CVData}
+                className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200"
+              />
             )}
+            <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
+                  <Eye className="h-4 w-4 mr-2" />
+                  Preview
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                <DialogHeader>
+                  <DialogTitle>CV Preview</DialogTitle>
+                </DialogHeader>
+                <div className="mt-4">
+                  <CVPreview template={selectedTemplate.type} userData={formData} />
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
+                  <Brain className="h-4 w-4 mr-2" />
+                  ATS Score
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+                <DialogHeader>
+                  <DialogTitle>ATS Compatibility Analysis</DialogTitle>
+                  <DialogDescription>
+                    See how well your CV performs with Applicant Tracking Systems
+                  </DialogDescription>
+                </DialogHeader>
+                <WorkingATSScore cvData={formData as CVData} />
+              </DialogContent>
+            </Dialog>
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
               size="sm"
-              onClick={handleDownloadPDF}
+              onClick={handleDownloadPDFWithTracking}
               disabled={isGeneratingPDF || isLoadingProfile}
             >
               <Download className="h-4 w-4 mr-2" />
@@ -513,103 +529,58 @@ export default function CreateCVPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-6 py-8">
         {error && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{error}</AlertDescription>
+          <Alert className="mb-6 border-red-300 bg-red-50 shadow-sm rounded-lg">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertDescription className="text-red-800 font-medium">{error}</AlertDescription>
           </Alert>
         )}
         {parseError && (
-          <Alert className="mb-6 border-red-200 bg-red-50">
-            <AlertCircle className="h-4 w-4 text-red-600" />
-            <AlertDescription className="text-red-800">{parseError}</AlertDescription>
+          <Alert className="mb-6 border-red-300 bg-red-50 shadow-sm rounded-lg">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <AlertDescription className="text-red-800 font-medium">{parseError}</AlertDescription>
           </Alert>
         )}
         {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <AlertCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+          <Alert className="mb-6 border-green-300 bg-green-50 shadow-sm rounded-lg">
+            <AlertCircle className="h-5 w-5 text-green-600" />
+            <AlertDescription className="text-green-800 font-medium">{success}</AlertDescription>
           </Alert>
         )}
 
-        {isOwnTemplate && (
-          <CVTemplateDetectionMessage 
-            isOwnTemplate={isOwnTemplate}
-            templateType={detectedTemplateType}
-          />
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Toggle button for mobile view - only show on small screens */}
-          <div className="block lg:hidden mb-4">
-            <div className="flex space-x-2">
-              <Button
-                variant="outline"
-                className={`flex-1 ${activeTab === 'form' ? 'bg-gray-100' : ''}`}
-                onClick={() => setActiveTab('form')}
-              >
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit CV
-              </Button>
-              <Button
-                variant="outline"
-                className={`flex-1 ${activeTab === 'preview' ? 'bg-gray-100' : ''}`}
-                onClick={() => setActiveTab('preview')}
-              >
-                <Eye className="h-4 w-4 mr-2" />
-                Preview
-              </Button>
-            </div>
-          </div>
+        <div className="max-w-4xl mx-auto">
           {/* Form Section */}
-          <div className={`${activeTab === 'preview' ? 'hidden lg:block' : ''}`}>
+          <div>
             {isLoadingProfile && (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading your profile...</p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-slate-600">Loading your profile...</p>
               </div>
             )}
 
             {!isLoadingProfile && (
-              <div className="space-y-4">
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <h2 className="text-lg font-medium mb-2">CV Completion Progress</h2>
-                  <Progress value={getProgress()} className="h-2" />
-                  <p className="text-sm text-gray-500 mt-1">{Math.round(getProgress())}% Complete</p>
+              <div className="space-y-6">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-slate-900">CV Completion Progress</h2>
+                    <span className="text-sm font-medium text-blue-800 bg-blue-100 px-3 py-1 rounded-full">{Math.round(getProgress())}% Complete</span>
+                  </div>
+                  <Progress value={getProgress()} className="h-3 bg-slate-200" />
                 </div>
 
-                {/* Show template mismatch action if needed */}
-                <OwnTemplateFormAction
-                  isOwnTemplate={isOwnTemplate}
-                  detectedTemplateType={detectedTemplateType}
-                  currentTemplateType={selectedTemplate.type}
-                  cvData={formData as CVData}
-                  onSelectDetectedTemplate={handleSwitchToDetectedTemplate}
-                />
-                <div className="bg-white p-4 rounded-lg shadow-sm">
-                  <h2 className="text-lg font-medium mb-2">Upload Existing CV</h2>
-                  <p className="text-sm text-gray-600 mb-3">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                  <h2 className="text-lg font-semibold text-slate-900 mb-2">Upload Existing CV</h2>
+                  <p className="text-sm text-slate-600 mb-4">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
                   <Input 
                     type="file" 
                     accept=".pdf,.docx,.txt" 
                     onChange={handleFileUpload} 
                     disabled={isParsingCV}
-                    className="mb-2"
+                    className="mb-4 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
                   />
-                  <div className="mt-2 flex justify-end">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setShowDebugPanel(true)}
-                      disabled={!rawCVText}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      View Parser Debug Info
-                    </Button>
-                  </div>
                   <div 
-                    className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center mt-4 hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
+                    className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-600 hover:bg-blue-100 transition-all duration-200 cursor-pointer"
                     onDrop={(e) => {
                       e.preventDefault();
                       const files = e.dataTransfer.files;
@@ -620,23 +591,24 @@ export default function CreateCVPage() {
                     }}
                     onDragOver={(e) => e.preventDefault()}
                   >
-                    <p className="text-gray-500">Drag and drop your CV here</p>
+                    <p className="text-slate-600 font-medium">Drag and drop your CV here</p>
+                    <p className="text-xs text-slate-500 mt-1">or click to browse files</p>
                   </div>
                 </div>
                 <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-                  <TabsList className="mb-4 overflow-x-auto flex">
-                    <TabsTrigger value="personal">Personal Info</TabsTrigger>
-                    <TabsTrigger value="summary">Summary</TabsTrigger>
-                    <TabsTrigger value="experience">Experience</TabsTrigger>
-                    <TabsTrigger value="education">Education</TabsTrigger>
-                    <TabsTrigger value="skills">Skills</TabsTrigger>
+                  <TabsList className="mb-6 w-full overflow-x-auto flex bg-slate-100 p-1 rounded-xl shadow-sm">
+                    <TabsTrigger value="personal" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Personal</TabsTrigger>
+                    <TabsTrigger value="summary" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Summary</TabsTrigger>
+                    <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Experience</TabsTrigger>
+                    <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Education</TabsTrigger>
+                    <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Skills</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="personal" className="space-y-4">
-                    <Card className="p-4">
-                      <div className="space-y-4">
+                  <TabsContent value="personal" className="space-y-6">
+                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <div className="space-y-5">
                         <div>
-                          <Label htmlFor="fullName">Full Name</Label>
+                          <Label htmlFor="fullName" className="text-sm font-semibold text-slate-700 mb-2 block">Full Name</Label>
                           <Input
                             id="fullName"
                             name="fullName"
@@ -644,10 +616,11 @@ export default function CreateCVPage() {
                             onChange={handlePersonalInfoChange}
                             placeholder="e.g., John Smith"
                             onFocus={handleInputFocus('personal')}
+                            className="border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg h-11"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="jobTitle">Job Title</Label>
+                          <Label htmlFor="jobTitle" className="text-sm font-semibold text-slate-700 mb-2 block">Job Title</Label>
                           <Input
                             id="jobTitle"
                             name="jobTitle"
@@ -655,10 +628,11 @@ export default function CreateCVPage() {
                             onChange={handlePersonalInfoChange}
                             placeholder="e.g., Senior Financial Analyst"
                             onFocus={handleInputFocus('personal')}
+                            className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="email">Email</Label>
+                          <Label htmlFor="email" className="text-sm font-semibold text-slate-700 mb-2 block">Email</Label>
                           <Input
                             id="email"
                             name="email"
@@ -667,10 +641,11 @@ export default function CreateCVPage() {
                             onChange={handlePersonalInfoChange}
                             placeholder="e.g., john.smith@email.com"
                             onFocus={handleInputFocus('personal')}
+                            className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="phone">Phone</Label>
+                          <Label htmlFor="phone" className="text-sm font-semibold text-slate-700 mb-2 block">Phone</Label>
                           <Input
                             id="phone"
                             name="phone"
@@ -678,10 +653,11 @@ export default function CreateCVPage() {
                             onChange={handlePersonalInfoChange}
                             placeholder="e.g., +27 11 123 4567"
                             onFocus={handleInputFocus('personal')}
+                            className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
                           />
                         </div>
                         <div>
-                          <Label htmlFor="location">Location</Label>
+                          <Label htmlFor="location" className="text-sm font-semibold text-slate-700 mb-2 block">Location</Label>
                           <Input
                             id="location"
                             name="location"
@@ -689,23 +665,77 @@ export default function CreateCVPage() {
                             onChange={handlePersonalInfoChange}
                             placeholder="e.g., Johannesburg, SA"
                             onFocus={handleInputFocus('personal')}
+                            className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="idNumber">ID Number (Optional)</Label>
+                          <Input
+                            id="idNumber"
+                            name="idNumber"
+                            value={formData.personalInfo.idNumber || ''}
+                            onChange={handlePersonalInfoChange}
+                            placeholder="e.g., 8001015009087"
+                            onFocus={handleInputFocus('personal')}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="linkedIn">LinkedIn (Optional)</Label>
+                          <Input
+                            id="linkedIn"
+                            name="linkedIn"
+                            value={formData.personalInfo.linkedIn || ''}
+                            onChange={handlePersonalInfoChange}
+                            placeholder="e.g., linkedin.com/in/yourprofile"
+                            onFocus={handleInputFocus('personal')}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="professionalRegistration">Professional Registration (Optional)</Label>
+                          <Input
+                            id="professionalRegistration"
+                            name="professionalRegistration"
+                            value={formData.personalInfo.professionalRegistration || ''}
+                            onChange={handlePersonalInfoChange}
+                            placeholder="e.g., ECSA, SAICA, HPCSA"
+                            onFocus={handleInputFocus('personal')}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="languages">Languages (Optional)</Label>
+                          <Input
+                            id="languages"
+                            name="languages"
+                            value={formData.personalInfo.languages ? formData.personalInfo.languages.join(', ') : ''}
+                            onChange={(e) => {
+                              const languagesArray = e.target.value.split(',').map(lang => lang.trim()).filter(Boolean);
+                              setFormData({
+                                ...formData,
+                                personalInfo: {
+                                  ...formData.personalInfo,
+                                  languages: languagesArray,
+                                },
+                              });
+                            }}
+                            placeholder="e.g., English, Zulu, Afrikaans (comma separated)"
+                            onFocus={handleInputFocus('personal')}
                           />
                         </div>
                       </div>
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="summary" className="space-y-4">
-                    <Card className="p-4">
-                      <div className="space-y-4">
+                  <TabsContent value="summary" className="space-y-6">
+                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <div className="space-y-5">
                         <div>
-                          <Label htmlFor="summary">Professional Summary</Label>
+                          <Label htmlFor="summary" className="text-sm font-semibold text-slate-700 mb-2 block">Professional Summary</Label>
                           <Textarea
                             id="summary"
                             value={formData.summary}
                             onChange={handleSummaryChange}
                             placeholder="Write a brief summary of your professional background and key qualifications..."
-                            className="min-h-[150px]"
+                            className="min-h-[150px] border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg"
                             onFocus={handleInputFocus('summary')}
                           />
                         </div>
@@ -713,9 +743,9 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="experience" className="space-y-4">
+                  <TabsContent value="experience" className="space-y-6">
                     {formData.experience.map((exp, index) => (
-                      <Card key={index} className="p-4">
+                      <Card key={index} className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
                         <div className="space-y-4">
                           <div>
                             <Label htmlFor={`title-${index}`}>Job Title</Label>
@@ -786,17 +816,67 @@ export default function CreateCVPage() {
                               onFocus={handleInputFocus(`experience-${index}`)}
                             />
                           </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`isLearnership-${index}`}
+                                name="isLearnership"
+                                checked={exp.isLearnership || false}
+                                onChange={(e) => {
+                                  const updatedExperience = [...formData.experience];
+                                  updatedExperience[index] = {
+                                    ...updatedExperience[index],
+                                    isLearnership: e.target.checked,
+                                  };
+                                  setFormData({
+                                    ...formData,
+                                    experience: updatedExperience,
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-gray-300"
+                                onFocus={handleInputFocus(`experience-${index}`)}
+                              />
+                              <Label htmlFor={`isLearnership-${index}`} className="text-sm font-normal">
+                                This is a Learnership
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="checkbox"
+                                id={`isInternship-${index}`}
+                                name="isInternship"
+                                checked={exp.isInternship || false}
+                                onChange={(e) => {
+                                  const updatedExperience = [...formData.experience];
+                                  updatedExperience[index] = {
+                                    ...updatedExperience[index],
+                                    isInternship: e.target.checked,
+                                  };
+                                  setFormData({
+                                    ...formData,
+                                    experience: updatedExperience,
+                                  });
+                                }}
+                                className="h-4 w-4 rounded border-gray-300"
+                                onFocus={handleInputFocus(`experience-${index}`)}
+                              />
+                              <Label htmlFor={`isInternship-${index}`} className="text-sm font-normal">
+                                This is an Internship
+                              </Label>
+                            </div>
+                          </div>
                         </div>
                       </Card>
                     ))}
-                    <Button variant="outline" onClick={addExperience} className="w-full">
+                    <Button variant="outline" onClick={addExperience} className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg py-3 font-medium transition-all duration-200">
                       Add Another Experience
                     </Button>
                   </TabsContent>
 
-                  <TabsContent value="education" className="space-y-4">
+                  <TabsContent value="education" className="space-y-6">
                     {formData.education.map((edu, index) => (
-                      <Card key={index} className="p-4">
+                      <Card key={index} className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
                         <div className="space-y-4">
                           <div>
                             <Label htmlFor={`degree-${index}`}>Degree</Label>
@@ -842,25 +922,91 @@ export default function CreateCVPage() {
                               onFocus={handleInputFocus(`education-${index}`)}
                             />
                           </div>
+                          <div>
+                            <Label htmlFor={`nqfLevel-${index}`}>NQF Level (Optional)</Label>
+                            <Input
+                              id={`nqfLevel-${index}`}
+                              name="nqfLevel"
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={edu.nqfLevel || ''}
+                              onChange={(e) => {
+                                const updatedEducation = [...formData.education];
+                                updatedEducation[index] = {
+                                  ...updatedEducation[index],
+                                  nqfLevel: e.target.value ? parseInt(e.target.value) : undefined,
+                                };
+                                setFormData({
+                                  ...formData,
+                                  education: updatedEducation,
+                                });
+                              }}
+                              placeholder="e.g., 7"
+                              onFocus={handleInputFocus(`education-${index}`)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`saqa-${index}`}>SAQA ID (Optional)</Label>
+                            <Input
+                              id={`saqa-${index}`}
+                              name="saqa"
+                              value={edu.saqa || ''}
+                              onChange={(e) => {
+                                const updatedEducation = [...formData.education];
+                                updatedEducation[index] = {
+                                  ...updatedEducation[index],
+                                  saqa: e.target.value,
+                                };
+                                setFormData({
+                                  ...formData,
+                                  education: updatedEducation,
+                                });
+                              }}
+                              placeholder="e.g., 62116"
+                              onFocus={handleInputFocus(`education-${index}`)}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`internationalEquivalence-${index}`}>International Equivalence (Optional)</Label>
+                            <Input
+                              id={`internationalEquivalence-${index}`}
+                              name="internationalEquivalence"
+                              value={edu.internationalEquivalence || ''}
+                              onChange={(e) => {
+                                const updatedEducation = [...formData.education];
+                                updatedEducation[index] = {
+                                  ...updatedEducation[index],
+                                  internationalEquivalence: e.target.value,
+                                };
+                                setFormData({
+                                  ...formData,
+                                  education: updatedEducation,
+                                });
+                              }}
+                              placeholder="e.g., Bachelor's Degree (UK)"
+                              onFocus={handleInputFocus(`education-${index}`)}
+                            />
+                          </div>
                         </div>
                       </Card>
                     ))}
-                    <Button variant="outline" onClick={addEducation} className="w-full">
+                    <Button variant="outline" onClick={addEducation} className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg py-3 font-medium transition-all duration-200">
                       Add Another Education
                     </Button>
                   </TabsContent>
 
-                  <TabsContent value="skills" className="space-y-4">
-                    <Card className="p-4">
-                      <div className="space-y-4">
+                  <TabsContent value="skills" className="space-y-6">
+                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <div className="space-y-5">
                         <div>
-                          <Label htmlFor="skills">Skills</Label>
+                          <Label htmlFor="skills" className="text-sm font-semibold text-slate-700 mb-2 block">Skills</Label>
                           <Textarea
                             id="skills"
                             value={formData.skills}
                             onChange={handleSkillsChange}
                             placeholder="List your skills, separated by commas (e.g., Excel, SQL, Python, Financial Modeling)"
-                            className="min-h-[150px]"
+                            className="min-h-[150px] border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg"
                             onFocus={handleInputFocus('skills')}
                           />
                         </div>
@@ -868,21 +1014,20 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
                 </Tabs>
-                <div className="flex justify-between mt-4">
+                <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
                   <Button 
                     variant="outline" 
                     onClick={handlePreviousSection} 
                     disabled={sections.indexOf(activeSection) === 0}
-                    className="flex items-center"
+                    className="flex items-center justify-center border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg px-6 py-3 font-medium transition-all duration-200 w-full sm:w-auto"
                   >
                     <ChevronLeft className="h-4 w-4 mr-2" />
                     Previous
                   </Button>
                   <Button 
-                    variant="outline" 
                     onClick={handleNextSection} 
                     disabled={sections.indexOf(activeSection) === sections.length - 1}
-                    className="flex items-center"
+                    className="flex items-center justify-center bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 rounded-lg px-6 py-3 font-medium transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
                   >
                     Next
                     <ChevronRight className="h-4 w-4 ml-2" />
@@ -892,37 +1037,13 @@ export default function CreateCVPage() {
             )}
           </div>
 
-          {/* Preview Section */}
-          <div className={`relative ${activeTab === 'form' ? 'hidden lg:block' : ''}`}>
-            <div className="sticky top-20">
-              <div className="bg-white border rounded-lg p-4 mb-4 flex items-center justify-between">
-                <h2 className="text-lg font-medium">Preview</h2>
-                <Button variant="ghost" size="sm">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Full Preview
-                </Button>
-              </div>
-              <div className="border rounded-lg overflow-hidden relative" id="cv-preview">
-                <div className="aspect-[1/1.414] overflow-auto">
-                  <CVPreview template={selectedTemplate.type} className="w-full h-full" userData={formData} />
-                </div>
-                <ATSFloatingPanel 
-                  cvData={formData as CVData}
-                  currentSection={activeSection}
-                />
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
-
-      {/* Debug panel */}
-      <CVParserDebugPanel
-        rawText={rawCVText}
-        confidence={parserConfidence}
-        isOpen={showDebugPanel}
-        onClose={() => setShowDebugPanel(false)}
-      />
     </div>
+  </div>
+  
+
+    </>
   )
 }

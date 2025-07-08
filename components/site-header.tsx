@@ -1,23 +1,27 @@
 "use client"
 
-import { FileText, Menu, X, User, LogOut } from "lucide-react"
+import { FileText, Menu, X, User, LogOut, ChevronDown, ShieldCheck, BadgeCheck } from "lucide-react"
 import Link from "next/link"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
-
 import { Button } from "@/components/ui/button"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ProfileMenu } from "@/components/profile-menu"
 
 export function SiteHeader() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, signOut, loading, isConfigured } = useAuth()
 
-  const navigationItems = [
+  // Dropdown menu structure
+  const cvMenu = [
+    { href: "/create", label: "Create CV" },
     { href: "/cv-templates", label: "CV Templates" },
-    { href: "/cv-examples", label: "CV Examples" },
-    { href: "/cover-letter-templates", label: "Cover Letters" },
-    { href: "/cover-letter-examples", label: "Examples" },
-    { href: "/faq", label: "FAQ" },
   ]
+  const coverLetterMenu = [
+    { href: "/create-cover-letter", label: "Create Cover Letter" },
+    { href: "/cover-letter-templates", label: "Cover Letter Templates" },
+  ]
+  const navigationItems: { href: string; label: string }[] = []
 
   const handleSignOut = async () => {
     await signOut()
@@ -25,63 +29,74 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-      <div className="container mx-auto px-4 lg:px-6">
+    <header className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+      <div className="container mx-auto px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link className="flex items-center space-x-2 hover:opacity-80 transition-opacity" href="/">
-            <div className="flex items-center justify-center w-8 h-8 bg-emerald-600 rounded-lg">
-              <FileText className="h-5 w-5 text-white" />
+          <Link className="flex items-center gap-2 group" href="/templates">
+            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg group-hover:scale-110 transition-transform duration-200">
+              <FileText className="h-4 w-4 text-white" />
             </div>
-            <span className="text-xl font-bold text-gray-900">CVKonnekt</span>
+            <span className="text-xl font-semibold text-slate-900">CVKonnekt</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
-            {navigationItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
-              >
-                {item.label}
-              </Link>
-            ))}
+          <nav className="hidden md:flex items-center gap-1">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+                  Templates
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-56 p-2 rounded-md shadow-lg border">
+                <div className="space-y-1">
+                  <Link href="/templates" className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-md">
+                    CV Templates
+                  </Link>
+                  <Link href="/cover-letter-templates" className="block px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-md">
+                    Cover Letters
+                  </Link>
+                </div>
+              </PopoverContent>
+            </Popover>
+            
+            <Link href="/jobs" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+              Find Jobs
+            </Link>
+            
+            <Link href="/dashboard" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+              Applications
+            </Link>
+            
+            <Link href="/pricing" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+              Pricing
+            </Link>
+            
+            <Link href="/faq" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+              FAQ
+            </Link>
+            
+            <Link href="/admin" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
+              Admin
+            </Link>
           </nav>
 
           {/* Desktop Actions */}
-          <div className="hidden md:flex items-center space-x-3">
+          <div className="hidden md:flex items-center gap-2">
             {loading ? (
-              <div className="w-20 h-8 bg-gray-200 animate-pulse rounded"></div>
+              <div className="w-16 h-8 bg-slate-200 animate-pulse rounded-lg"></div>
             ) : user || !isConfigured ? (
-              <>
-                <Link href="/dashboard">
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                    <User className="h-4 w-4 mr-2" />
-                    Dashboard
-                  </Button>
-                </Link>
-                {isConfigured && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleSignOut}
-                    className="text-gray-600 hover:text-gray-900"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    Sign Out
-                  </Button>
-                )}
-              </>
+              <ProfileMenu />
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
-                    Log in
+                  <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
+                    Sign in
                   </Button>
                 </Link>
-                <Link href="/create">
-                  <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm">
+                <Link href="/templates">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 font-medium">
                     Create CV
                   </Button>
                 </Link>
@@ -91,33 +106,82 @@ export function SiteHeader() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            className="md:hidden p-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
-            {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
         </div>
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t bg-white">
-            <div className="px-2 pt-2 pb-3 space-y-1">
-              {navigationItems.map((item) => (
+          <div className="md:hidden border-t border-slate-200 bg-white shadow-lg">
+            <div className="px-4 pt-4 pb-6 space-y-3">
+              {/* Navigation Links */}
+              <div className="space-y-1">
+                <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider">CV Builder</div>
                 <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block px-3 py-2 text-base font-medium text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors"
+                  href="/templates"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
-                  {item.label}
+                  Choose Template
                 </Link>
-              ))}
-              <div className="pt-4 border-t space-y-2">
+                <Link
+                  href="/create"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Quick Start
+                </Link>
+                
+                <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">Job Search</div>
+                <Link
+                  href="/jobs"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Find Jobs
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  My Applications
+                </Link>
+                
+                <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider mt-4">More</div>
+                <Link
+                  href="/cover-letter-templates"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Cover Letters
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  Pricing
+                </Link>
+                <Link
+                  href="/faq"
+                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                >
+                  FAQ
+                </Link>
+              </div>
+              
+              {/* User Actions */}
+              <div className="pt-4 border-t border-slate-200 space-y-2">
                 {user || !isConfigured ? (
                   <>
                     <Link href="/dashboard" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start text-gray-600">
+                      <Button variant="ghost" size="sm" className="w-full justify-start text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
                         <User className="h-4 w-4 mr-2" />
                         Dashboard
                       </Button>
@@ -127,7 +191,7 @@ export function SiteHeader() {
                         variant="ghost"
                         size="sm"
                         onClick={handleSignOut}
-                        className="w-full justify-start text-gray-600"
+                        className="w-full justify-start text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg"
                       >
                         <LogOut className="h-4 w-4 mr-2" />
                         Sign Out
@@ -137,12 +201,12 @@ export function SiteHeader() {
                 ) : (
                   <>
                     <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full justify-start text-gray-600">
-                        Log in
+                      <Button variant="ghost" size="sm" className="w-full justify-start text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg">
+                        Sign in
                       </Button>
                     </Link>
                     <Link href="/create" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button size="sm" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white">
+                      <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium">
                         Create CV
                       </Button>
                     </Link>

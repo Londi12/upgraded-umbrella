@@ -4,6 +4,10 @@ export interface PersonalInfo {
   email: string
   phone: string
   location?: string
+  idNumber?: string // South African ID number
+  linkedIn?: string
+  professionalRegistration?: string // For regulated professions in South Africa
+  languages?: string[] // Important in multilingual South Africa
 }
 
 export interface Experience {
@@ -13,6 +17,8 @@ export interface Experience {
   startDate: string
   endDate: string
   description: string
+  isLearnership?: boolean // Common in South African employment
+  isInternship?: boolean
 }
 
 export interface Education {
@@ -20,6 +26,9 @@ export interface Education {
   institution: string
   location: string
   graduationDate: string
+  nqfLevel?: number // South African National Qualifications Framework level
+  saqa?: string // South African Qualifications Authority ID
+  internationalEquivalence?: string // For international qualifications
 }
 
 export interface Skill {
@@ -52,7 +61,7 @@ export interface LetterContent {
 }
 
 export interface CoverLetterData {
-  personalInfo: Omit<PersonalInfo, "location">
+  personalInfo: PersonalInfo
   recipientInfo: RecipientInfo
   letterContent: LetterContent
 }
@@ -66,3 +75,6 @@ export type TemplateType =
   | "technical"
   | "graduate"
   | "digital"
+  | "sa-professional" // South African Professional template
+  | "sa-modern" // South African Modern template
+  | "sa-executive" // South African Executive template

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import * as cvParser from '../../../lib/cv-parser';
+import { parseSimpleCV } from '../../../lib/simple-cv-parser';
 import { CVFileType } from '../../../lib/cv-parser';
 
 export async function POST(req: Request) {
@@ -22,7 +23,24 @@ export async function POST(req: Request) {
     }
     
       console.log(`Processing ${file.name} (${fileType}) - size: ${buffer.length} bytes`);
-    const result = await cvParser.parseCV(buffer);
+    
+    // Extract text first
+    const rawText = await cvParser.extractTextFromFile(buffer, fileType);
+    
+    // Use simple parser for better reliability
+    const result = parseSimpleCV(rawText);
+    
+    if (!result.success) {
+      // Fallback to complex parser
+      const complexResult = await cvParser.parseCV(buffer);
+      if (complexResult.success) {
+        return NextResponse.json({ 
+          data: complexResult.data, 
+          confidence: complexResult.confidence,
+          rawText: complexResult.rawText
+        });
+      }
+    }
 
     // Log template detection result
     if (result.success) {
@@ -35,18 +53,15 @@ export async function POST(req: Request) {
 
     if (!result.success) {
       return NextResponse.json({ 
-        error: result.error,
-        rawText: result.rawText,  // Include raw text even when parsing fails
-        confidence: result.confidence || 0
+        error: result.error || 'Parsing failed',
+        rawText: rawText
       }, { status: 500 });
     }
 
     return NextResponse.json({ 
       data: result.data, 
-      confidence: result.confidence,
-      rawText: result.rawText,    // Include raw text for debugging
-      ownTemplate: result.ownTemplate || false, // Indicate if it's our own template
-      templateType: result.templateType || null  // Include the detected template type
+      confidence: 85, // Default confidence for simple parser
+      rawText: rawText
     });
   } catch (error) {
     console.error('Error parsing CV:', error);

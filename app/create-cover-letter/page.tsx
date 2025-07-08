@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { ArrowLeft, Download, Eye, Save, AlertCircle } from "lucide-react"
+import { ArrowLeft, Download, Eye, Save, AlertCircle, Edit3 } from "lucide-react"
 import Link from "next/link"
 import { generateCoverLetterPDF, downloadBlob } from "@/lib/pdf-utils"
 import type { CoverLetterData } from "@/types/cv-types"
@@ -60,6 +60,7 @@ export default function CreateCoverLetterPage() {
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<'form' | 'preview'>('form')
 
   // Handle form changes
   const handlePersonalInfoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,33 +119,40 @@ export default function CreateCoverLetterPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <div className="bg-gray-50 border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/cover-letter-templates">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Templates
+      <div className="bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 border-b border-purple-700 shadow-lg">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <Link href="/cover-letter-templates">
+                <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-purple-200">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Templates
+                </Button>
+              </Link>
+              <div className="flex flex-col">
+                <h1 className="text-xl font-bold text-white">
+                  Cover Letter Builder
+                </h1>
+                <p className="text-purple-200 text-sm">
+                  Creating with <span className="text-purple-100 font-semibold">{selectedTemplate.name}</span> template
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full lg:w-auto">
+              <Button variant="outline" size="sm" className="border-purple-400 text-purple-200 hover:bg-purple-800 hover:text-white flex-1 lg:flex-none">
+                <Save className="h-4 w-4 mr-2" />
+                Save
               </Button>
-            </Link>
-            <h1 className="text-xl font-semibold">
-              Creating Cover Letter with <span className="text-emerald-600">{selectedTemplate.name}</span> template
-            </h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </Button>
-            <Button
-              className="bg-emerald-600 hover:bg-emerald-700"
-              size="sm"
-              onClick={handleDownloadPDF}
-              disabled={isGeneratingPDF}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
-            </Button>
+              <Button
+                className="bg-white text-purple-600 hover:bg-purple-100 font-semibold flex-1 lg:flex-none"
+                size="sm"
+                onClick={handleDownloadPDF}
+                disabled={isGeneratingPDF}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {isGeneratingPDF ? "Generating..." : "Download PDF"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -157,14 +165,36 @@ export default function CreateCoverLetterPage() {
           </Alert>
         )}
 
+        {/* Mobile Toggle */}
+        <div className="block lg:hidden mb-6">
+          <div className="flex space-x-1 bg-purple-100 p-1 rounded-xl shadow-sm">
+            <Button
+              variant="ghost"
+              className={`flex-1 rounded-lg transition-all duration-200 font-medium ${activeTab === 'form' ? 'bg-white shadow-sm text-purple-900 font-semibold' : 'text-purple-600 hover:text-purple-900 hover:bg-white/50'}`}
+              onClick={() => setActiveTab('form')}
+            >
+              <Edit3 className="h-4 w-4 mr-2" />
+              Edit Letter
+            </Button>
+            <Button
+              variant="ghost"
+              className={`flex-1 rounded-lg transition-all duration-200 font-medium ${activeTab === 'preview' ? 'bg-white shadow-sm text-purple-900 font-semibold' : 'text-purple-600 hover:text-purple-900 hover:bg-white/50'}`}
+              onClick={() => setActiveTab('preview')}
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              Preview
+            </Button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Form Section */}
-          <div>
+          <div className={`${activeTab === 'preview' ? 'hidden lg:block' : ''}`}>
             <Tabs defaultValue="personal" className="w-full">
-              <TabsList className="mb-4">
-                <TabsTrigger value="personal">Your Info</TabsTrigger>
-                <TabsTrigger value="recipient">Recipient</TabsTrigger>
-                <TabsTrigger value="content">Letter Content</TabsTrigger>
+              <TabsList className="mb-4 w-full bg-purple-100 p-1">
+                <TabsTrigger value="personal" className="flex-1 data-[state=active]:bg-white data-[state=active]:text-purple-600 text-purple-700 font-medium">Your Info</TabsTrigger>
+                <TabsTrigger value="recipient" className="flex-1 data-[state=active]:bg-white data-[state=active]:text-purple-600 text-purple-700 font-medium">Recipient</TabsTrigger>
+                <TabsTrigger value="content" className="flex-1 data-[state=active]:bg-white data-[state=active]:text-purple-600 text-purple-700 font-medium">Content</TabsTrigger>
               </TabsList>
 
               <TabsContent value="personal" className="space-y-4">
@@ -335,16 +365,16 @@ export default function CreateCoverLetterPage() {
           </div>
 
           {/* Preview Section */}
-          <div className="sticky top-20">
-            <div className="bg-white border rounded-lg p-4 mb-4 flex items-center justify-between">
-              <h2 className="text-lg font-medium">Preview</h2>
-              <Button variant="ghost" size="sm">
+          <div className={`${activeTab === 'form' ? 'hidden lg:block' : ''} lg:sticky lg:top-20`}>
+            <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">Cover Letter Preview</h2>
+              <Button variant="ghost" size="sm" className="text-purple-600 hover:text-purple-700 hover:bg-purple-50">
                 <Eye className="h-4 w-4 mr-2" />
                 Full Preview
               </Button>
             </div>
-            <div className="border rounded-lg overflow-hidden" id="cover-letter-preview">
-              <div className="aspect-[1/1.414] overflow-auto">
+            <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-gray-50" id="cover-letter-preview">
+              <div className="aspect-[1/1.414] overflow-auto p-4">
                 <CoverLetterPreview template={selectedTemplate.type} className="w-full h-full" userData={formData} />
               </div>
             </div>

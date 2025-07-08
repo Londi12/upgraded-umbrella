@@ -17,6 +17,7 @@ export default function CVExamplesPage() {
     "Education",
     "Marketing",
     "Engineering",
+    "South African Templates",
   ]
 
   // Example CVs data
@@ -77,6 +78,38 @@ export default function CVExamplesPage() {
       experience: "Entry-level",
       template: "graduate" as const,
     },
+    {
+      id: 9,
+      title: "Chartered Accountant",
+      industry: "Finance",
+      experience: "Senior",
+      template: "sa-professional" as const,
+      southAfrican: true,
+    },
+    {
+      id: 10,
+      title: "IT Project Manager",
+      industry: "Information Technology",
+      experience: "Senior",
+      template: "sa-executive" as const,
+      southAfrican: true,
+    },
+    {
+      id: 11,
+      title: "Marketing Coordinator",
+      industry: "Marketing",
+      experience: "Mid-level",
+      template: "sa-modern" as const,
+      southAfrican: true,
+    },
+    {
+      id: 12,
+      title: "Mechanical Engineer",
+      industry: "Engineering",
+      experience: "Mid-level",
+      template: "sa-professional" as const,
+      southAfrican: true,
+    },
   ]
 
   return (
@@ -93,6 +126,9 @@ export default function CVExamplesPage() {
                 Browse through our collection of professionally written CV examples for various industries and
                 experience levels in South Africa.
               </p>
+              <div className="inline-flex items-center px-3 py-1 mt-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                <span className="mr-1.5">🇿🇦</span> New South African Templates Available!
+              </div>
               <div className="w-full max-w-md">
                 <div className="relative">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
@@ -119,7 +155,11 @@ export default function CVExamplesPage() {
                 <TabsContent key={industry} value={industry} className="mt-0">
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
                     {examples
-                      .filter((example) => industry === "All Industries" || example.industry === industry)
+                      .filter((example) => {
+                        if (industry === "All Industries") return true;
+                        if (industry === "South African Templates") return example.southAfrican === true;
+                        return example.industry === industry;
+                      })
                       .map((example) => (
                         <Card
                           key={example.id}
@@ -158,14 +198,31 @@ export default function CVExamplesPage() {
         <section className="w-full py-12 bg-gray-50">
           <div className="container px-4 md:px-6 mx-auto">
             <div className="flex flex-col items-center text-center space-y-4">
-              <h2 className="text-2xl font-bold">Ready to create your own professional CV?</h2>
+              <h2 className="text-2xl font-bold">Ready to create your own professional South African CV?</h2>
               <p className="text-gray-600 max-w-[600px]">
-                Get inspired by our examples and create your own standout CV for free.
+                Get inspired by our examples and create your own standout CV with our South African templates for free.
               </p>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                Create my CV
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 mt-2">
+                <Link href="/create">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700">
+                    Create my CV
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+                <Button 
+                  variant="outline" 
+                  className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                  onClick={() => {
+                    const saTab = document.querySelector('[value="South African Templates"]');
+                    if (saTab) {
+                      (saTab as HTMLElement).click();
+                      saTab.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                >
+                  View South African Templates
+                </Button>
+              </div>
             </div>
           </div>
         </section>
