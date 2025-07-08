@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { ArrowLeft, Save, Download, Eye, Brain, ArrowRight } from "lucide-react"
 import Link from "next/link"
@@ -35,7 +35,7 @@ const templateMap: Record<string, any> = {
   "11": { type: "sa-executive", name: "SA Executive" },
 }
 
-export default function BuildPage() {
+function BuildPageContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const { user, isConfigured } = useAuth()
@@ -500,5 +500,13 @@ export default function BuildPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function BuildPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <BuildPageContent />
+    </Suspense>
   )
 }
