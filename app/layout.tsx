@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { UserChatbot } from "@/components/user-chatbot"
 import { MultipleStructuredData } from "@/components/structured-data"
+import { ErrorBoundary } from "@/components/error-boundary"
 import {
   generateMetadata as generateSEOMetadata,
   seoConfigs,
@@ -59,14 +60,16 @@ export default function RootLayout({
       <body suppressHydrationWarning>
         <MultipleStructuredData dataArray={structuredDataArray} />
         <ThemeProvider attribute="class" defaultTheme="light">
-          <AuthProvider>
-            <div className="relative flex min-h-screen flex-col">
-              <SiteHeader />
-              <div className="flex-1">{children}</div>
-              <SiteFooter />
-              <UserChatbot />
-            </div>
-          </AuthProvider>
+          <ErrorBoundary>
+            <AuthProvider>
+              <div className="relative flex min-h-screen flex-col">
+                <SiteHeader />
+                <div className="flex-1">{children}</div>
+                <SiteFooter />
+                <UserChatbot />
+              </div>
+            </AuthProvider>
+          </ErrorBoundary>
         </ThemeProvider>
       </body>
     </html>

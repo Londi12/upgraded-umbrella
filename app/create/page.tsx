@@ -44,6 +44,7 @@ import { getUserProfile, createOrUpdateUserProfile, saveCV } from "@/lib/user-da
 import { useAuth } from "@/contexts/auth-context"
 import { trackCVInteraction } from '@/lib/analytics-service'
 import { parseCV } from "@/lib/cv-parser"
+import { CVUploadLoader, CVParsingLoader, SuccessAnimation, ErrorAnimation } from "@/components/loading-animations"
 
 export default function CreateCVPage() {
   const searchParams = useSearchParams()
@@ -164,6 +165,8 @@ export default function CreateCVPage() {
   const [success, setSuccess] = useState<string | null>(null)
   const [isParsingCV, setIsParsingCV] = useState(false)
   const [parseError, setParseError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [parseStep, setParseStep] = useState<'uploading' | 'parsing' | 'complete' | 'error'>('complete')
 
 
   const [showPreviewDialog, setShowPreviewDialog] = useState(false)
@@ -347,12 +350,28 @@ export default function CreateCVPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    setIsParsingCV(true);
+    setParseStep('uploading');
     setParseError(null);
+    setUploadProgress(0);
 
     try {
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
+      
+      setParseStep('parsing');
+      setUploadProgress(100);
+      
       const response = await fetch('/api/parse-cv', {
         method: 'POST',
         body: uploadFormData,
@@ -361,13 +380,11 @@ export default function CreateCVPage() {
       if (!response.ok) {
         const errorData = await response.json();
         console.error('CV parsing failed:', errorData);
-        throw new Error(`API request failed: ${errorData.error || response.status}`);
+        throw new Error(errorData.error || `API request failed: ${response.status}`);
       }
 
       const result = await response.json();
       
-
-
       if (result.data && result.data.personalInfo) {
         setFormData({
           personalInfo: {
@@ -376,6 +393,10 @@ export default function CreateCVPage() {
             email: result.data.personalInfo?.email || "",
             phone: result.data.personalInfo?.phone || "",
             location: result.data.personalInfo?.location || "",
+            idNumber: result.data.personalInfo?.idNumber || "",
+            linkedIn: result.data.personalInfo?.linkedIn || "",
+            professionalRegistration: result.data.personalInfo?.professionalRegistration || "",
+            languages: result.data.personalInfo?.languages || [],
           },
           summary: result.data.summary || "",
           experience: Array.isArray(result.data.experience) && result.data.experience.length > 0 
@@ -386,15 +407,17 @@ export default function CreateCVPage() {
             : formData.education,
           skills: result.data.skills || "",
         });
+        setParseStep('complete');
+        setTimeout(() => setParseStep('complete'), 2000);
       } else {
         setParseError(result.error || "Failed to parse CV. Please enter your details manually.");
+        setParseStep('error');
       }
     } catch (err) {
       console.error("Error parsing CV:", err);
       const errorMessage = err instanceof Error ? err.message : "Unknown error occurred";
       setParseError(`Failed to parse CV: ${errorMessage}. Please try a different file format or enter your details manually.`);
-    } finally {
-      setIsParsingCV(false);
+      setParseStep('error');
     }
   }
 
@@ -572,28 +595,40 @@ export default function CreateCVPage() {
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                   <h2 className="text-lg font-semibold text-slate-900 mb-2">Upload Existing CV</h2>
                   <p className="text-sm text-slate-600 mb-4">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
-                  <Input 
-                    type="file" 
-                    accept=".pdf,.docx,.txt" 
-                    onChange={handleFileUpload} 
-                    disabled={isParsingCV}
-                    className="mb-4 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                  />
-                  <div 
-                    className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-600 hover:bg-blue-100 transition-all duration-200 cursor-pointer"
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const files = e.dataTransfer.files;
-                      if (files.length > 0) {
-                        const event = { target: { files } } as React.ChangeEvent<HTMLInputElement>;
-                        handleFileUpload(event);
-                      }
-                    }}
-                    onDragOver={(e) => e.preventDefault()}
-                  >
-                    <p className="text-slate-600 font-medium">Drag and drop your CV here</p>
-                    <p className="text-xs text-slate-500 mt-1">or click to browse files</p>
-                  </div>
+                  
+                  {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
+                  {parseStep === 'parsing' && <CVParsingLoader />}
+                  {parseStep === 'complete' && parseError === null && formData.personalInfo.fullName && (
+                    <SuccessAnimation message="CV parsed successfully! Fields have been auto-filled." />
+                  )}
+                  {parseStep === 'error' && <ErrorAnimation message={parseError || 'Upload failed'} />}
+                  
+                  {(parseStep === 'complete' || parseStep === 'error') && (
+                    <>
+                      <Input 
+                        type="file" 
+                        accept=".pdf,.docx,.txt" 
+                        onChange={handleFileUpload} 
+                        disabled={parseStep === 'uploading' || parseStep === 'parsing'}
+                        className="mb-4 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
+                      />
+                      <div 
+                        className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-600 hover:bg-blue-100 transition-all duration-200 cursor-pointer"
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const files = e.dataTransfer.files;
+                          if (files.length > 0) {
+                            const event = { target: { files } } as React.ChangeEvent<HTMLInputElement>;
+                            handleFileUpload(event);
+                          }
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                      >
+                        <p className="text-slate-600 font-medium">Drag and drop your CV here</p>
+                        <p className="text-xs text-slate-500 mt-1">or click to browse files</p>
+                      </div>
+                    </>
+                  )}
                 </div>
                 <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
                   <TabsList className="mb-6 w-full overflow-x-auto flex bg-slate-100 p-1 rounded-xl shadow-sm">

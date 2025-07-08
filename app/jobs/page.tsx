@@ -12,6 +12,7 @@ import { mockJobListings, getJobMatches, type JobListing, type JobMatch } from "
 import { getSavedCVs } from "@/lib/user-data-service"
 import type { SavedCV } from "@/lib/user-data-service"
 import { getAIJobMatches, enhanceJobWithAI, type AIJobMatch } from "@/lib/ai-job-service"
+import { AIJobMatchingLoader, JobSearchLoader } from "@/components/loading-animations"
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobListing[]>(mockJobListings)
@@ -136,8 +137,9 @@ export default function JobsPage() {
 
       <div className="container mx-auto px-4 py-8">
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="flex flex-col items-center justify-center py-12 space-y-8">
+            <JobSearchLoader />
+            {aiEnabled && <AIJobMatchingLoader />}
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
