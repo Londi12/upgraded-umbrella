@@ -1,13 +1,14 @@
 import { createClient } from "@supabase/supabase-js"
 
 // Fallback values for development/preview
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co"
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder-key"
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://demo.supabase.co"
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "demo-key"
 
 // Check if we have real Supabase credentials
 const hasValidCredentials =
   process.env.NEXT_PUBLIC_SUPABASE_URL &&
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+  !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("demo") &&
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
@@ -33,17 +34,31 @@ export const signUp = async (email: string, password: string) => {
 
 export const signIn = async (email: string, password: string) => {
   if (!hasValidCredentials) {
+    // Demo mode - simulate successful login
     return {
-      data: null,
-      error: { message: "Authentication is not configured. Please set up Supabase credentials." },
+      data: {
+        user: {
+          id: 'demo-user',
+          email: email,
+          user_metadata: { role: 'user' }
+        }
+      },
+      error: null,
     }
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
-  return { data, error }
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    return { data, error }
+  } catch (err) {
+    return {
+      data: null,
+      error: { message: "Network error. Please check your connection." }
+    }
+  }
 }
 
 export const signOut = async () => {
