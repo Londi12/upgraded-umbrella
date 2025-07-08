@@ -63,32 +63,17 @@ export default function SignUpPage() {
   }
 
   if (success) {
+    // Redirect to pricing for plan selection
+    if (typeof window !== 'undefined') {
+      window.location.href = '/pricing?signup=true&email=' + encodeURIComponent(email)
+    }
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full">
           <Card className="shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-            <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="h-6 w-6 text-green-600" />
-              </div>
-              <CardTitle>{isConfigured ? "Check your email" : "Demo Account Created"}</CardTitle>
-              <CardDescription>
-                {isConfigured
-                  ? `We've sent you a confirmation link at ${email}`
-                  : "Your demo account has been created successfully"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 text-center mb-4">
-                {isConfigured
-                  ? "Click the link in the email to verify your account and complete your registration."
-                  : "You can now explore the dashboard and CV builder features."}
-              </p>
-              <Link href={isConfigured ? "/login" : "/dashboard"}>
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">
-                  {isConfigured ? "Back to Sign In" : "Go to Dashboard"}
-                </Button>
-              </Link>
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <p className="text-slate-600">Redirecting to plan selection...</p>
             </CardContent>
           </Card>
         </div>

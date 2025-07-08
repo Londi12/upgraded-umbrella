@@ -1,11 +1,26 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/ui/page-header"
+import { useSearchParams } from "next/navigation"
 
 export default function PricingPage() {
+  const searchParams = useSearchParams()
+  const [isSignupFlow, setIsSignupFlow] = useState(false)
+  const [userEmail, setUserEmail] = useState('')
+
+  useEffect(() => {
+    const signup = searchParams.get('signup')
+    const email = searchParams.get('email')
+    if (signup === 'true') {
+      setIsSignupFlow(true)
+      if (email) setUserEmail(email)
+    }
+  }, [searchParams])
+
   const plans = [
     {
       name: "Base",
@@ -54,8 +69,11 @@ export default function PricingPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <PageHeader 
-        title="Choose Your Plan"
-        description="Select the perfect plan to accelerate your job search and career growth."
+        title={isSignupFlow ? "Welcome! Choose Your Plan" : "Choose Your Plan"}
+        description={isSignupFlow ? 
+          `Complete your registration by selecting a plan. Welcome ${userEmail ? userEmail.split('@')[0] : 'to CVKonnekt'}!` :
+          "Select the perfect plan to accelerate your job search and career growth."
+        }
       />
 
       <div className="container mx-auto px-4 py-12">
@@ -94,9 +112,22 @@ export default function PricingPage() {
                 <Button 
                   className={`w-full mt-6 ${index === 1 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-900 hover:bg-gray-800'}`}
                   size="lg"
-                  onClick={() => window.open(plan.paymentUrl, '_blank')}
+                  onClick={() => {
+                    if (isSignupFlow) {
+                      // Store selected plan and redirect to dashboard
+                      localStorage.setItem('selected_plan', JSON.stringify({
+                        plan: plan.name,
+                        price: plan.price,
+                        paymentUrl: plan.paymentUrl,
+                        selectedAt: new Date().toISOString()
+                      }))
+                      window.location.href = '/dashboard?welcome=true'
+                    } else {
+                      window.open(plan.paymentUrl, '_blank')
+                    }
+                  }}
                 >
-                  Get Started
+                  {isSignupFlow ? 'Select Plan' : 'Get Started'}
                 </Button>
               </CardContent>
             </Card>
