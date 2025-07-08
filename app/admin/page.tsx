@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, FileText, DollarSign, MessageCircle, Eye, Calendar, Download, Settings, RefreshCw } from "lucide-react"
+import { Users, FileText, DollarSign, MessageCircle, Eye, Calendar, Download, Settings, RefreshCw, Shield } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -10,8 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { AdminChatWindow } from "@/components/admin-chat-window"
+import { useAuth } from "@/contexts/auth-context"
+import { useRouter } from "next/navigation"
 
 export default function AdminDashboard() {
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const [isAdmin, setIsAdmin] = useState(false)
+  const [checkingPermissions, setCheckingPermissions] = useState(true)
   const [isOnline, setIsOnline] = useState(true)
   const [activeChats, setActiveChats] = useState(3)
   const [lastRefresh, setLastRefresh] = useState(new Date())
@@ -31,10 +37,48 @@ export default function AdminDashboard() {
   const [liveActivity, setLiveActivity] = useState<any[]>([])
 
   useEffect(() => {
-    loadRealData()
-    const interval = setInterval(loadRealData, 30000) // Refresh every 30s
-    return () => clearInterval(interval)
-  }, [])
+    checkAdminPermissions()
+  }, [user, loading])
+
+  const checkAdminPermissions = async () => {
+    if (loading) return
+    
+    if (!user) {
+      router.push('/login?redirect=admin')
+      return
+    }
+
+    // In demo mode, allow access
+    const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+    
+    if (isDemoMode) {
+      setIsAdmin(true)
+      setCheckingPermissions(false)
+      loadRealData()
+      return
+    }
+
+    // Check user metadata for admin role
+    const userMetadata = user.user_metadata || {}
+    const hasAdminRole = userMetadata.role === 'admin' || userMetadata.is_admin === true
+
+    if (hasAdminRole) {
+      setIsAdmin(true)
+      loadRealData()
+    } else {
+      router.push('/')
+      return
+    }
+    
+    setCheckingPermissions(false)
+  }
+
+  useEffect(() => {
+    if (isAdmin) {
+      const interval = setInterval(loadRealData, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAdmin])
 
   const loadRealData = () => {
     // Load from localStorage and simulate real data
@@ -94,6 +138,29 @@ export default function AdminDashboard() {
     ]
     setLiveActivity(activities)
     setLastRefresh(new Date())
+  }
+
+  if (loading || checkingPermissions) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Card className="max-w-md w-full">
+          <CardContent className="p-8 text-center">
+            <Shield className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+            <p className="text-gray-600 mb-4">Admin permissions required</p>
+            <Button onClick={() => router.push('/')}>Go Home</Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
