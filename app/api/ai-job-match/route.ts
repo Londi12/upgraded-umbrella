@@ -21,10 +21,12 @@ export async function POST(request: NextRequest) {
       const similarity = await getSemanticSimilarity(cvText, jobText)
       const skillsAnalysis = analyzeSkills(cvData, job)
       
+      const reasoning = await generateGeminiReasoning(cvData, job, similarity)
+      
       matches.push({
         jobId: job.id,
         matchScore: Math.round(similarity * 100),
-        reasoning: generateReasoning(similarity, job),
+        reasoning,
         skillsMatch: skillsAnalysis.matched,
         skillsGap: skillsAnalysis.missing,
         atsKeywords: extractATSKeywords(job)
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
 
 async function getSemanticSimilarity(cvText: string, jobText: string): Promise<number> {
   try {
+    // Use Hugging Face for CV text analysis
     const response = await fetch(
       'https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2',
       {
@@ -112,7 +115,38 @@ function extractATSKeywords(job: any): string[] {
     .map(([word]) => word)
 }
 
-function generateReasoning(similarity: number, job: any): string {
+async function generateGeminiReasoning(cvData: any, job: any, similarity: number): Promise<string> {
+  try {
+    const prompt = `Analyze this job match:
+
+Candidate: ${cvData.personalInfo?.jobTitle || 'Professional'}
+Skills: ${cvData.skills || 'Not specified'}
+
+Job: ${job.title} at ${job.company}
+Requirements: ${job.requirements?.join(', ') || 'Not specified'}
+
+Match Score: ${Math.round(similarity * 100)}%
+
+Provide a brief, encouraging explanation of why this is a good match and specific advice for the application. Keep it under 50 words.`
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }]
+      })
+    })
+
+    if (response.ok) {
+      const data = await response.json()
+      const reasoning = data.candidates?.[0]?.content?.parts?.[0]?.text
+      if (reasoning) return reasoning.trim()
+    }
+  } catch (error) {
+    console.error('Gemini reasoning error:', error)
+  }
+  
+  // Fallback reasoning
   if (similarity > 0.8) return `Excellent match for ${job.title}! Strong skill alignment.`
   if (similarity > 0.6) return `Good match for ${job.title}. Highlight relevant experience.`
   if (similarity > 0.4) return `Moderate match. Focus on transferable skills.`
