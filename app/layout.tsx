@@ -13,6 +13,7 @@ import {
   generateWebsiteStructuredData
 } from "@/lib/utils"
 import Script from "next/script"
+import "@/lib/message-handler"
 
 import "./globals.css"
 
@@ -34,7 +35,7 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
+
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
