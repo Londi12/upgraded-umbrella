@@ -1,13 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageHeader } from "@/components/ui/page-header"
 import { useSearchParams } from "next/navigation"
 
-export default function PricingPage() {
+function PricingPageContent() {
   const searchParams = useSearchParams()
   const [isSignupFlow, setIsSignupFlow] = useState(false)
   const [userEmail, setUserEmail] = useState('')
@@ -142,5 +142,13 @@ export default function PricingPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingPageContent />
+    </Suspense>
   )
 }
