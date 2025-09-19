@@ -154,10 +154,14 @@ export const mockJobListings: JobListing[] = [
 ]
 
 // Get job matches for a CV
-export function getJobMatches(cvData: CVData, threshold: number = 60): JobMatch[] {
+export function getJobMatches(
+  cvData: CVData,
+  threshold: number = 60,
+  jobsToMatchAgainst: JobListing[] = []
+): JobMatch[] {
   const cvKeywords = extractCVKeywords(cvData)
   
-  return mockJobListings
+  return jobsToMatchAgainst
     .map(job => calculateJobMatch(cvKeywords, job))
     .filter(match => match.matchScore >= threshold)
     .sort((a, b) => b.matchScore - a.matchScore)

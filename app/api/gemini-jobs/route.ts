@@ -1,177 +1,120 @@
 import { NextRequest, NextResponse } from 'next/server'
-import type { CVData } from '@/types/cv-types'
+import type { JobListing } from '@/lib/job-matching-service'
 
-export async function POST(request: NextRequest) {
-  try {
-    const { cvData, location = 'South Africa' }: { cvData: CVData, location?: string } = await request.json()
-    
-    // Check cache first
-    const cacheKey = `jobs_${location}_${cvData.personalInfo?.jobTitle || 'general'}`
-    const cached = getCachedJobs(cacheKey)
-    if (cached) {
-      return NextResponse.json(cached)
-    }
-
-    const jobs = await generateJobsWithGemini(cvData, location)
-    
-    // Cache for 24 hours
-    setCachedJobs(cacheKey, jobs)
-    
-    return NextResponse.json(jobs)
-  } catch (error) {
-    console.error('Gemini job generation error:', error)
-    return NextResponse.json({ error: 'Job generation failed' }, { status: 500 })
-  }
+function toTitleCase(text: string): string {
+  return text
+    .toLowerCase()
+    .split(' ')
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
 }
 
-async function generateJobsWithGemini(cvData: CVData, location: string) {
-  const prompt = createJobGenerationPrompt(cvData, location)
-  
+function pick<T>(items: T[], count: number): T[] {
+  const copy = [...items]
+  const result: T[] = []
+  while (result.length < Math.min(count, copy.length)) {
+    const idx = Math.floor(Math.random() * copy.length)
+    result.push(copy.splice(idx, 1)[0])
+  }
+  return result
+}
+
+function recentISO(daysAgoMax: number = 14): string {
+  const now = Date.now()
+  const delta = Math.floor(Math.random() * daysAgoMax * 24 * 60 * 60 * 1000)
+  return new Date(now - delta).toISOString()
+}
+
+export async function POST(req: NextRequest) {
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{ text: prompt }]
-        }]
-      })
+    const body = await req.json().catch(() => ({}))
+    const cvData = body?.cvData || null
+    const locationFromBody: string | undefined = body?.location
+    const keywordsFromBody: string | undefined = body?.keywords
+
+    // Derive inputs
+    const skills: string[] = Array.isArray(cvData?.skills)
+      ? cvData.skills.map((s: any) => (typeof s === 'string' ? s : s?.name)).filter(Boolean)
+      : typeof cvData?.skills === 'string'
+        ? cvData.skills.split(',').map((s: string) => s.trim()).filter(Boolean)
+        : []
+    const expTitles: string[] = Array.isArray(cvData?.experience)
+      ? cvData.experience.map((e: any) => e?.title).filter(Boolean)
+      : []
+    const education: string[] = Array.isArray(cvData?.education)
+      ? cvData.education.map((e: any) => e?.degree).filter(Boolean)
+      : []
+    const derivedKeywords: string[] = [
+      ...skills,
+      ...expTitles,
+      ...education
+    ].filter(Boolean)
+
+    const keywords: string[] = (keywordsFromBody ? String(keywordsFromBody).split(',') : derivedKeywords)
+      .map(k => k.trim())
+      .filter(Boolean)
+
+    const location: string = locationFromBody
+      || cvData?.personalInfo?.location
+      || 'South Africa'
+
+    // If we truly have zero signal, return a few generic SA roles
+    const baselineTitles = [
+      'Sales Consultant', 'Customer Service Agent', 'Office Administrator', 'Junior Data Analyst',
+      'Marketing Assistant', 'IT Support Technician', 'Logistics Coordinator', 'Finance Clerk'
+    ]
+
+    const inferredTitles = (
+      expTitles.length > 0 ? expTitles :
+      (skills.length > 0 ? skills.map((s: string) => `${toTitleCase(s)} Specialist`) : [])
+    ).map(toTitleCase)
+
+    const titles = (inferredTitles.length > 0 ? inferredTitles : baselineTitles)
+      .slice(0, 6)
+
+    const companies = [
+      'TechCorp SA', 'Woolworths', 'Shoprite', 'Pepkor', 'Discovery', 'Standard Bank', 'Takealot', 'Momentum Metropolitan'
+    ]
+
+    const provinces = [
+      'Gauteng', 'Western Cape', 'KwaZulu-Natal', 'Eastern Cape', 'Free State', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape'
+    ]
+    const cities = ['Johannesburg', 'Cape Town', 'Durban', 'Pretoria']
+
+    const types: JobListing['type'][] = ['full-time', 'part-time', 'contract', 'internship']
+
+    const synthJobs: JobListing[] = titles.map((title, i) => {
+      const company = companies[i % companies.length]
+      const city = cities[i % cities.length]
+      const province = provinces[i % provinces.length]
+      const loc = `${city}, ${province}`
+      const kw = pick(keywords.length > 0 ? keywords : ['communication', 'excel', 'sales', 'support', 'analysis', 'javascript', 'sql'], 6)
+        .map(k => String(k).toLowerCase())
+      const reqs = kw.slice(0, 4).map(k => toTitleCase(k))
+      const salary = i % 2 === 0 ? `R${(8000 + i * 1500).toLocaleString()} - R${(15000 + i * 2000).toLocaleString()}` : undefined
+      return {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+        title: toTitleCase(title),
+        company,
+        location: location.includes(',') ? location : loc,
+        description: `We are seeking a ${toTitleCase(title)} to join ${company} in ${loc}. Responsibilities include using ${kw.slice(0,3).join(', ')}.`,
+        requirements: reqs,
+        salary,
+        type: types[i % types.length],
+        postedDate: recentISO(21),
+        keywords: kw
+      }
     })
 
-    if (!response.ok) {
-      throw new Error('Gemini API failed')
-    }
-
-    const data = await response.json()
-    const generatedText = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    
-    return parseGeneratedJobs(generatedText)
+    return NextResponse.json(synthJobs, { status: 200 })
   } catch (error) {
-    console.error('Gemini API error:', error)
-    return generateFallbackJobs(cvData, location)
+    return NextResponse.json({ error: 'Failed to generate AI jobs' }, { status: 500 })
   }
 }
 
-function createJobGenerationPrompt(cvData: CVData, location: string): string {
-  const userSkills = cvData.skills || ''
-  const userTitle = cvData.personalInfo?.jobTitle || 'Professional'
-  const userExperience = cvData.experience?.length || 0
-  
-  return `Generate 20 realistic job listings for ${location} job market in JSON format. 
-  
-User Profile:
-- Current Role: ${userTitle}
-- Skills: ${userSkills}
-- Experience: ${userExperience} positions
-- Location: ${cvData.personalInfo?.location || location}
-
-Requirements:
-- Mix of entry, mid, and senior level positions
-- Include South African companies (Standard Bank, Woolworths, Discovery, etc.)
-- Realistic salaries in ZAR
-- Various industries (tech, finance, retail, healthcare)
-- Include remote and hybrid options
-
-JSON Format:
-[{
-  "id": "unique_id",
-  "title": "Job Title",
-  "company": "Company Name",
-  "location": "City, Province",
-  "description": "Detailed job description",
-  "requirements": ["skill1", "skill2", "skill3"],
-  "salary": "R400,000 - R600,000",
-  "type": "full-time",
-  "postedDate": "2024-01-15",
-  "keywords": ["keyword1", "keyword2"],
-  "workArrangement": "hybrid"
-}]
-
-Generate diverse, realistic jobs that match the user's profile and career progression.`
+export async function GET() {
+  return NextResponse.json({ ok: true, hint: 'Use POST with { cvData, location?, keywords? }' })
 }
 
-function parseGeneratedJobs(generatedText: string) {
-  try {
-    // Extract JSON from the generated text
-    const jsonMatch = generatedText.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) throw new Error('No JSON found')
-    
-    const jobs = JSON.parse(jsonMatch[0])
-    
-    // Validate and clean the jobs
-    return jobs.map((job: any, index: number) => ({
-      id: job.id || `gemini_${Date.now()}_${index}`,
-      title: job.title || 'Software Developer',
-      company: job.company || 'Tech Company',
-      location: job.location || 'Johannesburg, GP',
-      description: job.description || 'Exciting opportunity to join our team.',
-      requirements: Array.isArray(job.requirements) ? job.requirements : ['Experience required'],
-      salary: job.salary || 'Competitive',
-      type: job.type || 'full-time',
-      postedDate: job.postedDate || new Date().toISOString().split('T')[0],
-      keywords: Array.isArray(job.keywords) ? job.keywords : ['general'],
-      workArrangement: job.workArrangement || 'onsite'
-    }))
-  } catch (error) {
-    console.error('Failed to parse generated jobs:', error)
-    return []
-  }
-}
 
-function generateFallbackJobs(cvData: CVData, location: string) {
-  const userTitle = cvData.personalInfo?.jobTitle || 'Professional'
-  const skills = cvData.skills?.split(',').map(s => s.trim()) || ['General']
-  
-  return [
-    {
-      id: `fallback_1`,
-      title: `Senior ${userTitle}`,
-      company: 'Leading SA Company',
-      location: `${location}`,
-      description: `We are looking for an experienced ${userTitle} to join our dynamic team.`,
-      requirements: skills.slice(0, 5),
-      salary: 'R500,000 - R700,000',
-      type: 'full-time',
-      postedDate: new Date().toISOString().split('T')[0],
-      keywords: skills.slice(0, 3),
-      workArrangement: 'hybrid'
-    },
-    {
-      id: `fallback_2`,
-      title: `${userTitle} - Remote`,
-      company: 'Tech Startup',
-      location: 'Remote, SA',
-      description: `Remote opportunity for a skilled ${userTitle} with growth potential.`,
-      requirements: skills.slice(0, 4),
-      salary: 'R400,000 - R600,000',
-      type: 'full-time',
-      postedDate: new Date().toISOString().split('T')[0],
-      keywords: skills.slice(0, 3),
-      workArrangement: 'remote'
-    }
-  ]
-}
 
-// Simple in-memory cache (in production, use Redis or database)
-const jobCache = new Map<string, { jobs: any[], timestamp: number }>()
-
-function getCachedJobs(key: string) {
-  const cached = jobCache.get(key)
-  if (!cached) return null
-  
-  // Check if cache is older than 24 hours
-  const isExpired = Date.now() - cached.timestamp > 24 * 60 * 60 * 1000
-  if (isExpired) {
-    jobCache.delete(key)
-    return null
-  }
-  
-  return cached.jobs
-}
-
-function setCachedJobs(key: string, jobs: any[]) {
-  jobCache.set(key, {
-    jobs,
-    timestamp: Date.now()
-  })
-}

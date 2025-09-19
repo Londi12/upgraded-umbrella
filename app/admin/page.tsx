@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Users, FileText, DollarSign, MessageCircle, Eye, Calendar, Download, Settings, RefreshCw, Shield } from "lucide-react"
+import { Users, FileText, DollarSign, MessageCircle, Eye, Calendar, Download, Settings, RefreshCw, Shield, Upload, Briefcase } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -238,6 +238,7 @@ export default function AdminDashboard() {
         <Tabs defaultValue="users" className="space-y-6">
           <TabsList>
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="jobs">Job Management</TabsTrigger>
             <TabsTrigger value="activity">Live Activity</TabsTrigger>
             <TabsTrigger value="chat">Support Chat</TabsTrigger>
           </TabsList>
@@ -307,6 +308,10 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="jobs">
+            <JobManagementTab />
           </TabsContent>
 
           <TabsContent value="activity">
@@ -387,6 +392,141 @@ export default function AdminDashboard() {
       </div>
       
       <AdminChatWindow />
+    </div>
+  )
+}
+
+function JobManagementTab() {
+  const [uploadedJobs, setUploadedJobs] = useState<any[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadStatus, setUploadStatus] = useState('')
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
+      setUploadStatus('Please upload an Excel (.xlsx, .xls) or CSV file')
+      return
+    }
+
+    setIsUploading(true)
+    setUploadStatus('Processing file...')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/upload-jobs', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        setUploadedJobs(result.jobs || [])
+        setUploadStatus(`Successfully uploaded ${result.count || 0} jobs!`)
+      } else {
+        setUploadStatus(`Error: ${result.error || 'Upload failed'}`)
+      }
+    } catch (error) {
+      setUploadStatus('Upload failed. Please try again.')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="h-5 w-5" />
+            Job Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Upload Jobs from Excel</h3>
+              <p className="text-gray-600 mb-4">
+                Upload an Excel file (.xlsx, .xls) or CSV with job listings
+              </p>
+              <div className="space-y-2">
+          <Input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleFileUpload}
+            disabled={isUploading}
+            className="max-w-xs mx-auto"
+          />
+                {isUploading && (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                    <span className="text-sm">Uploading...</span>
+                  </div>
+                )}
+                {uploadStatus && (
+                  <p className={`text-sm ${
+                    uploadStatus.includes('Error') ? 'text-red-600' : 'text-green-600'
+                  }`}>
+                    {uploadStatus}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <h4 className="font-medium mb-2">Expected Excel Format:</h4>
+              <div className="text-sm text-gray-700 space-y-1">
+                <p><strong>Required columns:</strong></p>
+                <ul className="list-disc list-inside ml-4 space-y-1">
+                  <li>title - Job title</li>
+                  <li>company - Company name</li>
+                  <li>location - Job location</li>
+                  <li>snippet - Job description</li>
+                  <li>url - Job posting URL</li>
+                  <li>source - Source website (e.g., "LinkedIn", "Indeed")</li>
+                  <li>posted_date - Date posted (YYYY-MM-DD format)</li>
+                </ul>
+              </div>
+            </div>
+
+            {uploadedJobs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recently Uploaded Jobs ({uploadedJobs.length})</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {uploadedJobs.slice(0, 10).map((job, index) => (
+                      <div key={index} className="border rounded-lg p-3">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <h4 className="font-medium">{job.title}</h4>
+                            <p className="text-sm text-gray-600">{job.company} • {job.location}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {job.snippet?.substring(0, 100)}...
+                            </p>
+                          </div>
+                          <Badge variant="outline">{job.source}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                    {uploadedJobs.length > 10 && (
+                      <p className="text-sm text-gray-500 text-center">
+                        ... and {uploadedJobs.length - 10} more jobs
+                      </p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

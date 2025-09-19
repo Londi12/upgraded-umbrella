@@ -45,18 +45,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#1e40af" />
         <meta name="msapplication-config" content="/browserconfig.xml" />
         <meta name="theme-color" content="#1e40af" />
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-69Y0MVRCH3"
-          strategy="afterInteractive"
-        />
-        <Script id="gtag-init" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-69Y0MVRCH3');
-          `}
-        </Script>
+
       </head>
       <body suppressHydrationWarning>
         <MultipleStructuredData dataArray={structuredDataArray} />

@@ -79,27 +79,19 @@ export function PlanSelection({ open, onClose, onPlanSelected }: PlanSelectionPr
   ]
 
   const handlePlanSelect = (planId: string) => {
-    if (planId === 'free') {
-      // Start free trial immediately
-      localStorage.setItem('user_plan', JSON.stringify({
-        plan: 'premium',
-        status: 'trial',
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      }))
-      onPlanSelected('trial')
-    } else {
-      // For paid plans, redirect to payment
-      const plan = plans.find(p => p.id === planId)
-      if (plan) {
-        const paymentUrls = {
-          base: 'https://pay.yoco.com/r/mN8Zyk',
-          premium: 'https://pay.yoco.com/r/moYrVp',
-          pro: 'https://pay.yoco.com/r/4aAqV5'
-        }
-        window.open(paymentUrls[planId as keyof typeof paymentUrls], '_blank')
-        onPlanSelected(planId)
-      }
-    }
+    // Start 7-day trial for any plan selection
+    const trialService = new (require('@/lib/trial-service').TrialService)()
+    trialService.startTrial()
+    
+    // Store selected plan for after trial
+    localStorage.setItem('selected_plan', planId)
+    localStorage.setItem('user_plan', JSON.stringify({
+      plan: planId,
+      status: 'trial',
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    }))
+    
+    onPlanSelected('trial')
     onClose()
   }
 
@@ -179,7 +171,7 @@ export function PlanSelection({ open, onClose, onPlanSelected }: PlanSelectionPr
         </div>
         
         <div className="text-center mt-6 text-sm text-gray-500">
-          All paid plans include 7-day free trial • Cancel anytime • Secure payment by Yoco
+          Start with 7-day free trial • Payment required only after trial • Cancel anytime
         </div>
       </DialogContent>
     </Dialog>

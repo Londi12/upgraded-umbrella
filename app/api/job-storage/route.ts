@@ -15,6 +15,17 @@ export async function GET(request: NextRequest) {
     const retentionService = new DataRetentionService()
 
     switch (action) {
+      case 'crawl-now': {
+        try {
+          const { keywords = '', location = 'South Africa' } = params || {}
+          const { EthicalJobAggregator } = await import('@/lib/crawler/ethical-job-aggregator')
+          const aggregator = new EthicalJobAggregator()
+          const result = await aggregator.getJobs(keywords, location)
+          return NextResponse.json({ success: true, message: 'Crawl completed', data: { total: result.total, sources: result.sources, storage: result.storageStats } })
+        } catch (err) {
+          return NextResponse.json({ success: false, error: 'Crawl failed' }, { status: 500 })
+        }
+      }
       case 'stats':
         const stats = await jobStorage.getStorageStats()
         const retentionStats = await retentionService.getRetentionStats()
@@ -195,6 +206,36 @@ export async function POST(request: NextRequest) {
           success: true,
           data: searchResults
         })
+
+      case 'search-mapped': {
+        // Search stored jobs and map to UI JobListing shape
+        const sr = await jobStorage.searchJobs({
+          keywords: params.keywords,
+          location: params.location,
+          industry: params.industry,
+          experience_level: params.experience_level,
+          job_type: params.job_type,
+          posted_within_days: params.posted_within_days ?? 30,
+          limit: params.limit || 50,
+          offset: params.offset || 0,
+          only_active: params.only_active !== false
+        })
+
+        const jobs = (sr.jobs || []).map((j: any) => ({
+          id: j.external_id || j.id,
+          title: j.title,
+          company: j.company,
+          location: j.location || 'South Africa',
+          description: j.description || '',
+          requirements: j.requirements || [],
+          salary: j.salary_range,
+          type: (j.job_type || 'full-time') as 'full-time' | 'part-time' | 'contract' | 'internship',
+          postedDate: j.posted_date || new Date().toISOString(),
+          keywords: j.keywords || []
+        }))
+
+        return NextResponse.json({ success: true, data: { jobs, total: sr.total } })
+      }
 
       case 'get-tracked-jobs':
         // Get jobs that users are tracking

@@ -9,49 +9,68 @@ export interface JobSource {
   parseFunction: (data: any) => JobListing[]
 }
 
-// Curated list of the best South African job sources
-export const SA_JOB_SOURCES: JobSource[] = [
-  // RSS Feeds (most reliable)
-  {
-    name: 'JobMail',
-    type: 'rss',
-    url: 'https://www.jobmail.co.za/rss/jobs',
-    active: true,
-    parseFunction: parseJobMailRSS
-  },
-  {
-    name: 'Careers24',
-    type: 'rss', 
-    url: 'https://www.careers24.com/rss/jobs',
-    active: true,
-    parseFunction: parseCareers24RSS
-  },
-  {
-    name: 'PNet',
-    type: 'rss',
-    url: 'https://www.pnet.co.za/rss/jobs', 
-    active: true,
-    parseFunction: parsePNetRSS
-  },
-  
-  // Job APIs (best quality when available)
-  {
-    name: 'Adzuna SA',
-    type: 'api',
-    url: 'https://api.adzuna.com/v1/api/jobs/za/search/1',
-    active: false, // Requires API key
-    parseFunction: parseAdzunaAPI
-  },
-  
-  // Simple scraping (backup)
-  {
-    name: 'Indeed SA',
-    type: 'scraping',
-    url: 'https://za.indeed.com/jobs',
-    active: true,
-    parseFunction: parseIndeedScraping
-  }
-]
+  // Curated list of the best South African job sources
+  export const SA_JOB_SOURCES: JobSource[] = [
+    // RSS Feeds (most reliable)
+    {
+      name: 'JobMail',
+      type: 'rss',
+      url: 'https://www.jobmail.co.za/rss/jobs', // New RSS endpoint (2025)
+      active: true,
+      parseFunction: parseJobMailRSS
+    },
+    {
+      name: 'Careers24',
+      type: 'rss',
+      url: 'https://www.careers24.com/jobs/rss', // New RSS endpoint (2025)
+      active: true,
+      parseFunction: parseCareers24RSS
+    },
+    {
+      name: 'PNet',
+      type: 'rss',
+      url: 'https://www.pnet.co.za/rss/jobs', // New RSS endpoint (2025)
+      active: true,
+      parseFunction: parsePNetRSS
+    },
+    {
+      name: 'Glassdoor SA',
+      type: 'rss',
+      url: 'https://www.glassdoor.com/rss/jobs.rss', // Global Glassdoor RSS
+      active: true,
+      parseFunction: parseGlassdoorRSS
+    },
+    {
+      name: 'LinkedIn SA',
+      type: 'rss',
+      url: 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search?keywords=&location=South%20Africa', // LinkedIn search endpoint
+      active: true,
+      parseFunction: parseLinkedInRSS
+    },
+    // Job APIs (best quality when available)
+    {
+      name: 'Gemini AI',
+      type: 'api',
+      url: 'https://api.gemini.ai/v1/jobs/search',
+      active: true,
+      parseFunction: parseGeminiAPI
+    },
+    {
+      name: 'Adzuna SA',
+      type: 'api',
+      url: 'https://api.adzuna.com/v1/api/jobs/za/search/1',
+      active: true, // Enabled since API key is added
+      parseFunction: parseAdzunaAPI
+    },
+    // Simple scraping (backup)
+    {
+      name: 'Indeed SA',
+      type: 'scraping',
+      url: 'https://za.indeed.com/jobs',
+      active: true,
+      parseFunction: parseIndeedScraping
+    }
+  ]
 
 export class SimpleJobAggregator {
   private sources: JobSource[]
@@ -136,49 +155,77 @@ export class SimpleJobAggregator {
 
   // Fetch from RSS feed
   private async fetchRSS(source: JobSource, keywords: string, location: string): Promise<JobListing[]> {
-    const response = await fetch(source.url, {
-      headers: { 'User-Agent': 'CVKonnekt Job Aggregator 1.0' }
-    })
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    
-    const xmlText = await response.text()
-    const jobs = this.parseRSSXML(xmlText, source)
-    
-    // Filter by keywords and location
-    return this.filterJobs(jobs, keywords, location)
+    try {
+      const response = await fetch(source.url, {
+        headers: { 'User-Agent': 'CVKonnekt Job Aggregator 1.0' }
+      })
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} for ${source.url}`)
+      }
+      const xmlText = await response.text()
+      const jobs = this.parseRSSXML(xmlText, source)
+      // Filter by keywords and location
+      return this.filterJobs(jobs, keywords, location)
+    } catch (error) {
+      console.error(`RSS fetch failed for ${source.name}:`, error)
+      return []
+    }
   }
 
   // Fetch from API
   private async fetchAPI(source: JobSource, keywords: string, location: string): Promise<JobListing[]> {
-    // Only proceed if API keys are configured
-    if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_APP_KEY) {
+    try {
+      if (source.name === 'Gemini AI') {
+        // Use Gemini API key from env
+        if (!process.env.GEMINI_API_KEY) {
+          return []
+        }
+        const url = `${source.url}?keywords=${encodeURIComponent(keywords)}&location=${encodeURIComponent(location)}`
+        const response = await fetch(url, {
+          headers: {
+            'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        })
+        if (!response.ok) throw new Error(`Gemini API error: ${response.status}`)
+        const data = await response.json()
+        return source.parseFunction(data)
+      }
+
+      // Only proceed if API keys are configured for Adzuna
+      if (!process.env.ADZUNA_APP_ID || !process.env.ADZUNA_APP_KEY) {
+        return []
+      }
+
+      const url = `${source.url}?app_id=${process.env.ADZUNA_APP_ID}&app_key=${process.env.ADZUNA_APP_KEY}&results_per_page=50&what=${encodeURIComponent(keywords)}&where=${encodeURIComponent(location)}`
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
+      const data = await response.json()
+      return source.parseFunction(data)
+    } catch (error) {
+      console.error(`API fetch failed for ${source.name}:`, error)
       return []
     }
-
-    const url = `${source.url}?app_id=${process.env.ADZUNA_APP_ID}&app_key=${process.env.ADZUNA_APP_KEY}&results_per_page=50&what=${encodeURIComponent(keywords)}&where=${encodeURIComponent(location)}`
-    
-    const response = await fetch(url)
-    if (!response.ok) throw new Error(`API error: ${response.status}`)
-    
-    const data = await response.json()
-    return source.parseFunction(data)
   }
 
   // Simple scraping (basic implementation)
   private async fetchScraping(source: JobSource, keywords: string, location: string): Promise<JobListing[]> {
-    const url = `${source.url}?q=${encodeURIComponent(keywords)}&l=${encodeURIComponent(location)}`
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    })
-    
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    
-    const html = await response.text()
-    return source.parseFunction(html)
+    try {
+      const url = `${source.url}?q=${encodeURIComponent(keywords)}&l=${encodeURIComponent(location)}`
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36',
+          'Accept-Language': 'en-US,en;q=0.9',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+        }
+      })
+      if (!response.ok) throw new Error(`HTTP ${response.status} for ${url}`)
+      const html = await response.text()
+      return source.parseFunction(html)
+    } catch (error) {
+      console.error(`Scraping fetch failed for ${source.name}:`, error)
+      return []
+    }
   }
 
   // Parse RSS XML
@@ -218,12 +265,12 @@ export class SimpleJobAggregator {
       .replace(/&#39;/g, "'")
   }
 
-  // Filter jobs by keywords and location
-  private filterJobs(jobs: JobListing[], keywords: string, location: string): JobListing[] {
-    if (!keywords && !location) return jobs
+  // Filter jobs by keywords, location, and additional filters
+  private filterJobs(jobs: JobListing[], keywords: string, location: string, filters?: { jobType?: string, salaryRange?: string, experienceLevel?: string, industry?: string }): JobListing[] {
+    if (!keywords && !location && !filters) return jobs
 
     return jobs.filter(job => {
-      const matchesKeywords = !keywords || 
+      const matchesKeywords = !keywords ||
         job.title.toLowerCase().includes(keywords.toLowerCase()) ||
         job.description.toLowerCase().includes(keywords.toLowerCase()) ||
         job.company.toLowerCase().includes(keywords.toLowerCase())
@@ -231,7 +278,12 @@ export class SimpleJobAggregator {
       const matchesLocation = !location || location === 'South Africa' ||
         job.location.toLowerCase().includes(location.toLowerCase())
 
-      return matchesKeywords && matchesLocation
+      const matchesJobType = !filters?.jobType || job.job_type === filters.jobType
+      const matchesSalary = !filters?.salaryRange || (job.salary_range && job.salary_range.includes(filters.salaryRange))
+      const matchesExperience = !filters?.experienceLevel || job.experience_level === filters.experienceLevel
+      const matchesIndustry = !filters?.industry || (job.industry && job.industry.toLowerCase() === filters.industry.toLowerCase())
+
+      return matchesKeywords && matchesLocation && matchesJobType && matchesSalary && matchesExperience && matchesIndustry
     })
   }
 
@@ -285,6 +337,62 @@ function parseJobMailRSS(items: any[]): JobListing[] {
       keywords: []
     }
   }).filter(job => job.title && job.company)
+}
+
+function parseGlassdoorRSS(items: any[]): JobListing[] {
+  return items.map(item => ({
+    id: `glassdoor-${Date.now()}-${Math.random()}`,
+    title: item.title,
+    company: item.company || 'Various Companies',
+    location: item.location || 'South Africa',
+    description: item.description.substring(0, 500),
+    requirements: [],
+    job_type: 'full-time' as const,
+    experience_level: 'mid' as const,
+    industry: 'general',
+    posted_date: new Date(item.pubDate || Date.now()).toISOString().split('T')[0],
+    application_url: item.link,
+    source: 'Glassdoor',
+    keywords: []
+  })).filter(job => job.title)
+}
+
+function parseLinkedInRSS(items: any[]): JobListing[] {
+  return items.map(item => ({
+    id: `linkedin-${Date.now()}-${Math.random()}`,
+    title: item.title,
+    company: item.company || 'Various Companies',
+    location: item.location || 'South Africa',
+    description: item.description.substring(0, 500),
+    requirements: [],
+    job_type: 'full-time' as const,
+    experience_level: 'mid' as const,
+    industry: 'general',
+    posted_date: new Date(item.pubDate || Date.now()).toISOString().split('T')[0],
+    application_url: item.link,
+    source: 'LinkedIn',
+    keywords: []
+  })).filter(job => job.title)
+}
+
+function parseGeminiAPI(data: any): JobListing[] {
+  if (!data.jobs) return []
+  return data.jobs.map((job: any) => ({
+    id: `gemini-${job.id}`,
+    title: job.title,
+    company: job.company_name,
+    location: job.location,
+    description: job.description.substring(0, 500),
+    requirements: [],
+    salary: job.salary_range,
+    job_type: job.job_type || 'full-time',
+    experience_level: job.experience_level || 'mid',
+    industry: job.industry || 'general',
+    posted_date: job.posted_date,
+    application_url: job.application_url,
+    source: 'Gemini AI',
+    keywords: job.keywords || []
+  }))
 }
 
 function parseCareers24RSS(items: any[]): JobListing[] {
