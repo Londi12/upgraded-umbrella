@@ -4,10 +4,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Save, ArrowLeft } from "lucide-react";
+import { Search, Save, ArrowLeft, Send } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
+import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
+import { ATSScoringPanel } from "@/components/cv-ats-scoring";
 import { formatJobCardDate } from "@/lib/date-formatter";
 
 interface SAJobResult {
@@ -268,15 +270,36 @@ export default function SAJobSearch() {
     }
   };
 
-  const handleAIJobMatchReview = () => {
+  const [aiMatching, setAiMatching] = useState(false);
+  const [aiMatchResults, setAiMatchResults] = useState<AIJobMatch[]>([]);
+  const [aiMatchError, setAiMatchError] = useState("");
+
+  // Test function to verify API connectivity
+  const testJobsAPI = async () => {
+    try {
+      console.log("Testing jobs API connectivity...");
+      const response = await fetch('/api/sa-jobs?q=test&limit=1');
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Jobs API test successful:", data);
+        return true;
+      } else {
+        console.error("Jobs API test failed:", response.status, response.statusText);
+        return false;
+      }
+    } catch (error) {
+      console.error("Jobs API test error:", error);
+      return false;
+    }
+  };
+
+  const handleAIJobMatchReview = async () => {
     if (!user) {
       alert("Please sign in to use AI Job-Match Review.");
-      // Optionally, redirect to sign-in or CV creation page here
       return;
     }
     if (savedCVs.length === 0) {
       alert("Please create a CV to use AI Job-Match Review.");
-      // Optionally, redirect to CV creation page here
       return;
     }
     if (!selectedCVId) {
@@ -287,8 +310,74 @@ export default function SAJobSearch() {
       alert("No job selected.");
       return;
     }
-    // Implement AI Job-Match Review logic here
-    alert(`AI Job-Match Review started for CV ID: ${selectedCVId}`);
+
+    setAiMatching(true);
+    setAiMatchError("");
+    setAiMatchResults([]);
+
+    try {
+      // Test API connectivity first
+      const apiWorking = await testJobsAPI();
+      if (!apiWorking) {
+        console.warn("Jobs API is not working, but continuing with fallback...");
+      }
+
+      // Get the selected CV data
+      const selectedCV = savedCVs.find(cv => cv.id === selectedCVId);
+      if (!selectedCV) {
+        throw new Error("Selected CV not found");
+      }
+
+      // Get recent jobs for matching with better error handling
+      let jobsToMatch: any[] = [];
+
+      try {
+        const recentJobsResponse = await fetch(`/api/sa-jobs?q=${encodeURIComponent(selectedJob.title || "jobs")}&limit=10`);
+        if (recentJobsResponse.ok) {
+          const jobsData = await recentJobsResponse.json();
+          jobsToMatch = jobsData.results || [];
+        } else {
+          console.warn("Failed to fetch jobs from API, using selected job only");
+        }
+      } catch (fetchError) {
+        console.warn("Error fetching jobs from API:", fetchError);
+        console.log("Using selected job only for AI matching");
+      }
+
+      // Add the selected job to the list if not already included
+      const jobExists = jobsToMatch.some((job: any) => job.url === selectedJob.url);
+      if (!jobExists && selectedJob) {
+        jobsToMatch.unshift(selectedJob);
+      }
+
+      // If no jobs available, create a fallback job from the selected job
+      if (jobsToMatch.length === 0) {
+        jobsToMatch = [{
+          id: selectedJob.url,
+          title: selectedJob.title,
+          company: selectedJob.company || selectedJob.source,
+          description: selectedJob.description || selectedJob.snippet,
+          requirements: [] // Will be extracted from description
+        }];
+      }
+
+      // Call AI job matching service
+      console.log("Starting AI job matching with", jobsToMatch.length, "jobs");
+      const matches = await getAIJobMatches(selectedCV.cv_data, jobsToMatch);
+
+      if (matches && matches.length > 0) {
+        setAiMatchResults(matches);
+        console.log("AI Job-Match Review completed for CV ID:", selectedCVId);
+        console.log("Found", matches.length, "matches");
+      } else {
+        setAiMatchError("No AI matches found. This could be due to missing API keys or insufficient job data. Try using the test page at /test-ai-job-match to verify the system is working.");
+      }
+    } catch (error) {
+      console.error("AI Job-Match Review error:", error);
+      setAiMatchError(error instanceof Error ? error.message : "AI matching failed. Please try again.");
+    } finally {
+      setAiMatching(false);
+    }
   };
 
   return (
@@ -499,18 +588,7 @@ export default function SAJobSearch() {
                               </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                asChild
-                                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-xs"
-                              >
-                                <a href={job.url} target="_blank" rel="noopener noreferrer">
-                                  Apply
-                                </a>
-                              </Button>
-                            </div>
+
                           </div>
                         </CardContent>
                       </Card>
@@ -578,41 +656,136 @@ export default function SAJobSearch() {
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-                  <div className="flex gap-2">
-                    <Button onClick={handleSave} disabled={!user} variant="outline" aria-label="Save Job">
+                <div className="flex flex-col gap-3 pt-4 border-t">
+                  {/* Single Row with Save, CV Selection, and AI Match */}
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Button
+                      onClick={handleSave}
+                      disabled={!user}
+                      variant="outline"
+                      size="sm"
+                      className="flex-none"
+                      aria-label="Save Job"
+                    >
                       <Save className="w-4 h-4 mr-1" /> Save
                     </Button>
-                  </div>
 
-                  <div className="flex gap-2 items-center">
-                    <label htmlFor="cv-select" className="text-sm font-medium">CV for AI Match:</label>
-                    <select
-                      id="cv-select"
-                      value={selectedCVId}
-                      onChange={(e) => setSelectedCVId(e.target.value)}
-                      className="border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="">{user ? (savedCVs.length ? "Select CV" : "Create a CV to use AI Match") : "Sign in to use AI Match"}</option>
-                      {user && savedCVs.length > 0 && savedCVs.map((cv) => (
-                        <option key={cv.id} value={cv.id}>
-                          {cv.name}
+                    <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xs">
+                      <label htmlFor="cv-select" className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        CV for Analysis:
+                      </label>
+                      <select
+                        id="cv-select"
+                        value={selectedCVId}
+                        onChange={(e) => setSelectedCVId(e.target.value)}
+                        className="flex-1 min-w-0 border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">
+                          {user
+                            ? (savedCVs.length ? "Select CV" : "Create CV for AI Match")
+                            : "Sign in to use AI Match"
+                          }
                         </option>
-                      ))}
-                    </select>
+                        {user && savedCVs.length > 0 && savedCVs.map((cv) => (
+                          <option key={cv.id} value={cv.id}>
+                            {cv.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
                     <Button
                       onClick={handleAIJobMatchReview}
-                      disabled={!user || !selectedCVId}
+                      disabled={!user || !selectedCVId || aiMatching}
                       variant="outline"
+                      size="sm"
+                      className="flex-none whitespace-nowrap"
                       aria-label="AI Job Match Review"
                     >
-                      AI Match
+                      {aiMatching ? "Matching..." : "AI Match"}
+                    </Button>
+                  </div>
+
+                  {/* Primary Action - Apply */}
+                  <div className="pt-2">
+                    <Button asChild className="w-full" size="lg">
+                      <a href={selectedJob.url} target="_blank" rel="noopener noreferrer">
+                        <Send className="w-4 h-4 mr-2" />
+                        Apply Now
+                      </a>
                     </Button>
                   </div>
                 </div>
 
-                
+                {/* AI Match Results */}
+                {aiMatchResults.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">AI Match Results</h3>
+                    <div className="space-y-3">
+                      {aiMatchResults.slice(0, 5).map((match, index) => (
+                        <Card key={match.jobId} className="border-green-200 bg-green-50">
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-2">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Badge className="bg-green-100 text-green-800">
+                                    {match.matchScore}% Match
+                                  </Badge>
+                                  <span className="text-sm text-gray-600">#{index + 1}</span>
+                                </div>
+                                <p className="text-sm text-gray-700 leading-relaxed">
+                                  {match.reasoning}
+                                </p>
+                              </div>
+                            </div>
+                            {match.skillsMatch.length > 0 && (
+                              <div className="mt-2">
+                                <span className="text-xs font-medium text-green-700">Matched Skills: </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {match.skillsMatch.slice(0, 3).map((skill, idx) => (
+                                    <Badge key={idx} variant="outline" className="text-xs bg-green-50">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {match.skillsGap.length > 0 && (
+                              <div className="mt-2">
+                                <span className="text-xs font-medium text-orange-700">Skills to Develop: </span>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {match.skillsGap.map((skill, idx) => (
+                                    <Badge key={idx} variant="outline" className="text-xs bg-orange-50 text-orange-700">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Match Error */}
+                {aiMatchError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{aiMatchError}</p>
+                  </div>
+                )}
+
+                {/* ATS Scoring Panel */}
+                {selectedCVId && (
+                  <div className="mt-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">CV ATS Analysis</h3>
+                    <ATSScoringPanel
+                      cvData={savedCVs.find(cv => cv.id === selectedCVId)?.cv_data}
+                      currentSection="job-matching"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
           ) : (
