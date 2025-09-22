@@ -247,25 +247,7 @@ export default function SAJobSearch() {
     setSelectedCVId("");
   };
 
-  const handleApply = async () => {
-    if (!user || !selectedJob) return;
-    try {
-      window.open(selectedJob.url, "_blank");
-      await applicationTracker.trackApplication({
-        jobId: selectedJob.url,
-        jobTitle: selectedJob.title,
-        company: selectedJob.company || selectedJob.source || "",
-        status: "applied",
-        source: selectedJob.source || "",
-        cvVersion: selectedCVId,
-        coverLetterUsed: false,
-        matchScore: 0,
-      });
-      alert("Application tracked successfully.");
-    } catch (error) {
-      alert("Failed to track application.");
-    }
-  };
+  
 
   const handleSave = async () => {
     if (!user || !selectedJob) return;
@@ -598,14 +580,6 @@ export default function SAJobSearch() {
                 {/* Action Buttons */}
                 <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
                   <div className="flex gap-2">
-                    <Button
-                      onClick={handleApply}
-                      disabled={!user}
-                      className="bg-gradient-to-r from-blue-600 to-cyan-600 text-white"
-                    >
-                      Apply
-                    </Button>
-
                     <Button onClick={handleSave} disabled={!user} variant="outline" aria-label="Save Job">
                       <Save className="w-4 h-4 mr-1" /> Save
                     </Button>
@@ -638,18 +612,7 @@ export default function SAJobSearch() {
                   </div>
                 </div>
 
-                {/* Apply Button */}
-                <div className="pt-4">
-                  <Button
-                    size="lg"
-                    asChild
-                    className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                  >
-                    <a href={selectedJob.url} target="_blank" rel="noopener noreferrer">
-                      Apply Now
-                    </a>
-                  </Button>
-                </div>
+                
               </CardContent>
             </Card>
           ) : (
