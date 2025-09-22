@@ -35,6 +35,19 @@ export interface SavedCoverLetter {
   updated_at?: string
 }
 
+export interface SavedJob {
+  id?: string;
+  user_id?: string;
+  job_title: string;
+  company_name: string;
+  job_url: string;
+  job_description: string;
+  location: string;
+  posted_date: string;
+  source: string;
+  created_at?: string;
+}
+
 // User Profile Management
 export const getUserProfile = async () => {
   if (!hasValidCredentials) {
@@ -209,6 +222,53 @@ export const deleteCoverLetter = async (id: string) => {
 
   return { error }
 }
+
+// Saved Jobs Management
+export const getSavedJobs = async () => {
+  if (!hasValidCredentials) {
+    return { data: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  return { data: data || [], error };
+};
+
+export const saveJob = async (jobData: Omit<SavedJob, "id" | "user_id" | "created_at">) => {
+  if (!hasValidCredentials) {
+    return { data: null, error: null };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: { message: "Not authenticated" } };
+
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .insert({
+      user_id: user.id,
+      ...jobData,
+    })
+    .select()
+    .single();
+
+  return { data, error };
+};
+
+export const deleteSavedJob = async (id: string) => {
+  if (!hasValidCredentials) {
+    return { error: null };
+  }
+
+  const { error } = await supabase.from("saved_jobs").delete().eq("id", id);
+
+  return { error };
+};
+
 
 // Account Deletion
 export const deleteUserAccount = async () => {
