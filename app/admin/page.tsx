@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AdminChatWindow } from "@/components/admin-chat-window"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
+import { checkIsAdmin, getUserStats, getRecentUsers, getLiveActivity, getJobs, updateJob, deleteJob } from "@/lib/supabase"
+import { formatAndTruncateJobDescription } from "@/lib/text-formatter"
 
 export default function AdminDashboard() {
   const { user, loading } = useAuth()
@@ -42,7 +44,7 @@ export default function AdminDashboard() {
 
   const checkAdminPermissions = async () => {
     if (loading) return
-    
+
     if (!user) {
       router.push('/login?redirect=admin')
       return
@@ -50,7 +52,7 @@ export default function AdminDashboard() {
 
     // In demo mode, allow access
     const isDemoMode = !process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
-    
+
     if (isDemoMode) {
       setIsAdmin(true)
       setCheckingPermissions(false)
@@ -58,18 +60,23 @@ export default function AdminDashboard() {
       return
     }
 
-    // Check user metadata for admin role
-    const userMetadata = user.user_metadata || {}
-    const hasAdminRole = userMetadata.role === 'admin' || userMetadata.is_admin === true
+    // Check if user is admin by querying Supabase admin_users table
+    try {
+      const isUserAdmin = await checkIsAdmin(user.id)
 
-    if (hasAdminRole) {
-      setIsAdmin(true)
-      loadRealData()
-    } else {
+      if (isUserAdmin) {
+        setIsAdmin(true)
+        loadRealData()
+      } else {
+        router.push('/')
+        return
+      }
+    } catch (error) {
+      console.error('Error checking admin permissions:', error)
       router.push('/')
       return
     }
-    
+
     setCheckingPermissions(false)
   }
 
@@ -80,64 +87,83 @@ export default function AdminDashboard() {
     }
   }, [isAdmin])
 
-  const loadRealData = () => {
-    // Load from localStorage and simulate real data
-    const savedCVs = JSON.parse(localStorage.getItem('saved_cvs') || '[]')
-    const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]')
-    
-    setStats({
-      totalUsers: 2847 + mockUsers.length,
-      totalCVs: 5634 + savedCVs.length,
-      revenue: 89450 + (mockUsers.length * 299),
-      activeUsers: Math.floor(Math.random() * 50) + 150,
-      todaySignups: Math.floor(Math.random() * 20) + 5,
-      todayDownloads: Math.floor(Math.random() * 100) + 50
-    })
+  const loadRealData = async () => {
+    try {
+      // Fetch real data from Supabase
+      const [statsData, usersData, activityData] = await Promise.all([
+        getUserStats(),
+        getRecentUsers(),
+        getLiveActivity()
+      ])
 
-    // Generate realistic user data
-    const users = [
-      { 
-        id: 1, 
-        name: "John Smith", 
-        email: "john@example.com", 
-        plan: "Premium", 
-        joined: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 3,
-        lastActive: "2 hours ago",
-        status: "online"
-      },
-      { 
-        id: 2, 
-        name: "Sarah Johnson", 
-        email: "sarah@example.com", 
-        plan: "Pro", 
-        joined: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 7,
-        lastActive: "1 hour ago",
-        status: "offline"
-      },
-      { 
-        id: 3, 
-        name: "Mike Wilson", 
-        email: "mike@example.com", 
-        plan: "Base", 
-        joined: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 1,
-        lastActive: "30 minutes ago",
-        status: "online"
+      if (statsData) {
+        setStats(statsData)
       }
-    ]
-    setRecentUsers(users)
 
-    // Live activity feed
-    const activities = [
-      { type: 'cv_created', user: 'John S.', time: '2 min ago', details: 'Created "Software Developer CV"' },
-      { type: 'user_signup', user: 'Lisa M.', time: '5 min ago', details: 'Signed up for Premium plan' },
-      { type: 'pdf_download', user: 'Mike W.', time: '8 min ago', details: 'Downloaded CV as PDF' },
-      { type: 'job_match', user: 'Sarah J.', time: '12 min ago', details: 'Generated 5 job matches' }
-    ]
-    setLiveActivity(activities)
-    setLastRefresh(new Date())
+      if (usersData) {
+        setRecentUsers(usersData)
+      }
+
+      if (activityData) {
+        setLiveActivity(activityData)
+      }
+
+      setLastRefresh(new Date())
+    } catch (error) {
+      console.error('Error loading real data:', error)
+      // Fallback to mock data if Supabase fails
+      const savedCVs = JSON.parse(localStorage.getItem('saved_cvs') || '[]')
+      const mockUsers = JSON.parse(localStorage.getItem('mock_users') || '[]')
+
+      setStats({
+        totalUsers: 2847 + mockUsers.length,
+        totalCVs: 5634 + savedCVs.length,
+        revenue: 89450 + (mockUsers.length * 299),
+        activeUsers: Math.floor(Math.random() * 50) + 150,
+        todaySignups: Math.floor(Math.random() * 20) + 5,
+        todayDownloads: Math.floor(Math.random() * 100) + 50
+      })
+
+      setRecentUsers([
+        {
+          id: 1,
+          name: "John Smith",
+          email: "john@example.com",
+          plan: "Premium",
+          joined: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+          cvsCreated: 3,
+          lastActive: "2 hours ago",
+          status: "online"
+        },
+        {
+          id: 2,
+          name: "Sarah Johnson",
+          email: "sarah@example.com",
+          plan: "Pro",
+          joined: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          cvsCreated: 7,
+          lastActive: "1 hour ago",
+          status: "offline"
+        },
+        {
+          id: 3,
+          name: "Mike Wilson",
+          email: "mike@example.com",
+          plan: "Base",
+          joined: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+          cvsCreated: 1,
+          lastActive: "30 minutes ago",
+          status: "online"
+        }
+      ])
+
+      setLiveActivity([
+        { type: 'cv_created', user: 'John S.', time: '2 min ago', details: 'Created "Software Developer CV"' },
+        { type: 'user_signup', user: 'Lisa M.', time: '5 min ago', details: 'Signed up for Premium plan' },
+        { type: 'pdf_download', user: 'Mike W.', time: '8 min ago', details: 'Downloaded CV as PDF' },
+        { type: 'job_match', user: 'Sarah J.', time: '12 min ago', details: 'Generated 5 job matches' }
+      ])
+    }
   }
 
   if (loading || checkingPermissions) {
@@ -398,8 +424,36 @@ export default function AdminDashboard() {
 
 function JobManagementTab() {
   const [uploadedJobs, setUploadedJobs] = useState<any[]>([])
+  const [existingJobs, setExistingJobs] = useState<any[]>([])
   const [isUploading, setIsUploading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState('')
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false)
+  const [editingJob, setEditingJob] = useState<any>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // Load existing jobs from database
+  const loadExistingJobs = async () => {
+    setIsLoadingJobs(true)
+    try {
+      const { data, error } = await getJobs()
+
+      if (error) {
+        console.error('Error loading jobs:', error)
+        setUploadStatus('Error loading jobs from database')
+      } else {
+        setExistingJobs(data || [])
+      }
+    } catch (error) {
+      console.error('Error loading jobs:', error)
+      setUploadStatus('Error loading jobs from database')
+    } finally {
+      setIsLoadingJobs(false)
+    }
+  }
+
+  useEffect(() => {
+    loadExistingJobs()
+  }, [])
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -427,6 +481,8 @@ function JobManagementTab() {
       if (response.ok) {
         setUploadedJobs(result.jobs || [])
         setUploadStatus(`Successfully uploaded ${result.count || 0} jobs!`)
+        // Refresh existing jobs after upload
+        loadExistingJobs()
       } else {
         setUploadStatus(`Error: ${result.error || 'Upload failed'}`)
       }
@@ -436,6 +492,51 @@ function JobManagementTab() {
       setIsUploading(false)
     }
   }
+
+  const handleEditJob = (job: any) => {
+    setEditingJob({ ...job })
+  }
+
+  const handleSaveJob = async () => {
+    if (!editingJob) return
+
+    try {
+      const { error } = await updateJob(editingJob.id, editingJob)
+
+      if (error) {
+        setUploadStatus(`Error updating job: ${error.message}`)
+      } else {
+        setUploadStatus('Job updated successfully!')
+        setEditingJob(null)
+        loadExistingJobs() // Refresh the list
+      }
+    } catch (error) {
+      setUploadStatus('Error updating job. Please try again.')
+    }
+  }
+
+  const handleDeleteJob = async (jobId: string) => {
+    if (!confirm('Are you sure you want to delete this job?')) return
+
+    try {
+      const { error } = await deleteJob(jobId)
+
+      if (error) {
+        setUploadStatus(`Error deleting job: ${error.message}`)
+      } else {
+        setUploadStatus('Job deleted successfully!')
+        loadExistingJobs() // Refresh the list
+      }
+    } catch (error) {
+      setUploadStatus('Error deleting job. Please try again.')
+    }
+  }
+
+  const filteredJobs = existingJobs.filter(job =>
+    job.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.company?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    job.location?.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <div className="space-y-6">
@@ -448,6 +549,7 @@ function JobManagementTab() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            {/* Upload Section */}
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
               <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">Upload Jobs from Excel</h3>
@@ -455,13 +557,13 @@ function JobManagementTab() {
                 Upload an Excel file (.xlsx, .xls) or CSV with job listings
               </p>
               <div className="space-y-2">
-          <Input
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            onChange={handleFileUpload}
-            disabled={isUploading}
-            className="max-w-xs mx-auto"
-          />
+                <Input
+                  type="file"
+                  accept=".xlsx,.xls,.csv"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                  className="max-w-xs mx-auto"
+                />
                 {isUploading && (
                   <div className="flex items-center justify-center gap-2">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
@@ -478,6 +580,7 @@ function JobManagementTab() {
               </div>
             </div>
 
+            {/* Upload Format Guide */}
             <div className="bg-blue-50 p-4 rounded-lg">
               <h4 className="font-medium mb-2">Expected Excel Format:</h4>
               <div className="text-sm text-gray-700 space-y-1">
@@ -494,6 +597,7 @@ function JobManagementTab() {
               </div>
             </div>
 
+            {/* Recently Uploaded Jobs */}
             {uploadedJobs.length > 0 && (
               <Card>
                 <CardHeader>
@@ -508,7 +612,7 @@ function JobManagementTab() {
                             <h4 className="font-medium">{job.title}</h4>
                             <p className="text-sm text-gray-600">{job.company} • {job.location}</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              {job.snippet?.substring(0, 100)}...
+                              {formatAndTruncateJobDescription(job.snippet, 100)}
                             </p>
                           </div>
                           <Badge variant="outline">{job.source}</Badge>
@@ -527,6 +631,169 @@ function JobManagementTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Existing Jobs Management */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Existing Jobs ({existingJobs.length})</CardTitle>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Search jobs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-64"
+              />
+              <Button variant="outline" size="sm" onClick={loadExistingJobs} disabled={isLoadingJobs}>
+                <RefreshCw className={`h-4 w-4 ${isLoadingJobs ? 'animate-spin' : ''}`} />
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {isLoadingJobs ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <span className="ml-2">Loading jobs...</span>
+            </div>
+          ) : (
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {filteredJobs.slice(0, 20).map((job) => (
+                <div key={job.id} className="border rounded-lg p-4 hover:bg-gray-50">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-medium">{job.title}</h4>
+                        <Badge variant="outline">{job.source}</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-1">{job.company} • {job.location}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatAndTruncateJobDescription(job.snippet, 150)}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Posted: {new Date(job.posted_date).toLocaleDateString()} •
+                        URL: <a href={job.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          View Job
+                        </a>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button variant="outline" size="sm" onClick={() => handleEditJob(job)}>
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteJob(job.id)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredJobs.length === 0 && (
+                <p className="text-center text-gray-500 py-8">
+                  {searchTerm ? 'No jobs found matching your search.' : 'No jobs found in the database.'}
+                </p>
+              )}
+              {filteredJobs.length > 20 && (
+                <p className="text-sm text-gray-500 text-center">
+                  Showing 20 of {filteredJobs.length} jobs. Use search to find specific jobs.
+                </p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Edit Job Dialog */}
+      {editingJob && (
+        <Dialog open={!!editingJob} onOpenChange={() => setEditingJob(null)}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Job</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Job Title</label>
+                  <Input
+                    value={editingJob.title || ''}
+                    onChange={(e) => setEditingJob({ ...editingJob, title: e.target.value })}
+                    placeholder="Enter job title"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Company</label>
+                  <Input
+                    value={editingJob.company || ''}
+                    onChange={(e) => setEditingJob({ ...editingJob, company: e.target.value })}
+                    placeholder="Enter company name"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium">Location</label>
+                  <Input
+                    value={editingJob.location || ''}
+                    onChange={(e) => setEditingJob({ ...editingJob, location: e.target.value })}
+                    placeholder="Enter location"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Source</label>
+                  <Input
+                    value={editingJob.source || ''}
+                    onChange={(e) => setEditingJob({ ...editingJob, source: e.target.value })}
+                    placeholder="e.g., LinkedIn, Indeed"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Job URL</label>
+                <Input
+                  value={editingJob.url || ''}
+                  onChange={(e) => setEditingJob({ ...editingJob, url: e.target.value })}
+                  placeholder="Enter job posting URL"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Posted Date</label>
+                <Input
+                  type="date"
+                  value={editingJob.posted_date ? new Date(editingJob.posted_date).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setEditingJob({ ...editingJob, posted_date: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium">Job Description</label>
+                <textarea
+                  className="w-full min-h-[100px] p-2 border rounded-md"
+                  value={editingJob.snippet || ''}
+                  onChange={(e) => setEditingJob({ ...editingJob, snippet: e.target.value })}
+                  placeholder="Enter job description"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setEditingJob(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveJob}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

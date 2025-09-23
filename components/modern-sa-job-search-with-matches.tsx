@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, Search, Shield, Clock, Database } from "lucide-react";
+import { ExternalLink, Search, Shield, Clock, Database, Target, Loader2 } from "lucide-react";
 import { ModernJobCard } from "./modern-job-card";
 
 interface SAJobResult {
@@ -30,7 +30,17 @@ interface SAJobSearchResponse {
   message?: string;
 }
 
-export default function ModernSAJobSearch() {
+interface JobMatch {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  description: string;
+  matchScore: number;
+  url: string;
+}
+
+export default function ModernSAJobSearchWithMatches() {
   const [query, setQuery] = useState("");
   const [jobType, setJobType] = useState("");
   const [experience, setExperience] = useState("");
@@ -42,6 +52,9 @@ export default function ModernSAJobSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filteredResults, setFilteredResults] = useState<SAJobResult[]>([]);
+  const [matchedJobs, setMatchedJobs] = useState<JobMatch[]>([]);
+  const [matchingLoading, setMatchingLoading] = useState(false);
+  const [showMatches, setShowMatches] = useState(false);
 
   // Initialize cache on mount
   React.useEffect(() => {
@@ -88,6 +101,39 @@ export default function ModernSAJobSearch() {
       setError('Search failed. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleFindMatches = async () => {
+    setMatchingLoading(true);
+    setError("");
+
+    try {
+      // For demo purposes, we'll use a mock candidate ID
+      const candidateId = "demo-candidate-123";
+
+      const response = await fetch('/api/match-jobs-for-candidate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          c_id: candidateId
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      setMatchedJobs(data);
+      setShowMatches(true);
+    } catch (err) {
+      console.error('Matching error:', err);
+      setError('Failed to find job matches. Please try again.');
+    } finally {
+      setMatchingLoading(false);
     }
   };
 
@@ -180,6 +226,29 @@ export default function ModernSAJobSearch() {
                   {loading ? "Searching..." : "Search"}
                 </Button>
               </div>
+
+              {/* Find Matches Button */}
+              <div className="flex justify-center pt-2">
+                <Button
+                  type="button"
+                  onClick={handleFindMatches}
+                  disabled={matchingLoading}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2"
+                >
+                  {matchingLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Finding Matches...
+                    </>
+                  ) : (
+                    <>
+                      <Target className="h-4 w-4" />
+                      Find Matches
+                    </>
+                  )}
+                </Button>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <select
                   value={jobType}
@@ -239,6 +308,51 @@ export default function ModernSAJobSearch() {
         </Card>
       )}
 
+      {/* Job Matches Section */}
+      {showMatches && matchedJobs.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-blue-900">
+              <Target className="h-5 w-5" />
+              Your Job Matches
+            </CardTitle>
+            <p className="text-blue-700">
+              Found {matchedJobs.length} job{matchedJobs.length !== 1 ? 's' : ''} that match your profile
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {matchedJobs.map((job, idx) => (
+                <Card key={idx} className="border border-blue-200 hover:shadow-md transition-shadow">
+                  <CardContent className="pt-4">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-gray-900">{job.title}</h3>
+                        <p className="text-gray-600">{job.company} • {job.location}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-green-600">{job.matchScore}%</div>
+                        <div className="text-xs text-gray-500">Match Score</div>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 mb-3 line-clamp-2">{job.description}</p>
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={() => window.open(job.url, '_blank')}>
+                        Apply Now
+                        <ExternalLink className="h-4 w-4 ml-1" />
+                      </Button>
+                      <Button variant="outline" size="sm">
+                        Save Job
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {searchResponse && (
         <Card>
           <CardHeader>
@@ -248,7 +362,7 @@ export default function ModernSAJobSearch() {
               <span>•</span>
               <span>Showing {filteredResults.length} after filters</span>
               <span>•</span>
-              
+              <span>Checked {searchResponse.sources_checked.length} sources</span>
               {searchResponse.message && (
                 <>
                   <span>•</span>

@@ -47,3 +47,17 @@
 .no-extensions * {
   pointer-events: auto !important;
 }
+
+/* Fix text size issues */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+  body {
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+  }
+}

@@ -11,6 +11,7 @@ import { getSavedCVs, saveJob } from "@/lib/user-data-service";
 import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
 import { ATSScoringPanel } from "@/components/cv-ats-scoring";
 import { formatJobCardDate } from "@/lib/date-formatter";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface SAJobResult {
   title: string;
@@ -172,14 +173,14 @@ export default function SAJobSearch() {
 
   // Get company logo or fallback to initials
   const getCompanyLogo = (companyName: string) => {
-    // Company logo mapping
+    // Company logo mapping - using local assets for better performance
     const companyLogos: { [key: string]: string } = {
-      nedbank: "https://logos-world.net/wp-content/uploads/2020/09/Nedbank-Logo.png",
+      nedbank: "Nedbank_logo_small.jpg",
       "standard bank":
         "https://www.standardbank.com/static_file/StandardBankGroup/Standard-Bank-Group/images/logo.svg",
       fnb: "https://www.fnb.co.za/assets/images/fnb-logo.svg",
       "first national bank": "https://www.fnb.co.za/assets/images/fnb-logo.svg",
-      absa: "https://www.absa.co.za/content/dam/absa/absa-logo.svg",
+      absa: "Absa_Logo.png",
       capitec: "https://www.capitecbank.co.za/assets/images/capitec-logo.svg",
       investec: "https://www.investec.com/content/dam/investec/investec-logo.svg",
       santam: "https://www.santam.co.za/content/dam/santam/santam-logo.svg",
@@ -573,9 +574,12 @@ export default function SAJobSearch() {
                           </div>
 
                           {/* Description */}
-                          <p className="text-sm text-gray-700 leading-relaxed mb-4">
-                            {job.snippet}
-                          </p>
+                          <div className="mb-4">
+                            <MarkdownRenderer
+                              content={job.snippet}
+                              className="text-sm text-gray-700"
+                            />
+                          </div>
 
                           {/* Footer */}
                           <div className="flex items-center justify-between pt-2 border-t border-gray-100">
@@ -628,21 +632,48 @@ export default function SAJobSearch() {
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Job Header */}
-                <div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">
-                    {selectedJob.title}
-                  </h2>
-                  <p className="text-lg text-gray-600 mb-4">
-                    {selectedJob.company || selectedJob.source}
-                  </p>
+                <div className="flex items-start gap-3">
+                  {/* Company Logo in Job Details */}
+                  {(() => {
+                    const companyLogo = getCompanyLogo(selectedJob.company || selectedJob.source || "");
+                    return companyLogo ? (
+                      <img
+                        src={companyLogo}
+                        alt={`${selectedJob.company || selectedJob.source} logo`}
+                        className="w-16 h-16 rounded-xl object-contain flex-shrink-0 bg-white p-1"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = "none";
+                          const fallback = target.nextElementSibling as HTMLElement;
+                          if (fallback) fallback.style.display = "flex";
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getLogoColor(
+                          selectedJob.company || selectedJob.source || ""
+                        )} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
+                      >
+                        {getCompanyInitials(selectedJob.company || selectedJob.source || "")}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">
+                      {selectedJob.title}
+                    </h2>
+                    <p className="text-lg text-gray-600 mb-4">
+                      {selectedJob.company || selectedJob.source}
+                    </p>
 
-                  {/* Job Meta */}
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
-                    <div className="flex items-center gap-1">
-                      📍 {selectedJob.location || "South Africa"}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      🕒 {formatJobCardDate(selectedJob.posted_date)}
+                    {/* Job Meta */}
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center gap-1">
+                        📍 {selectedJob.location || "South Africa"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        🕒 {formatJobCardDate(selectedJob.posted_date)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -650,8 +681,11 @@ export default function SAJobSearch() {
                 {/* Job Description */}
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <div className="text-sm text-gray-700 leading-relaxed bg-gray-50 p-4 rounded-lg">
-                    {selectedJob.description || selectedJob.snippet || "No description available."}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <MarkdownRenderer
+                      content={selectedJob.description || selectedJob.snippet || "No description available."}
+                      className="text-gray-700"
+                    />
                   </div>
                 </div>
 

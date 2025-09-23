@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ExternalLink, MapPin, Calendar, Building } from "lucide-react";
+import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
 
 interface JobCardData {
   id: string;
@@ -32,13 +33,15 @@ interface ModernJobCardProps {
 export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJobCardProps) {
   // Get company logo or fallback to initials
   const getCompanyLogo = (companyName: string) => {
+    console.log(`Looking for logo for company: "${companyName}"`);
+
     // Company logo mapping
     const companyLogos: { [key: string]: string } = {
-      'nedbank': 'https://logos-world.net/wp-content/uploads/2020/09/Nedbank-Logo.png',
+      'nedbank': 'Nedbank_logo_small.jpg',
       'standard bank': 'https://www.standardbank.com/static_file/StandardBankGroup/Standard-Bank-Group/images/logo.svg',
       'fnb': 'https://www.fnb.co.za/assets/images/fnb-logo.svg',
       'first national bank': 'https://www.fnb.co.za/assets/images/fnb-logo.svg',
-      'absa': 'https://www.absa.co.za/content/dam/absa/absa-logo.svg',
+      'absa': 'Absa_Logo.png',
       'capitec': 'https://www.capitecbank.co.za/assets/images/capitec-logo.svg',
       'investec': 'https://www.investec.com/content/dam/investec/investec-logo.svg',
       'santam': 'https://www.santam.co.za/content/dam/santam/santam-logo.svg',
@@ -54,7 +57,11 @@ export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJo
       'morgan stanley': 'https://www.morganstanley.com/content/dam/morganstanley/logo.svg',
       'citibank': 'https://www.citibank.com/content/dam/citibank/logo.svg',
       'hsbc': 'https://www.hsbc.com/content/dam/hsbc/logo.svg',
-      'deutsche bank': 'https://www.db.com/content/dam/db/logo.svg'
+      'deutsche bank': 'https://www.db.com/content/dam/db/logo.svg',
+      'mr price': 'mrp.jpg',
+      'mrp': 'mrp.jpg',
+      'vector logistics': 'vector-logistics-logo.png',
+      'vector': 'vector-logistics-logo.png'
     };
 
     // Check for exact matches first
@@ -70,6 +77,7 @@ export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJo
       }
     }
 
+    console.log(`No logo found for company: "${companyName}", using initials fallback`);
     return null; // No logo found, will use initials
   };
 
@@ -106,15 +114,19 @@ export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJo
           {/* Company Logo */}
           {companyLogo ? (
             <img
-              src={companyLogo}
+              src={`${companyLogo}?v=${Date.now()}`}
               alt={`${job.company} logo`}
               className="w-14 h-14 rounded-xl object-contain flex-shrink-0 bg-white p-1"
               onError={(e) => {
+                console.log(`Failed to load logo for ${job.company}: ${companyLogo}`);
                 // Fallback to initials if image fails to load
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 const fallback = target.nextElementSibling as HTMLElement;
                 if (fallback) fallback.style.display = 'flex';
+              }}
+              onLoad={() => {
+                console.log(`Successfully loaded logo for ${job.company}: ${companyLogo}`);
               }}
             />
           ) : null}
@@ -161,9 +173,12 @@ export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJo
         </div>
 
         {/* Description */}
-        <p className="text-sm text-gray-700 leading-relaxed mb-4">
-          {job.description}
-        </p>
+        <div className="mb-4">
+          <MarkdownRenderer
+            content={job.description}
+            className="text-sm text-gray-700"
+          />
+        </div>
 
         {/* Requirements */}
         {job.requirements && job.requirements.length > 0 && (

@@ -13,30 +13,56 @@ interface AIJobMatch {
 export async function POST(request: NextRequest) {
   try {
     const { cvData, jobs } = await request.json()
+
+    // Validate input data
+    if (!cvData) {
+      console.error('AI matching error: No CV data provided')
+      return NextResponse.json({ error: 'CV data is required' }, { status: 400 })
+    }
+
+    if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
+      console.error('AI matching error: No jobs provided')
+      return NextResponse.json({ error: 'Jobs data is required' }, { status: 400 })
+    }
+
+    console.log(`AI Job-Match Review started for CV ID: ${cvData.id || 'unknown'}`)
+    console.log(`Processing ${jobs.length} jobs for matching`)
+
     const cvText = createCVText(cvData)
     const matches: AIJobMatch[] = []
 
     for (const job of jobs) {
-      const jobText = `${job.title} ${job.description} ${job.requirements?.join(' ') || ''}`
-      const similarity = await getSemanticSimilarity(cvText, jobText)
-      const skillsAnalysis = analyzeSkills(cvData, job)
-      
-      const reasoning = await generateGeminiReasoning(cvData, job, similarity)
-      
-      matches.push({
-        jobId: job.id,
-        matchScore: Math.round(similarity * 100),
-        reasoning,
-        skillsMatch: skillsAnalysis.matched,
-        skillsGap: skillsAnalysis.missing,
-        atsKeywords: extractATSKeywords(job)
-      })
+      try {
+        const jobText = `${job.title} ${job.description} ${job.requirements?.join(' ') || ''}`
+        const similarity = await getSemanticSimilarity(cvText, jobText)
+        const skillsAnalysis = analyzeSkills(cvData, job)
+
+        const reasoning = await generateGeminiReasoning(cvData, job, similarity)
+
+        matches.push({
+          jobId: job.id || job.url,
+          matchScore: Math.round(similarity * 100),
+          reasoning,
+          skillsMatch: skillsAnalysis.matched,
+          skillsGap: skillsAnalysis.missing,
+          atsKeywords: extractATSKeywords(job)
+        })
+      } catch (jobError) {
+        console.error(`Error processing job ${job.id || job.title}:`, jobError)
+        // Continue processing other jobs even if one fails
+      }
     }
 
-    return NextResponse.json(matches.sort((a, b) => b.matchScore - a.matchScore))
+    const sortedMatches = matches.sort((a, b) => b.matchScore - a.matchScore)
+    console.log(`AI Job-Match Review completed. Found ${sortedMatches.length} matches`)
+
+    return NextResponse.json(sortedMatches)
   } catch (error) {
     console.error('AI matching error:', error)
-    return NextResponse.json({ error: 'AI matching failed' }, { status: 500 })
+    return NextResponse.json({
+      error: 'AI matching failed',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 })
   }
 }
 
@@ -85,15 +111,29 @@ function createCVText(cvData: CVData): string {
 }
 
 function analyzeSkills(cvData: CVData, job: any): { matched: string[], missing: string[] } {
-  const cvSkills = (cvData.skills || '').toLowerCase().split(',').map(s => s.trim())
-  const jobSkills = (job.requirements || []).map((req: string) => req.toLowerCase())
-  
-  const matched = jobSkills.filter((skill: string) => 
-    cvSkills.some(cvSkill => cvSkill.includes(skill) || skill.includes(cvSkill))
+  // Handle skills as either string or array of Skill objects
+  let cvSkills: string[] = []
+  if (typeof cvData.skills === 'string') {
+    cvSkills = cvData.skills.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean)
+  } else if (Array.isArray(cvData.skills)) {
+    cvSkills = cvData.skills.map((skill: any) => {
+      if (typeof skill === 'string') {
+        return skill.toLowerCase()
+      } else if (skill && typeof skill === 'object' && 'name' in skill) {
+        return String(skill.name).toLowerCase()
+      }
+      return ''
+    }).filter(Boolean)
+  }
+
+  const jobSkills: string[] = (job.requirements || []).map((req: string) => req.toLowerCase())
+
+  const matched: string[] = jobSkills.filter((skill: string) =>
+    cvSkills.some((cvSkill: string) => cvSkill.includes(skill) || skill.includes(cvSkill))
   )
-  
-  return { 
-    matched, 
+
+  return {
+    matched,
     missing: jobSkills.filter((skill: string) => !matched.includes(skill)).slice(0, 3)
   }
 }

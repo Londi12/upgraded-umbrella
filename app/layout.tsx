@@ -4,7 +4,6 @@ import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/contexts/auth-context"
 import { UserChatbot } from "@/components/user-chatbot"
-import { MultipleStructuredData } from "@/components/structured-data"
 import { ErrorBoundary } from "@/components/error-boundary"
 import {
   generateMetadata as generateSEOMetadata,
@@ -36,7 +35,6 @@ export default function RootLayout({
         <link rel="icon" href="/icon.svg" type="image/svg+xml" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -48,7 +46,6 @@ export default function RootLayout({
 
       </head>
       <body suppressHydrationWarning>
-        <MultipleStructuredData dataArray={structuredDataArray} />
         <ThemeProvider attribute="class" defaultTheme="light">
           <ErrorBoundary>
             <AuthProvider>
