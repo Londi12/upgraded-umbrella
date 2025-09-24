@@ -511,8 +511,9 @@ export default function SAJobSearchWithPanel() {
                               </Button>
                             </SheetTrigger>
                             <SheetContent
+                              side="right"
                               aria-labelledby="job-sheet-title"
-                              className="bg-white rounded-2xl shadow-2xl w-full sm:max-w-lg overflow-y-auto"
+                              className="bg-white rounded-2xl shadow-2xl w-full h-full sm:max-w-lg sm:h-auto overflow-y-auto fixed inset-0 sm:relative"
                             >
                               <SheetHeader className="text-left space-y-2">
                                 <div className="flex items-center gap-3">
