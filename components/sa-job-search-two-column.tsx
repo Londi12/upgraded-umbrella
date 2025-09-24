@@ -5,14 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Search, Save } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
@@ -499,8 +499,8 @@ export default function SAJobSearchWithPanel() {
 
                         {/* Action Buttons */}
                         <div className="flex gap-2">
-                          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                            <SheetTrigger asChild>
+                          <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                            <DialogTrigger asChild>
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -509,13 +509,12 @@ export default function SAJobSearchWithPanel() {
                               >
                                 View
                               </Button>
-                            </SheetTrigger>
-                            <SheetContent
-                              side="right"
-                              aria-labelledby="job-sheet-title"
-                              className="bg-white rounded-2xl shadow-2xl w-full h-full sm:max-w-lg sm:h-auto overflow-y-auto fixed inset-0 sm:relative"
+                            </DialogTrigger>
+                            <DialogContent
+                              aria-labelledby="job-dialog-title"
+                              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
                             >
-                              <SheetHeader className="text-left space-y-2">
+                              <DialogHeader className="text-left space-y-2">
                                 <div className="flex items-center gap-3">
                                   {/* Company Logo in Job Details */}
                                   {(() => {
@@ -543,21 +542,21 @@ export default function SAJobSearchWithPanel() {
                                     );
                                   })()}
                                   <div className="flex-1">
-                                    <SheetTitle id="job-sheet-title" className="text-xl font-semibold text-gray-900">
+                                    <DialogTitle id="job-dialog-title" className="text-xl font-semibold text-gray-900">
                                       {selectedJob?.title ?? "Job details"}
-                                    </SheetTitle>
-                                    <SheetDescription className="text-sm text-gray-500">
+                                    </DialogTitle>
+                                    <DialogDescription className="text-sm text-gray-500">
                                       {selectedJob?.company || selectedJob?.source}
-                                    </SheetDescription>
+                                    </DialogDescription>
                                   </div>
                                 </div>
-                              </SheetHeader>
+                              </DialogHeader>
 
                               <div className="mt-4 max-h-72 overflow-y-auto text-sm leading-relaxed text-gray-700 pr-2">
                                 {selectedJob?.description || selectedJob?.snippet || "No description available."}
                               </div>
 
-                              <SheetFooter className="mt-6 flex flex-col sm:flex-row sm:justify-between gap-3">
+                              <DialogFooter className="mt-6 flex flex-col sm:flex-row sm:justify-between gap-3">
                                 <div className="flex gap-2">
                                   <Button
                                     onClick={handleApply}
@@ -597,9 +596,9 @@ export default function SAJobSearchWithPanel() {
                                     AI Match
                                   </Button>
                                 </div>
-                              </SheetFooter>
-                            </SheetContent>
-                          </Sheet>
+                              </DialogFooter>
+                            </DialogContent>
+                          </Dialog>
                           <Button
                             size="sm"
                             asChild
