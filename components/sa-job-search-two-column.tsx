@@ -92,8 +92,6 @@ export default function SAJobSearchWithPanel() {
   }, []);
 
   const handleSearch = async () => {
-    if (!locationFilter) return;
-
     setLoading(true);
     setError("");
     setResults([]);
@@ -302,7 +300,7 @@ export default function SAJobSearchWithPanel() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
+    <div className="max-w-7xl mx-auto p-2 sm:p-4 space-y-4 sm:space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -420,7 +418,7 @@ export default function SAJobSearchWithPanel() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               {filteredResults.map((job, idx) => {
                 const companyLogo = getCompanyLogo(job.company || job.source);
 
@@ -429,7 +427,7 @@ export default function SAJobSearchWithPanel() {
                     key={idx}
                     className="border border-gray-200 hover:shadow-lg transition-all duration-200 hover:border-blue-300"
                   >
-                    <CardContent className="p-5">
+                    <CardContent className="p-3 sm:p-5">
                       {/* Header with Logo and Basic Info */}
                       <div className="flex gap-3 mb-4">
                         {/* Company Logo */}
@@ -437,7 +435,7 @@ export default function SAJobSearchWithPanel() {
                           <img
                             src={companyLogo}
                             alt={`${job.company || job.source} logo`}
-                            className="w-14 h-14 rounded-xl object-contain flex-shrink-0 bg-white p-1"
+                            className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl object-contain flex-shrink-0 bg-white p-1"
                             onError={(e) => {
                               // Fallback to initials if image fails to load
                               const target = e.target as HTMLImageElement;
@@ -448,9 +446,9 @@ export default function SAJobSearchWithPanel() {
                           />
                         ) : null}
                         <div
-                          className={`w-14 h-14 rounded-xl bg-gradient-to-br ${getLogoColor(
+                          className={`w-10 h-10 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br ${getLogoColor(
                             job.company || job.source
-                          )} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
+                          )} flex items-center justify-center text-white font-bold text-sm sm:text-lg flex-shrink-0`}
                           style={{ display: companyLogo ? "none" : "flex" }}
                         >
                           {getCompanyInitials(job.company || job.source)}
@@ -458,10 +456,10 @@ export default function SAJobSearchWithPanel() {
 
                         {/* Job Details */}
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-lg font-bold text-gray-900 leading-tight mb-1">
+                          <h3 className="text-sm sm:text-lg font-bold text-gray-900 leading-tight mb-1">
                             {job.title}
                           </h3>
-                          <div className="text-sm text-gray-600 mb-2">
+                          <div className="text-xs sm:text-sm text-gray-600 mb-2">
                             {job.company || job.source}
                           </div>
 
@@ -490,11 +488,11 @@ export default function SAJobSearchWithPanel() {
 
                       {/* Footer */}
                       <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <div className="flex items-center gap-2 sm:gap-4">
+                          <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-600">
                             📍 {job.location || "South Africa"}
                           </div>
-                          <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <div className="flex items-center gap-1 text-xs sm:text-sm text-gray-600">
                             🕒 {job.posted_date || "Recently posted"}
                           </div>
                         </div>
