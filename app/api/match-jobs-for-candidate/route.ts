@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { supabase } from '@/lib/supabase'
 
 interface JobMatch {
   id: string;
@@ -9,55 +10,6 @@ interface JobMatch {
   matchScore: number;
   url: string;
 }
-
-// Mock job matching data for demo purposes
-const mockMatchedJobs: JobMatch[] = [
-  {
-    id: "1",
-    title: "Senior Software Developer",
-    company: "TechCorp SA",
-    location: "Cape Town, WC",
-    description: "We are looking for a senior software developer with experience in React, Node.js, and cloud technologies. Perfect match for candidates with strong technical skills.",
-    matchScore: 95,
-    url: "https://example.com/job/1"
-  },
-  {
-    id: "2",
-    title: "Full Stack Developer",
-    company: "InnovateIT",
-    location: "Johannesburg, GP",
-    description: "Join our dynamic team as a full stack developer. Work with modern technologies including React, Node.js, and AWS. Great opportunity for growth.",
-    matchScore: 88,
-    url: "https://example.com/job/2"
-  },
-  {
-    id: "3",
-    title: "Frontend Developer",
-    company: "Digital Solutions",
-    location: "Cape Town, WC",
-    description: "Frontend developer position focusing on React and modern web technologies. Collaborative environment with opportunities for skill development.",
-    matchScore: 82,
-    url: "https://example.com/job/3"
-  },
-  {
-    id: "4",
-    title: "Software Engineer",
-    company: "TechStart",
-    location: "Durban, KZN",
-    description: "Software engineer role with focus on scalable web applications. Experience with JavaScript frameworks and cloud platforms preferred.",
-    matchScore: 76,
-    url: "https://example.com/job/4"
-  },
-  {
-    id: "5",
-    title: "Web Developer",
-    company: "Creative Agency",
-    location: "Pretoria, GP",
-    description: "Creative web developer position combining technical skills with design thinking. Perfect for developers who enjoy user experience work.",
-    matchScore: 71,
-    url: "https://example.com/job/5"
-  }
-];
 
 export async function POST(request: NextRequest) {
   try {
@@ -70,18 +22,76 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Simulate API delay for realistic experience
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Get recent jobs from job_listings table
+    const { data: jobs, error: jobsError } = await supabase
+      .from('job_listings')
+      .select('*')
+      .eq('is_active', true)
+      .order('posted_date', { ascending: false })
+      .limit(50);
 
-    // In a real implementation, this would call your Supabase RPC:
-    // const { data, error } = await supabase.rpc('match_jobs_for_candidate', { c_id });
+    if (jobsError || !jobs || jobs.length === 0) {
+      // Fallback to sample jobs if no database jobs
+      const sampleJobs = [
+        {
+          id: "1",
+          title: "Software Developer",
+          company: "TechCorp SA",
+          location: "Cape Town",
+          description: "Looking for a software developer with React and Node.js experience.",
+          matchScore: 85,
+          url: "https://example.com/job/1"
+        },
+        {
+          id: "2",
+          title: "Full Stack Developer",
+          company: "InnovateIT",
+          location: "Johannesburg",
+          description: "Full stack developer role with modern web technologies.",
+          matchScore: 78,
+          url: "https://example.com/job/2"
+        }
+      ];
+      return NextResponse.json(sampleJobs);
+    }
 
-    // For demo purposes, return mock data
-    const matchedJobs = mockMatchedJobs.map(job => ({
-      ...job,
-      // Add some randomization to make it feel more dynamic
-      matchScore: Math.max(60, job.matchScore + Math.floor(Math.random() * 20) - 10)
-    }));
+    // Mock CV data for matching (in real app, get from user profile)
+    const mockCVData = {
+      personalInfo: { jobTitle: "Software Developer" },
+      skills: "JavaScript, React, Node.js, Python, SQL",
+      summary: "Experienced software developer",
+      experience: [{ title: "Developer", description: "Web development" }]
+    };
+
+    // Use AI job matching
+    const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/ai-job-match`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        cvData: mockCVData, 
+        jobs: jobs.slice(0, 10) // Limit to 10 jobs for performance
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('AI matching failed');
+    }
+
+    const aiMatches = await response.json();
+    
+    // Convert to expected format
+    const matchedJobs = aiMatches.map((match: any) => {
+      const job = jobs.find(j => j.id === match.jobId || j.external_id === match.jobId);
+      return {
+        id: match.jobId,
+        title: job?.title || 'Unknown Job',
+        company: job?.company || 'Unknown Company',
+        location: job?.location || 'Unknown Location',
+        description: job?.description || match.reasoning,
+        matchScore: match.matchScore,
+        url: job?.application_url || '#'
+      };
+    }).filter((job: JobMatch) => job.matchScore >= 60);
 
     return NextResponse.json(matchedJobs);
 

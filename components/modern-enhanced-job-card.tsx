@@ -29,7 +29,72 @@ interface ModernEnhancedJobCardProps {
 
 export function ModernEnhancedJobCard({ jobMatch, onApply, onSave, isSaved = false }: ModernEnhancedJobCardProps) {
   const [isExpanded, setIsExpanded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(isSaved)
   const { job, matchScore, matchedKeywords, missingKeywords } = jobMatch
+
+  const handleSave = async () => {
+    if (saving) return
+    
+    setSaving(true)
+    try {
+      const response = await fetch('/api/saved-jobs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          job_title: job.title,
+          company_name: job.company,
+          job_url: job.url || `#job-${job.id}`,
+          job_description: job.description,
+          location: job.location,
+          posted_date: job.postedDate,
+          source: 'Job Matching'
+        })
+      })
+      
+      if (response.ok) {
+        setSaved(true)
+        onSave(job.id)
+      }
+    } catch (error) {
+      console.error('Error saving job:', error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleApply = async () => {
+    // Track application automatically
+    try {
+      await fetch('/api/track-application', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          cv_id: 'default-cv',
+          job_title: job.title,
+          company_name: job.company,
+          job_board: 'Job Matching',
+          application_date: new Date().toISOString().split('T')[0],
+          status: 'applied',
+          ats_score_at_application: matchScore,
+          job_description: job.description,
+          notes: `Applied via job matching (${matchScore}% match)`
+        })
+      })
+    } catch (error) {
+      console.error('Error tracking application:', error)
+    }
+    
+    // Open job URL
+    if (job.url) {
+      window.open(job.url, '_blank')
+    }
+    onApply(job.id)
+  }
 
   // Generate company initials for logo
   const getCompanyInitials = (companyName: string) => {
@@ -196,7 +261,7 @@ export function ModernEnhancedJobCard({ jobMatch, onApply, onSave, isSaved = fal
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onApply(job.id)}
+              onClick={handleApply}
               className="text-xs"
             >
               Apply Now
@@ -205,10 +270,11 @@ export function ModernEnhancedJobCard({ jobMatch, onApply, onSave, isSaved = fal
             <Button
               variant="outline"
               size="icon"
-              onClick={() => onSave(job.id)}
-              className={isSaved ? "bg-blue-50 border-blue-300 text-blue-600" : ""}
+              onClick={handleSave}
+              disabled={saving || saved}
+              className={saved ? "bg-blue-50 border-blue-300 text-blue-600" : ""}
             >
-              {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+              {saved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
             </Button>
           </div>
         </div>

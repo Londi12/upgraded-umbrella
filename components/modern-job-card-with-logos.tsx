@@ -33,15 +33,15 @@ interface ModernJobCardProps {
 export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJobCardProps) {
   // Get company logo or fallback to initials
   const getCompanyLogo = (companyName: string) => {
-    console.log(`Looking for logo for company: "${companyName}"`);
+    console.log(`🔍 Looking for logo for company: "${companyName}"`);
 
     // Company logo mapping
     const companyLogos: { [key: string]: string } = {
-      'nedbank': 'Nedbank_logo_small.jpg',
+      'nedbank': '/Nedbank_logo_small.jpg',
       'standard bank': 'https://www.standardbank.com/static_file/StandardBankGroup/Standard-Bank-Group/images/logo.svg',
       'fnb': 'https://www.fnb.co.za/assets/images/fnb-logo.svg',
       'first national bank': 'https://www.fnb.co.za/assets/images/fnb-logo.svg',
-      'absa': 'Absa_Logo.png',
+      'absa': '/Absa_Logo.png',
       'capitec': 'https://www.capitecbank.co.za/assets/images/capitec-logo.svg',
       'investec': 'https://www.investec.com/content/dam/investec/investec-logo.svg',
       'santam': 'https://www.santam.co.za/content/dam/santam/santam-logo.svg',
@@ -58,26 +58,34 @@ export function ModernJobCard({ job, onApply, onView, className = "" }: ModernJo
       'citibank': 'https://www.citibank.com/content/dam/citibank/logo.svg',
       'hsbc': 'https://www.hsbc.com/content/dam/hsbc/logo.svg',
       'deutsche bank': 'https://www.db.com/content/dam/db/logo.svg',
-      'mr price': 'mrp.jpg',
-      'mrp': 'mrp.jpg',
-      'vector logistics': 'vector-logistics-logo.png',
-      'vector': 'vector-logistics-logo.png'
+      'mr price': '/mrp.jpg',
+      'mrp': '/mrp.jpg',
+      'vector logistics': '/vector-logistics-logo.png',
+      'vector': '/vector-logistics-logo.png',
+      'bp': '/bp-logo.png',
+      'british petroleum': '/bp-logo.png'
     };
 
     // Check for exact matches first
-    const lowerCompanyName = companyName.toLowerCase();
+    const lowerCompanyName = companyName.toLowerCase().trim();
+    console.log(`🔍 Checking exact match for: "${lowerCompanyName}"`);
+    
     if (companyLogos[lowerCompanyName]) {
+      console.log(`✅ Found exact match: ${companyLogos[lowerCompanyName]}`);
       return companyLogos[lowerCompanyName];
     }
 
     // Check for partial matches
+    console.log(`🔍 Checking partial matches for: "${lowerCompanyName}"`);
     for (const [companyKey, logoUrl] of Object.entries(companyLogos)) {
       if (lowerCompanyName.includes(companyKey) || companyKey.includes(lowerCompanyName)) {
+        console.log(`✅ Found partial match: "${companyKey}" -> ${logoUrl}`);
         return logoUrl;
       }
     }
 
-    console.log(`No logo found for company: "${companyName}", using initials fallback`);
+    console.log(`❌ No logo found for company: "${companyName}", using initials fallback`);
+    console.log(`Available logo keys:`, Object.keys(companyLogos));
     return null; // No logo found, will use initials
   };
 

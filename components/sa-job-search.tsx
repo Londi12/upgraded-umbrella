@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Save, ArrowLeft, Send } from "lucide-react";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Search, Save, ArrowLeft, Send, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
@@ -12,6 +13,7 @@ import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
 import { ATSScoringPanel } from "@/components/cv-ats-scoring";
 import { formatJobCardDate } from "@/lib/date-formatter";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
+import { supabase } from "@/lib/supabase";
 
 interface SAJobResult {
   title: string;
@@ -53,6 +55,7 @@ export default function SAJobSearch() {
   const [selectedJob, setSelectedJob] = useState<SAJobResult | null>(null);
   const [savedCVs, setSavedCVs] = useState<any[]>([]);
   const [selectedCVId, setSelectedCVId] = useState<string>("");
+  const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   const { user } = useAuth();
   const applicationTracker = new ApplicationTracker();
@@ -175,12 +178,12 @@ export default function SAJobSearch() {
   const getCompanyLogo = (companyName: string) => {
     // Company logo mapping - using local assets for better performance
     const companyLogos: { [key: string]: string } = {
-      nedbank: "Nedbank_logo_small.jpg",
+      nedbank: "/Nedbank_logo_small.jpg",
       "standard bank":
         "https://www.standardbank.com/static_file/StandardBankGroup/Standard-Bank-Group/images/logo.svg",
       fnb: "https://www.fnb.co.za/assets/images/fnb-logo.svg",
       "first national bank": "https://www.fnb.co.za/assets/images/fnb-logo.svg",
-      absa: "Absa_Logo.png",
+      absa: "/Absa_Logo.png",
       capitec: "https://www.capitecbank.co.za/assets/images/capitec-logo.svg",
       investec: "https://www.investec.com/content/dam/investec/investec-logo.svg",
       santam: "https://www.santam.co.za/content/dam/santam/santam-logo.svg",
@@ -197,6 +200,12 @@ export default function SAJobSearch() {
       citibank: "https://www.citibank.com/content/dam/citibank/logo.svg",
       hsbc: "https://www.hsbc.com/content/dam/hsbc/logo.svg",
       "deutsche bank": "https://www.db.com/content/dam/db/logo.svg",
+      "mr price": "/mrp.jpg",
+      "mrp": "/mrp.jpg",
+      "vector logistics": "/vector-logistics-logo.png",
+      "vector": "/vector-logistics-logo.png",
+      "bp": "/bp-logo.png",
+      "british petroleum": "/bp-logo.png"
     };
 
     // Check for exact matches first
@@ -243,11 +252,16 @@ export default function SAJobSearch() {
 
   const selectJob = (job: SAJobResult) => {
     setSelectedJob(job);
+    // Open mobile sheet on mobile devices
+    if (window.innerWidth < 1024) {
+      setIsMobileSheetOpen(true);
+    }
   };
 
   const clearSelectedJob = () => {
     setSelectedJob(null);
     setSelectedCVId("");
+    setIsMobileSheetOpen(false);
   };
 
   
@@ -482,8 +496,8 @@ export default function SAJobSearch() {
         </Card>
       )}
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Two Column Layout - Desktop */}
+      <div className="hidden lg:grid lg:grid-cols-2 gap-6">
         {/* Job List Column */}
         <div className="space-y-4">
           {searchResponse && (
@@ -742,11 +756,38 @@ export default function SAJobSearch() {
 
                   {/* Primary Action - Apply */}
                   <div className="pt-2">
-                    <Button asChild className="w-full" size="lg">
-                      <a href={selectedJob.url} target="_blank" rel="noopener noreferrer">
-                        <Send className="w-4 h-4 mr-2" />
-                        Apply Now
-                      </a>
+                    <Button 
+                      className="w-full" 
+                      size="lg"
+                      onClick={async () => {
+                        // Track application
+                        try {
+                          console.log('Tracking application for:', selectedJob.title)
+                          await fetch('/api/track-application', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              cv_id: selectedCVId || 'default-cv',
+                              job_title: selectedJob.title,
+                              company_name: selectedJob.company || selectedJob.source,
+                              job_board: 'SA Job Search',
+                              application_date: new Date().toISOString().split('T')[0],
+                              status: 'applied',
+                              ats_score_at_application: 0,
+                              job_description: selectedJob.description || selectedJob.snippet,
+                              notes: `Applied via SA Job Search: ${selectedJob.url}`
+                            })
+                          })
+                          console.log('Application tracked successfully')
+                        } catch (error) {
+                          console.error('Error tracking application:', error)
+                        }
+                        // Open job URL
+                        window.open(selectedJob.url, '_blank')
+                      }}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Apply Now
                     </Button>
                   </div>
                 </div>
@@ -835,6 +876,281 @@ export default function SAJobSearch() {
           )}
         </div>
       </div>
+
+      {/* Mobile Layout - Single Column with Sheet */}
+      <div className="lg:hidden">
+        <div className="space-y-4">
+          {searchResponse && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Search Results</CardTitle>
+                <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
+                  <span>Found {searchResponse.total} jobs</span>
+                  <span>•</span>
+                  <span>Showing {filteredResults.length} after filters</span>
+                  {searchResponse.message && (
+                    <>
+                      <span>•</span>
+                      <span>{searchResponse.message}</span>
+                    </>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {filteredResults.map((job, idx) => {
+                    const companyLogo = getCompanyLogo(job.company || job.source);
+                    const isSelected = selectedJob?.url === job.url;
+
+                    return (
+                      <Card
+                        key={idx}
+                        className={`border cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                          isSelected
+                            ? "border-blue-500 bg-blue-50"
+                            : "border-gray-200 hover:border-blue-300"
+                        }`}
+                        onClick={() => selectJob(job)}
+                      >
+                        <CardContent className="p-4">
+                          <div className="flex gap-3 mb-3">
+                            {companyLogo ? (
+                              <img
+                                src={companyLogo}
+                                alt={`${job.company || job.source} logo`}
+                                className="w-12 h-12 rounded-lg object-contain flex-shrink-0 bg-white p-1"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = "none";
+                                  const fallback = target.nextElementSibling as HTMLElement;
+                                  if (fallback) fallback.style.display = "flex";
+                                }}
+                              />
+                            ) : null}
+                            <div
+                              className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getLogoColor(
+                                job.company || job.source
+                              )} flex items-center justify-center text-white font-bold text-sm flex-shrink-0`}
+                              style={{ display: companyLogo ? "none" : "flex" }}
+                            >
+                              {getCompanyInitials(job.company || job.source)}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-bold text-gray-900 leading-tight mb-1 text-base">
+                                {job.title}
+                              </h3>
+                              <div className="text-sm text-gray-600 mb-2">
+                                {job.company || job.source}
+                              </div>
+                              <div className="flex items-center gap-3 text-xs text-gray-500">
+                                <span>📍 {job.location || "South Africa"}</span>
+                                <span>🕒 {formatJobCardDate(job.posted_date)}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-700 line-clamp-2">
+                            {job.snippet.substring(0, 120)}...
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {filteredResults.length === 0 && searchResponse && (
+            <Card>
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                <p>No jobs found matching your criteria.</p>
+                <p className="text-sm mt-1">Try different keywords or check back later.</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      </div>
+
+      {/* Mobile Job Details Sheet */}
+      <Sheet open={isMobileSheetOpen} onOpenChange={setIsMobileSheetOpen}>
+        <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
+          {selectedJob && (
+            <>
+              <SheetHeader>
+                <div className="flex items-center justify-between">
+                  <SheetTitle className="text-lg">Job Details</SheetTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileSheetOpen(false)}
+                    className="p-1 h-8 w-8"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </SheetHeader>
+              
+              <div className="space-y-4 mt-6">
+                <div className="flex items-start gap-3">
+                  {(() => {
+                    const companyLogo = getCompanyLogo(selectedJob.company || selectedJob.source || "");
+                    return companyLogo ? (
+                      <img
+                        src={companyLogo}
+                        alt={`${selectedJob.company || selectedJob.source} logo`}
+                        className="w-16 h-16 rounded-xl object-contain flex-shrink-0 bg-white p-1"
+                      />
+                    ) : (
+                      <div
+                        className={`w-16 h-16 rounded-xl bg-gradient-to-br ${getLogoColor(
+                          selectedJob.company || selectedJob.source || ""
+                        )} flex items-center justify-center text-white font-bold text-lg flex-shrink-0`}
+                      >
+                        {getCompanyInitials(selectedJob.company || selectedJob.source || "")}
+                      </div>
+                    );
+                  })()}
+                  <div className="flex-1">
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">
+                      {selectedJob.title}
+                    </h2>
+                    <p className="text-lg text-gray-600 mb-4">
+                      {selectedJob.company || selectedJob.source}
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-4">
+                      <div className="flex items-center gap-1">
+                        📍 {selectedJob.location || "South Africa"}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        🕒 {formatJobCardDate(selectedJob.posted_date)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <MarkdownRenderer
+                      content={selectedJob.description || selectedJob.snippet || "No description available."}
+                      className="text-gray-700"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-3 pt-4 border-t">
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <Button
+                      onClick={handleSave}
+                      disabled={!user}
+                      variant="outline"
+                      size="sm"
+                      className="flex-none"
+                    >
+                      <Save className="w-4 h-4 mr-1" /> Save
+                    </Button>
+
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                        CV:
+                      </label>
+                      <select
+                        value={selectedCVId}
+                        onChange={(e) => setSelectedCVId(e.target.value)}
+                        className="flex-1 min-w-0 border rounded-md px-2 py-1 text-sm"
+                      >
+                        <option value="">
+                          {user ? (savedCVs.length ? "Select CV" : "Create CV") : "Sign in"}
+                        </option>
+                        {user && savedCVs.length > 0 && savedCVs.map((cv) => (
+                          <option key={cv.id} value={cv.id}>
+                            {cv.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <Button
+                      onClick={handleAIJobMatchReview}
+                      disabled={!user || !selectedCVId || aiMatching}
+                      variant="outline"
+                      size="sm"
+                      className="flex-none"
+                    >
+                      {aiMatching ? "Matching..." : "AI Match"}
+                    </Button>
+                  </div>
+
+                  <div className="pt-2">
+                    <Button 
+                      className="w-full" 
+                      size="lg"
+                      onClick={async () => {
+                        // Track application
+                        try {
+                          console.log('Tracking application for:', selectedJob.title)
+                          await fetch('/api/track-application', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              cv_id: selectedCVId || 'default-cv',
+                              job_title: selectedJob.title,
+                              company_name: selectedJob.company || selectedJob.source,
+                              job_board: 'SA Job Search',
+                              application_date: new Date().toISOString().split('T')[0],
+                              status: 'applied',
+                              ats_score_at_application: 0,
+                              job_description: selectedJob.description || selectedJob.snippet,
+                              notes: `Applied via SA Job Search: ${selectedJob.url}`
+                            })
+                          })
+                          console.log('Application tracked successfully')
+                        } catch (error) {
+                          console.error('Error tracking application:', error)
+                        }
+                        // Open job URL
+                        window.open(selectedJob.url, '_blank')
+                      }}
+                    >
+                      <Send className="w-4 h-4 mr-2" />
+                      Apply Now
+                    </Button>
+                  </div>
+                </div>
+
+                {aiMatchResults.length > 0 && (
+                  <div className="mt-6">
+                    <h3 className="font-semibold text-gray-900 mb-3">AI Match Results</h3>
+                    <div className="space-y-3">
+                      {aiMatchResults.slice(0, 3).map((match, index) => (
+                        <Card key={match.jobId} className="border-green-200 bg-green-50">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge className="bg-green-100 text-green-800 text-xs">
+                                {match.matchScore}% Match
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-gray-700">
+                              {match.reasoning}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {aiMatchError && (
+                  <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700">{aiMatchError}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

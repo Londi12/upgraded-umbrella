@@ -5,7 +5,7 @@ import type { CVData } from "@/types/cv-types"
 export interface ApplicationTracking {
   id?: string
   user_id?: string
-  cv_id: string
+  cv_id?: string | null
   job_title: string
   company_name: string
   job_board: string
@@ -16,6 +16,19 @@ export interface ApplicationTracking {
   notes?: string
   created_at?: string
   updated_at?: string
+}
+
+export interface SavedJob {
+  id?: string
+  user_id?: string
+  job_title: string
+  company_name?: string
+  job_url: string
+  job_description?: string
+  location?: string
+  posted_date?: string
+  source?: string
+  created_at?: string
 }
 
 export interface CVPerformanceMetrics {
@@ -48,11 +61,27 @@ export const trackApplication = async (applicationData: Omit<ApplicationTracking
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { data: null, error: { message: "Not authenticated" } }
 
+  // Validate that cv_id exists if provided
+  if (applicationData.cv_id) {
+    const { data: cvExists } = await supabase
+      .from("saved_cvs")
+      .select("id")
+      .eq("id", applicationData.cv_id)
+      .eq("user_id", user.id)
+      .single()
+    
+    if (!cvExists) {
+      return { data: null, error: { message: "Selected CV not found" } }
+    }
+  }
+
   const { data, error } = await supabase
     .from("application_tracking")
     .insert({
       user_id: user.id,
       ...applicationData,
+      // Ensure cv_id is null if empty string
+      cv_id: applicationData.cv_id || null,
     })
     .select()
     .single()
@@ -88,14 +117,7 @@ export const getUserApplications = async () => {
 
   const { data, error } = await supabase
     .from("application_tracking")
-    .select(`
-      *,
-      saved_cvs (
-        name,
-        template_type,
-        template_name
-      )
-    `)
+    .select("*")
     .order("application_date", { ascending: false })
 
   return { data: data || [], error }
@@ -269,6 +291,57 @@ export const saveATSScore = async (cvId: string, overallScore: number, sectionSc
       suggestions: suggestions,
       job_description_used: jobDescription
     })
+
+  return { data, error }
+}
+
+// Save a job for later
+export const saveJob = async (jobData: Omit<SavedJob, "id" | "user_id" | "created_at">) => {
+  if (!hasValidCredentials) {
+    return { data: null, error: null }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { data: null, error: { message: "Not authenticated" } }
+
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .upsert({
+      user_id: user.id,
+      ...jobData,
+    })
+    .select()
+    .single()
+
+  return { data, error }
+}
+
+// Get user's saved jobs
+export const getUserSavedJobs = async () => {
+  if (!hasValidCredentials) {
+    return { data: [], error: null }
+  }
+
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .select("*")
+    .order("created_at", { ascending: false })
+
+  return { data: data || [], error }
+}
+
+// Remove a saved job
+export const removeSavedJob = async (jobId: string) => {
+  if (!hasValidCredentials) {
+    return { data: null, error: null }
+  }
+
+  const { data, error } = await supabase
+    .from("saved_jobs")
+    .delete()
+    .eq("id", jobId)
+    .select()
+    .single()
 
   return { data, error }
 }

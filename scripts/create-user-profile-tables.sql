@@ -106,7 +106,7 @@ CREATE TRIGGER update_saved_cover_letters_updated_at BEFORE UPDATE ON saved_cove
 CREATE TABLE IF NOT EXISTS application_tracking (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
-  cv_id UUID REFERENCES saved_cvs(id) ON DELETE CASCADE,
+  cv_id UUID REFERENCES saved_cvs(id) ON DELETE SET NULL,
   job_title VARCHAR(255) NOT NULL,
   company_name VARCHAR(255) NOT NULL,
   job_board VARCHAR(100) NOT NULL,

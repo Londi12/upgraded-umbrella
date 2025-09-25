@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Plus, Edit, Trash2, ExternalLink } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -13,7 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { 
   trackApplication, 
   updateApplicationStatus,
-  type ApplicationTracking 
+  getUserSavedJobs,
+  removeSavedJob,
+  type ApplicationTracking,
+  type SavedJob 
 } from '@/lib/analytics-service'
 
 interface ApplicationTrackerProps {
@@ -29,10 +32,14 @@ export function ApplicationTracker({
   onApplicationAdded, 
   onApplicationUpdated 
 }: ApplicationTrackerProps) {
+  console.log('ApplicationTracker rendered with:', { applications: applications.length, savedCVs: savedCVs.length })
+  console.log('Saved CVs structure:', savedCVs)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingApplication, setEditingApplication] = useState<ApplicationTracking | null>(null)
+  const [savedJobs, setSavedJobs] = useState<SavedJob[]>([])
+  const [activeTab, setActiveTab] = useState<'applications' | 'saved'>('applications')
   const [formData, setFormData] = useState({
-    cv_id: '',
+    cv_id: '' as string | null,
     job_title: '',
     company_name: '',
     job_board: '',
@@ -43,9 +50,23 @@ export function ApplicationTracker({
     notes: ''
   })
 
+  // Load saved jobs
+  React.useEffect(() => {
+    const loadSavedJobs = async () => {
+      console.log('Loading saved jobs...')
+      const { data, error } = await getUserSavedJobs()
+      console.log('Saved jobs response:', { data, error })
+      if (data && !error) {
+        console.log('Setting saved jobs:', data.length, 'items')
+        setSavedJobs(data)
+      }
+    }
+    loadSavedJobs()
+  }, [])
+
   const resetForm = () => {
     setFormData({
-      cv_id: '',
+      cv_id: null,
       job_title: '',
       company_name: '',
       job_board: '',
@@ -77,6 +98,30 @@ export function ApplicationTracker({
     }
   }
 
+  const handleApplyToSavedJob = (savedJob: SavedJob) => {
+    setFormData({
+      cv_id: null,
+      job_title: savedJob.job_title,
+      company_name: savedJob.company_name || '',
+      job_board: savedJob.source || 'Other',
+      application_date: new Date().toISOString().split('T')[0],
+      status: 'applied',
+      ats_score_at_application: 0,
+      job_description: savedJob.job_description || '',
+      notes: `Applied from saved job: ${savedJob.job_url}`
+    })
+    setIsAddDialogOpen(true)
+  }
+
+  const handleRemoveSavedJob = async (jobId: string) => {
+    try {
+      await removeSavedJob(jobId)
+      setSavedJobs(prev => prev.filter(job => job.id !== jobId))
+    } catch (error) {
+      console.error('Error removing saved job:', error)
+    }
+  }
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'hired': return 'bg-green-100 text-green-800'
@@ -96,7 +141,31 @@ export function ApplicationTracker({
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Application Tracker</h2>
+        <div className="flex items-center gap-4">
+          <h2 className="text-xl font-semibold">Application Tracker</h2>
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setActiveTab('applications')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'applications'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Applications ({applications.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('saved')}
+              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                activeTab === 'saved'
+                  ? 'bg-white text-blue-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Saved Jobs ({savedJobs.length})
+            </button>
+          </div>
+        </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
@@ -112,18 +181,27 @@ export function ApplicationTracker({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="cv_id">CV Used</Label>
-                  <Select value={formData.cv_id || undefined} onValueChange={(value) => setFormData(prev => ({ ...prev, cv_id: value }))}>
+                  <Select value={formData.cv_id || undefined} onValueChange={(value) => setFormData(prev => ({ ...prev, cv_id: value === 'none' ? null : value }))}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select CV" />
+                      <SelectValue placeholder="Select CV (optional)" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">
+                        No specific CV
+                      </SelectItem>
                       {savedCVs.map(cv => (
                         <SelectItem key={cv.id} value={cv.id}>
-                          {cv.name}
+                          {cv.name || `${cv.cv_data?.personalInfo?.fullName || 'Unnamed'} - ${cv.template_name || 'CV'}`}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {savedCVs.length === 0 
+                      ? <>No saved CVs found. <a href="/create" className="text-blue-600 hover:underline">Create your first CV</a></>
+                      : "Link this application to a specific CV for better analytics (optional)"
+                    }
+                  </p>
                 </div>
                 <div>
                   <Label htmlFor="job_board">Job Board</Label>
@@ -220,7 +298,7 @@ export function ApplicationTracker({
         </Dialog>
       </div>
 
-      {applications.length === 0 ? (
+      {activeTab === 'applications' && applications.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
             <div className="text-gray-400 mb-4">
@@ -235,7 +313,7 @@ export function ApplicationTracker({
             </Button>
           </CardContent>
         </Card>
-      ) : (
+      ) : activeTab === 'applications' ? (
         <div className="space-y-4">
           {applications.map((app) => (
             <Card key={app.id}>
@@ -280,6 +358,83 @@ export function ApplicationTracker({
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : savedJobs.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="text-gray-400 mb-4">
+              <ExternalLink className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No saved jobs yet</h3>
+            <p className="text-gray-600 mb-4">
+              Save jobs while browsing to apply to them later from here.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {savedJobs.map((job) => (
+            <Card key={job.id}>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.job_title}</h3>
+                    <div className="flex items-center gap-4 text-sm text-gray-600 mb-2">
+                      {job.company_name && (
+                        <>
+                          <span>{job.company_name}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      {job.location && (
+                        <>
+                          <span>{job.location}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      {job.source && (
+                        <>
+                          <span>{job.source}</span>
+                          <span>•</span>
+                        </>
+                      )}
+                      <span>Saved {new Date(job.created_at!).toLocaleDateString()}</span>
+                    </div>
+                    {job.job_description && (
+                      <p className="text-sm text-gray-700 mb-3 line-clamp-2">
+                        {job.job_description.substring(0, 200)}...
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => window.open(job.job_url, '_blank')}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View Job
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleApplyToSavedJob(job)}
+                      className="bg-blue-600 hover:bg-blue-700"
+                    >
+                      Apply Now
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemoveSavedJob(job.id!)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardContent>

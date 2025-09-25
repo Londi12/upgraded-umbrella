@@ -15,23 +15,35 @@ export default function ApplicationTrackerPage() {
   const { user, isConfigured } = useAuth()
   const [applications, setApplications] = useState<ApplicationTracking[]>([])
   const [savedCVs, setSavedCVs] = useState<Array<{id: string, cv_data: CVData}>>([])
+  const [refreshKey, setRefreshKey] = useState(0)
 
   useEffect(() => {
     if (isConfigured && user) {
+      console.log('Loading applications for user:', user.id)
       getUserApplications().then(({data, error}) => {
+        console.log('Applications response:', { data, error })
         if (error) {
           console.error('Error loading applications:', error)
           return
         }
-        if (data) setApplications(data)
+        if (data) {
+          console.log('Setting applications:', data.length, 'items')
+          setApplications(data)
+        }
       })
       
       getSavedCVs().then(({data, error}) => {
+        console.log('CVs response:', { data, error })
         if (error) {
           console.error('Error loading saved CVs:', error)
           return
         }
-        if (data) setSavedCVs(data)
+        if (data) {
+          console.log('Setting saved CVs:', data)
+          setSavedCVs(data)
+        } else {
+          console.log('No CV data returned')
+        }
       })
     }
   }, [isConfigured, user])
@@ -48,12 +60,14 @@ export default function ApplicationTrackerPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <ApplicationTracker 
+          key={refreshKey}
           applications={applications} 
           savedCVs={savedCVs}
           onApplicationAdded={() => {
             getUserApplications().then(({data}) => {
               if (data) setApplications(data)
             })
+            setRefreshKey(prev => prev + 1)
           }}
           onApplicationUpdated={() => {
             getUserApplications().then(({data}) => {

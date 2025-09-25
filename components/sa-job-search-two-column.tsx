@@ -17,6 +17,8 @@ import { Search, Save } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs } from "@/lib/user-data-service";
+import { saveJob } from "@/lib/analytics-service";
+import { useToast } from "@/hooks/use-toast";
 
 interface SAJobResult {
   title: string;
@@ -61,6 +63,7 @@ export default function SAJobSearchWithPanel() {
   const [selectedCVId, setSelectedCVId] = useState<string>("");
 
   const { user } = useAuth();
+  const { toast } = useToast();
   const applicationTracker = new ApplicationTracker();
 
   useEffect(() => {
@@ -275,10 +278,50 @@ export default function SAJobSearchWithPanel() {
     }
   };
 
-  const handleSave = () => {
-    if (!user || !selectedJob) return;
-    // Implement save job logic here, e.g., save to user profile or localStorage
-    alert("Job saved for later.");
+  const handleSave = async () => {
+    if (!user || !selectedJob) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to save jobs.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { data, error } = await saveJob({
+        job_title: selectedJob.title,
+        company_name: selectedJob.company || selectedJob.source,
+        job_url: selectedJob.url,
+        job_description: selectedJob.description || selectedJob.snippet,
+        location: selectedJob.location,
+        posted_date: selectedJob.posted_date,
+        source: selectedJob.source,
+      });
+
+      if (error) {
+        console.error("Save job error:", error);
+        toast({
+          title: "Save Failed",
+          description: error.message || "Failed to save job. Please try again.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "✅ Job Saved Successfully!",
+          description: `"${selectedJob.title}" has been added to your saved jobs.`,
+          variant: "success",
+        });
+        closeJobSheet();
+      }
+    } catch (error: any) {
+      console.error("Save job exception:", error);
+      toast({
+        title: "Unexpected Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleAIJobMatchReview = () => {
