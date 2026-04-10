@@ -18,19 +18,6 @@ export interface ApplicationTracking {
   updated_at?: string
 }
 
-export interface SavedJob {
-  id?: string
-  user_id?: string
-  job_title: string
-  company_name?: string
-  job_url: string
-  job_description?: string
-  location?: string
-  posted_date?: string
-  source?: string
-  created_at?: string
-}
-
 export interface CVPerformanceMetrics {
   cv_id: string
   total_applications: number
@@ -295,53 +282,5 @@ export const saveATSScore = async (cvId: string, overallScore: number, sectionSc
   return { data, error }
 }
 
-// Save a job for later
-export const saveJob = async (jobData: Omit<SavedJob, "id" | "user_id" | "created_at">) => {
-  if (!hasValidCredentials) {
-    return { data: null, error: null }
-  }
-
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { data: null, error: { message: "Not authenticated" } }
-
-  const { data, error } = await supabase
-    .from("saved_jobs")
-    .upsert({
-      user_id: user.id,
-      ...jobData,
-    })
-    .select()
-    .single()
-
-  return { data, error }
-}
-
-// Get user's saved jobs
-export const getUserSavedJobs = async () => {
-  if (!hasValidCredentials) {
-    return { data: [], error: null }
-  }
-
-  const { data, error } = await supabase
-    .from("saved_jobs")
-    .select("*")
-    .order("created_at", { ascending: false })
-
-  return { data: data || [], error }
-}
-
-// Remove a saved job
-export const removeSavedJob = async (jobId: string) => {
-  if (!hasValidCredentials) {
-    return { data: null, error: null }
-  }
-
-  const { data, error } = await supabase
-    .from("saved_jobs")
-    .delete()
-    .eq("id", jobId)
-    .select()
-    .single()
-
-  return { data, error }
-}
+// Re-export saved job functions from user-data-service to avoid duplication
+export { saveJob, getSavedJobs as getUserSavedJobs, deleteSavedJob as removeSavedJob } from './user-data-service'

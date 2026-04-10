@@ -90,7 +90,6 @@ export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
  */
 export async function extractTextFromPDF(buffer: Buffer): Promise<{text: string, layout: any[]}> {
   try {
-    console.log('Starting enhanced PDF extraction for SA CVs...');
 
     // Convert Buffer to Uint8Array as required by PDF.js
     const uint8Array = new Uint8Array(buffer);
@@ -319,22 +318,16 @@ export function parseTextToCV(textOrLayout: string | {text: string, layout: any[
   const text = typeof textOrLayout === 'string' ? textOrLayout : textOrLayout.text;
   const layout = typeof textOrLayout === 'string' ? [] : textOrLayout.layout;
   try {
-    console.log('Starting CV parsing with text:', text.substring(0, 200) + '...'); // Debug log
 
     const personalInfo = extractPersonalInfo(text);
-    console.log('Extracted personal info:', personalInfo); // Debug log
 
     const summary = extractSummary(text);
-    console.log('Extracted summary:', summary.substring(0, 100) + '...'); // Debug log
 
     const experience = extractExperience(text, layout);
-    console.log('Extracted experience:', experience); // Debug log
 
     const education = extractEducation(text, layout);
-    console.log('Extracted education:', education); // Debug log
 
     const skills = extractSkills(text);
-    console.log('Extracted skills:', skills); // Debug log
 
     const cvData: CVData = {
       personalInfo,
@@ -346,8 +339,6 @@ export function parseTextToCV(textOrLayout: string | {text: string, layout: any[
     };
 
     const confidence = calculateConfidence(cvData, isOwnTemplate);
-    console.log('Final CV data:', cvData); // Debug log
-    console.log('Confidence score:', confidence); // Debug log
 
     return {
       success: true,
@@ -377,7 +368,6 @@ function extractPersonalInfo(text: string): PersonalInfo {
   const lines = cleanText.split('\n').filter(line => line.trim());
   const firstLine = lines[0] || '';
 
-  console.log('First line for name extraction:', firstLine); // Debug log
 
   // Try multiple patterns for name extraction
   let fullName = '';
@@ -411,7 +401,6 @@ function extractPersonalInfo(text: string): PersonalInfo {
     }
   }
 
-  console.log('Extracted name:', fullName); // Debug log
 
   // Look for professional summary or job title
   let jobTitle = '';
@@ -521,7 +510,6 @@ function extractPersonalInfo(text: string): PersonalInfo {
     }
   }
 
-  console.log('Extracted personal info:', { fullName, jobTitle, email, phone, location }); // Debug log
 
   return {
     fullName,
@@ -559,7 +547,6 @@ function extractSummary(text: string): string {
         .replace(/^\s*[-•*]\s*/gm, '') // Remove bullet points
         .replace(/\n+/g, ' '); // Join multiple lines
 
-      console.log('Summary found with pattern:', summary.substring(0, 100) + '...'); // Debug log
       return summary;
     }
   }
@@ -575,7 +562,6 @@ function extractSummary(text: string): string {
     // Look for a substantial paragraph that's likely to be a summary
     if (line.length > 50 && !line.includes('|') && !line.includes('@') && !line.match(/^\d/) && 
         !line.match(/^(education|experience|skills|work|employment)/i)) {
-      console.log('Summary found in first lines:', line.substring(0, 100) + '...'); // Debug log
       return line;
     }
   }
@@ -584,7 +570,6 @@ function extractSummary(text: string): string {
   const firstThird = lines.slice(0, Math.floor(lines.length / 3));
   for (const line of firstThird) {
     if (line.length > 80) { // Reduced from 100 to catch more potential summaries
-      console.log('Summary found in first third:', line.substring(0, 100) + '...'); // Debug log
       return line;
     }
   }
@@ -594,13 +579,11 @@ function extractSummary(text: string): string {
     if (lines[i].trim().length > 30 && lines[i+1] && lines[i+1].trim().length > 30) {
       const combinedLines = lines.slice(i, i+3).join(' ').trim();
       if (combinedLines.length > 60) {
-        console.log('Summary found from consecutive lines:', combinedLines.substring(0, 100) + '...'); // Debug log
         return combinedLines;
       }
     }
   }
 
-  console.log('No summary found'); // Debug log
   return '';
 }
 
@@ -631,11 +614,9 @@ function extractExperience(text: string): Experience[] {
   }
 
   if (!experienceText) {
-    console.log('No experience section found');
     return [];
   }
 
-  console.log('Experience section score:', maxScore, 'Text preview:', experienceText.substring(0, 200));
 
   // State machine: HEADER → JOB TITLE → COMPANY → DATES → DESCRIPTION
   const lines = experienceText.split('\n').map(l => l.trim()).filter(l => l);
@@ -693,7 +674,6 @@ function extractExperience(text: string): Experience[] {
     experiences.push(currentJob as Experience);
   }
 
-  console.log(`Parsed ${experiences.length} experience entries`);
   return experiences;
 }
 
@@ -774,7 +754,6 @@ function extractEducation(text: string, layout: any[] = []): Education[] {
     const match = text.match(pattern);
     if (match && match[1] && match[1].trim()) {
       educationText = match[1].trim();
-      console.log('Education section found:', educationText.substring(0, 200) + '...'); // Debug log
       break;
     }
   }
@@ -986,10 +965,8 @@ function extractEducation(text: string, layout: any[] = []): Education[] {
       }
     }
   } else {
-    console.log('No education section found'); // Debug log
   }
 
-  console.log('Extracted education:', education.length); // Debug log
   return education;
 }
 
@@ -1019,7 +996,6 @@ function extractSkills(text: string): Skill[] {
     const match = text.match(pattern);
     if (match && match[1] && match[1].trim()) {
       skillsText = match[1];
-      console.log('Skills section found:', skillsText.substring(0, 200) + '...'); // Debug log
       break;
     }
   }
@@ -1077,7 +1053,6 @@ function extractSkills(text: string): Skill[] {
       });
     }
 
-    console.log('Extracted skills from section:', skillsArray.length); // Debug log
 
     if (skillsArray.length > 0) {
       return skillsArray;
@@ -1155,7 +1130,6 @@ function extractSkills(text: string): Skill[] {
     });
   });
 
-  console.log('Extracted skills:', skillsArray.length); // Debug log
   return skillsArray;
 }
 
@@ -1205,7 +1179,6 @@ function calculateConfidence(cvData: CVData, isOwnTemplate: boolean): number {
   // Bonus for our own templates (they should have higher confidence)
   if (isOwnTemplate) {
     score += 20; // 20% bonus for our own templates
-    console.log('Own template detected - applying confidence bonus');
   }
 
   // Additional bonuses for completeness
