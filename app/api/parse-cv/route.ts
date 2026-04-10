@@ -46,13 +46,13 @@ export async function POST(req: Request) {
     
     // Multiple parsing attempts with fallbacks
     try {
-      // Attempt 1: Extract text and use simple parser
       rawText = await cvParser.extractTextFromFile(buffer, fileType);
       if (rawText && rawText.length > 10) {
-        result = parseSimpleCV(rawText);
+        const complexResult = await cvParser.parseCV(buffer);
+        if (complexResult.success) result = complexResult;
       }
     } catch (error) {
-      console.log('Simple parser failed, trying complex parser');
+      console.log('Parser failed, trying fallback');
     }
     
     if (!result.success) {
