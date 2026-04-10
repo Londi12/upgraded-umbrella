@@ -337,12 +337,9 @@ export default function CreateCVPage() {
       if (savedCV?.id) {
         await trackCVInteraction(savedCV.id, 'view')
       }
-
-      // Also save the profile data for future use
       await handleSaveProfile()
-      // Show success message
-      setSuccess("CV saved successfully!");
-      setTimeout(() => setSuccess(null), 3000); // Clear after 3 seconds
+      setSuccess("CV saved successfully!")
+      setTimeout(() => router.push("/profile/cvs"), 1000)
     }
     setIsSaving(false)
   }
@@ -492,10 +489,6 @@ export default function CreateCVPage() {
                 <div className="text-sm text-blue-200 mr-3 hidden md:block">
                   <span className="text-white font-medium">{user.email}</span>
                 </div>
-                <Button variant="outline" size="sm" onClick={handleSaveProfile} disabled={isSaving || isLoadingProfile} className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Profile"}
-                </Button>
                 <Button variant="outline" size="sm" onClick={handleSaveCV} disabled={isSaving || isLoadingProfile} className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save CV"}
