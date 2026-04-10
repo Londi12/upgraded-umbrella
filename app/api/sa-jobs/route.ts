@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
   try {
     let dbQuery = supabase
       .from('scraped_jobs')
-      .select('*, qualifications')
+      .select('*')
       .order('posted_date', { ascending: false })
       .limit(100)
 
