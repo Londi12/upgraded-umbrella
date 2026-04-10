@@ -8,11 +8,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, CheckCircle } from "lucide-react"
+import { AlertCircle, CheckCircle, Info } from "lucide-react"
 import { PageHeader } from "@/components/ui/page-header"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function PasswordPage() {
   const router = useRouter()
+  const { user } = useAuth()
+  const isGoogleUser = user?.app_metadata?.provider === 'google'
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -60,6 +63,14 @@ export default function PasswordPage() {
             <CardDescription>Choose a strong password for your account</CardDescription>
           </CardHeader>
           <CardContent>
+            {isGoogleUser && (
+              <Alert className="mb-4 border-amber-200 bg-amber-50">
+                <Info className="h-4 w-4 text-amber-600" />
+                <AlertDescription className="text-amber-800">
+                  You signed in with Google. Password changes are managed through your Google account and cannot be updated here.
+                </AlertDescription>
+              </Alert>
+            )}
             {success && (
               <Alert className="mb-4 border-green-200 bg-green-50">
                 <CheckCircle className="h-4 w-4 text-green-600" />
@@ -82,6 +93,7 @@ export default function PasswordPage() {
                   onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
                   placeholder="••••••••"
                   required
+                  disabled={isGoogleUser}
                 />
               </div>
               <div className="space-y-2">
@@ -93,10 +105,11 @@ export default function PasswordPage() {
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   placeholder="••••••••"
                   required
+                  disabled={isGoogleUser}
                 />
               </div>
               <div className="flex gap-3 pt-2">
-                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={loading}>
+                <Button type="submit" className="flex-1 bg-blue-600 hover:bg-blue-700" disabled={loading || isGoogleUser}>
                   {loading ? "Updating..." : "Update Password"}
                 </Button>
                 <Button type="button" variant="outline" onClick={() => router.push("/profile")}>
