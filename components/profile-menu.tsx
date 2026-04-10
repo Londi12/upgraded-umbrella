@@ -2,17 +2,11 @@
 
 import { 
   User, 
-  Settings, 
-  Bell, 
   HelpCircle, 
   LogOut,
   ChevronRight,
   Camera,
   Lock,
-  MapPin,
-  Briefcase,
-  FileText,
-  Eye,
   LayoutTemplate,
 } from "lucide-react"
 import { useState } from "react"
@@ -38,17 +32,7 @@ export function ProfileMenu() {
         { icon: User, label: "View & Edit Profile", href: "/profile" },
         { icon: Camera, label: "Upload Profile Picture", href: "/profile/photo" },
         { icon: Lock, label: "Change Password", href: "/profile/password" },
-        { icon: MapPin, label: "Job Preferences", href: "/profile/preferences" },
         { icon: LayoutTemplate, label: "My CVs", href: "/profile/cvs" },
-        { icon: FileText, label: "Notes & Follow-Ups", href: "/profile/notes" }
-      ]
-    },
-    {
-      title: "Settings",
-      items: [
-        { icon: Bell, label: "Notification Preferences", href: "/settings/notifications" },
-        { icon: Briefcase, label: "Job Alert Frequency", href: "/settings/alerts" },
-        { icon: Eye, label: "Resume Privacy Options", href: "/settings/privacy" }
       ]
     }
   ]

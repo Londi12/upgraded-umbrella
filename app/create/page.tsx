@@ -40,7 +40,7 @@ import { WorkingATSScore } from "@/components/working-ats-score"
 import { WorkingSaveButton } from "@/components/working-save-button"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { getUserProfile, createOrUpdateUserProfile, saveCV } from "@/lib/user-data-service"
+import { getUserProfile, createOrUpdateUserProfile, saveCV, getSavedCVs, updateCV } from "@/lib/user-data-service"
 import { useAuth } from "@/contexts/auth-context"
 import { trackCVInteraction } from '@/lib/analytics-service'
 import { parseCV } from "@/lib/cv-parser"
@@ -50,6 +50,7 @@ export default function CreateCVPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const templateId = searchParams.get("template") || "1"
+  const editId = searchParams.get("edit")
 
   // Map template IDs to template types
   const templateMap: Record<string, any> = {
@@ -110,28 +111,37 @@ export default function CreateCVPage() {
 
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [editingCVId, setEditingCVId] = useState<string | null>(editId)
   const { user, isConfigured } = useAuth()
 
-  // Load user profile on component mount
+  // Load user profile or existing CV on mount
   useEffect(() => {
-    const loadUserProfile = async () => {
+    const loadData = async () => {
       if (!isConfigured || !user) {
-        // Try to load from localStorage if no user is authenticated
-        const savedData = localStorage.getItem('cv-draft');
+        const savedData = localStorage.getItem('cv-draft')
         if (savedData) {
-          try {
-            const parsedData = JSON.parse(savedData);
-            setFormData(parsedData);
-          } catch (e) {
-            console.error('Error parsing saved CV data', e);
-          }
+          try { setFormData(JSON.parse(savedData)) } catch (e) {}
         }
-        return;
+        return
       }
 
       setIsLoadingProfile(true)
-      const { data: profile } = await getUserProfile()
 
+      // If editing an existing CV, load it from Supabase
+      if (editId) {
+        const { data: cvs } = await getSavedCVs()
+        const cv = cvs?.find((c: any) => c.id === editId)
+        if (cv) {
+          setFormData(cv.cv_data)
+          const tmpl = Object.values(templateMap).find(t => t.type === cv.template_type)
+          if (tmpl) setSelectedTemplate(tmpl)
+          setIsLoadingProfile(false)
+          return
+        }
+      }
+
+      // Otherwise load profile defaults
+      const { data: profile } = await getUserProfile()
       if (profile) {
         setFormData({
           personalInfo: profile.personal_info || formData.personalInfo,
@@ -143,8 +153,7 @@ export default function CreateCVPage() {
       }
       setIsLoadingProfile(false)
     }
-
-    loadUserProfile()
+    loadData()
   }, [user, isConfigured])
 
   // Auto-save to localStorage periodically
@@ -314,33 +323,37 @@ export default function CreateCVPage() {
 
   const handleSaveCV = async () => {
     if (!isConfigured || !user) {
-      // Redirect to login with a return path
-      router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`);
-      return;
+      router.push(`/login?redirect=create&message=Please sign in to save your CV&template=${templateId}`)
+      return
     }
 
     const cvName = `${formData.personalInfo.fullName || "My CV"} - ${selectedTemplate.name}`
-
     setIsSaving(true)
-    const { data: savedCV, error } = await saveCV({
-      name: cvName,
-      template_type: selectedTemplate.type,
-      template_name: selectedTemplate.name,
-      cv_data: formData as CVData,
-    })
 
-    if (error) {
-      console.error("Error saving CV:", error)
-      setError("Failed to save CV")
+    if (editingCVId) {
+      // Update existing CV in Supabase
+      const { error } = await updateCV(editingCVId, {
+        name: cvName,
+        template_type: selectedTemplate.type,
+        template_name: selectedTemplate.name,
+        cv_data: formData as CVData,
+      })
+      if (error) { setError("Failed to update CV"); setIsSaving(false); return }
     } else {
-      // Track CV creation for analytics
-      if (savedCV?.id) {
-        await trackCVInteraction(savedCV.id, 'view')
-      }
-      await handleSaveProfile()
-      setSuccess("CV saved successfully!")
-      setTimeout(() => router.push("/profile/cvs"), 1000)
+      // Create new CV
+      const { data: savedCV, error } = await saveCV({
+        name: cvName,
+        template_type: selectedTemplate.type,
+        template_name: selectedTemplate.name,
+        cv_data: formData as CVData,
+      })
+      if (error) { setError("Failed to save CV"); setIsSaving(false); return }
+      if (savedCV?.id) await trackCVInteraction(savedCV.id, 'view')
     }
+
+    await handleSaveProfile()
+    setSuccess("CV saved successfully!")
+    setTimeout(() => router.push("/profile/cvs"), 1000)
     setIsSaving(false)
   }
 
@@ -479,7 +492,7 @@ export default function CreateCVPage() {
                 CV Builder
               </h1>
               <p className="text-blue-200 text-sm font-medium">
-                Creating with <span className="text-cyan-300 font-semibold">{selectedTemplate.name}</span> template
+                {editingCVId ? 'Editing' : 'Creating'} with <span className="text-cyan-300 font-semibold">{selectedTemplate.name}</span> template
               </p>
             </div>
           </div>

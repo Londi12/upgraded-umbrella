@@ -1,9 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
-  return NextResponse.json({
-    message: 'Run this SQL in your Supabase SQL Editor to set up all required tables:',
-    sql: `-- Create user profiles table to store reusable information
+const sql = `-- Create user profiles table to store reusable information
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -105,5 +102,7 @@ CREATE POLICY "Users can update own saved jobs" ON saved_jobs
   FOR UPDATE USING (auth.uid() = user_id);
 CREATE POLICY "Users can delete own saved jobs" ON saved_jobs
   FOR DELETE USING (auth.uid() = user_id);`
-  })
+
+export async function GET() {
+  return NextResponse.json({ message: 'Run this SQL in your Supabase SQL Editor to set up all required tables:', sql })
 }
