@@ -52,9 +52,7 @@ export default function DonatePage() {
           </div>
         </div>
 
-        <p className="text-xs text-gray-400 mt-8">
-          Donations are voluntary and go directly towards server costs and development. Thank you 🙏
-        </p>
+
       </div>
     </div>
   )

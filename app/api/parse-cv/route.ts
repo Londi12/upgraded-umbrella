@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import * as cvParser from '../../../lib/cv-parser';
 import { CVFileType } from '../../../lib/cv-parser';
+import { classifyCV, extractRegistrations, detectSAFlags } from '../../../lib/profile-scorer';
 
 export async function POST(req: Request) {
   try {
@@ -101,11 +102,31 @@ export async function POST(req: Request) {
       }, { status: 500 });
     }
 
+    // Phase 5: Enrich parsed CV with profile classification, registrations, SA flags
+    if (result.success && result.data) {
+      try {
+        const registrations = extractRegistrations(result.data)
+        const saFlags = detectSAFlags(result.data)
+        const classification = classifyCV(result.data)
+
+        result.data.registrations = registrations
+        result.data.saFlags = saFlags
+        result.data.detectedJobFamily = classification.topMatch.profileId
+        result.data.familyConfidence = classification.topMatch.matchScore / 100
+      } catch {
+        // enrichment is best-effort — don't fail the parse if it errors
+      }
+    }
+
     return NextResponse.json({ 
       data: result.data, 
       confidence: result.confidence || 50,
       rawText: rawText,
-      parseMethod: result.success ? 'success' : 'partial'
+      parseMethod: result.success ? 'success' : 'partial',
+      classification: result.data?.detectedJobFamily ? {
+        family: result.data.detectedJobFamily,
+        confidence: result.data.familyConfidence
+      } : null
     });
   } catch (error) {
     console.error('Error parsing CV:', error);

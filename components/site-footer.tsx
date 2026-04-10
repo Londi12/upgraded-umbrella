@@ -32,7 +32,7 @@ export function SiteFooter() {
             <Heart className="h-6 w-6 text-pink-400 flex-shrink-0" />
             <div className="flex-1 text-center sm:text-left">
               <p className="text-white text-sm font-medium">CVKonnekt is free and always will be.</p>
-              <p className="text-blue-200 text-xs mt-0.5">If it helped you land an interview or build a better CV, a small donation keeps the lights on — and means the world to me. No amount is too small 🙏</p>
+
             </div>
             <Link
               href="/donate"
