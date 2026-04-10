@@ -129,11 +129,7 @@ export default function SAJobSearch() {
   useEffect(() => {
     const initCache = async () => {
       try {
-        const res = await fetch("/api/sa-jobs?q=jobs");
-        if (res.ok) {
-          const data = await res.json();
-          // Cache is automatically populated by the scraper
-        }
+        await fetch("/api/sa-jobs?q=jobs");
       } catch (error) {
         console.log("Cache initialization failed:", error);
       }
@@ -141,22 +137,28 @@ export default function SAJobSearch() {
     initCache();
   }, []);
 
-  const handleSearch = async () => {
+  const buildSearchUrl = (overrides: Record<string, string> = {}) => {
+    const params = new URLSearchParams()
+    params.set('q', overrides.q ?? (query || 'jobs'))
+    if (overrides.location ?? locationFilter) params.set('location', overrides.location ?? locationFilter)
+    if (overrides.jobType ?? jobType) params.set('jobType', overrides.jobType ?? jobType)
+    if (overrides.experience ?? experience) params.set('experience', overrides.experience ?? experience)
+    if (overrides.datePosted ?? datePosted) params.set('datePosted', overrides.datePosted ?? datePosted)
+    params.set('sortBy', overrides.sortBy ?? sortBy)
+    return `/api/sa-jobs?${params.toString()}`
+  }
+
+  const handleSearch = async (overrides: Record<string, string> = {}) => {
     setLoading(true);
     setError("");
     setResults([]);
     setSearchResponse(null);
-    setSelectedJob(null); // Clear selected job on new search
+    setSelectedJob(null);
 
     try {
-      const res = await fetch(`/api/sa-jobs?q=${encodeURIComponent(query || "jobs")}`);
-
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
+      const res = await fetch(buildSearchUrl(overrides));
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-
       if (data && data.results) {
         setResults(data.results);
         setSearchResponse(data);
@@ -175,51 +177,7 @@ export default function SAJobSearch() {
   const applyFilters = (jobs: SAJobResult[]) => {
     let filtered = jobs;
 
-    if (jobType) {
-      filtered = filtered.filter((job) =>
-        (job.snippet + job.title).toLowerCase().includes(jobType.replace("-", " "))
-      );
-    }
-
-    if (experience) {
-      const expMap: Record<string, string[]> = {
-        entry: ["entry", "junior", "graduate", "0-2", "no experience", "learnership"],
-        mid: ["mid", "intermediate", "2-5", "3 years", "4 years"],
-        senior: ["senior", "5+", "lead", "principal", "head of"],
-      };
-      const keywords = expMap[experience] || [experience];
-      filtered = filtered.filter((job) =>
-        keywords.some(k => (job.snippet + job.title).toLowerCase().includes(k))
-      );
-    }
-
-    if (salary) {
-      const [min, max] = salary.split("-").map((s) => parseInt(s.replace("+", "")));
-      filtered = filtered.filter((job) => {
-        const salaryMatch = job.snippet.match(/R([\d,]+)/);
-        if (!salaryMatch) return true;
-        const jobSalary = parseInt(salaryMatch[1].replace(",", ""));
-        if (salary.includes("+")) return jobSalary >= min;
-        return jobSalary >= min && jobSalary <= max;
-      });
-    }
-
-    if (locationFilter) {
-      filtered = filtered.filter((job) =>
-        job.location?.toLowerCase().includes(locationFilter.toLowerCase())
-      );
-    }
-
-    if (datePosted) {
-      const daysAgo = parseInt(datePosted);
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-      filtered = filtered.filter((job) => {
-        if (!job.posted_date) return true;
-        return new Date(job.posted_date) >= cutoffDate;
-      });
-    }
-
+    // Quick filters still client-side (keyword matching on loaded results)
     if (quickFilters.length > 0) {
       filtered = filtered.filter((job) =>
         quickFilters.every(f => (job.snippet + job.title + (job.location || "")).toLowerCase().includes(f))
@@ -237,7 +195,12 @@ export default function SAJobSearch() {
 
   useEffect(() => {
     applyFilters(results);
-  }, [jobType, experience, salary, locationFilter, datePosted, quickFilters, sortBy, results]);
+  }, [quickFilters, sortBy, results]);
+
+  // Re-search when server-side filters change
+  useEffect(() => {
+    handleSearch();
+  }, [jobType, experience, datePosted, locationFilter, sortBy]);
 
   // Get company logo or fallback to initials
   const getCompanyLogo = (companyName: string) => {

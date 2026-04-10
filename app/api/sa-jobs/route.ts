@@ -17,22 +17,15 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
   const location = searchParams.get('location')
-
-  if (!query) {
-    return NextResponse.json({
-      results: [],
-      total: 0,
-      sources_checked: [],
-      compliance_report: {},
-      error: "Missing query parameter"
-    })
-  }
+  const jobType = searchParams.get('jobType')
+  const experience = searchParams.get('experience')
+  const datePosted = searchParams.get('datePosted')
+  const sortBy = searchParams.get('sortBy') || 'newest'
 
   try {
     let dbQuery = supabase
       .from('scraped_jobs')
       .select('*')
-      .ilike('location', '%South Africa%')
       .order('posted_date', { ascending: false })
       .limit(100)
 
@@ -42,6 +35,42 @@ export async function GET(request: NextRequest) {
 
     if (location) {
       dbQuery = dbQuery.ilike('location', `%${location}%`)
+    }
+
+    if (jobType) {
+      const jobTypeKeywords: Record<string, string> = {
+        'full-time': 'full-time',
+        'part-time': 'part-time',
+        'contract': 'contract',
+        'learnership': 'learnership',
+      }
+      const kw = jobTypeKeywords[jobType]
+      if (kw) dbQuery = dbQuery.or(`title.ilike.%${kw}%,snippet.ilike.%${kw}%`)
+    }
+
+    if (experience) {
+      const expKeywords: Record<string, string[]> = {
+        entry: ['junior', 'graduate', 'entry', 'learnership', 'no experience'],
+        mid: ['intermediate', 'mid', '3 years', '4 years', '2-5'],
+        senior: ['senior', 'lead', 'principal', 'head of', '5+'],
+      }
+      const keywords = expKeywords[experience] || []
+      if (keywords.length > 0) {
+        dbQuery = dbQuery.or(keywords.map(k => `title.ilike.%${k}%,snippet.ilike.%${k}%`).join(','))
+      }
+    }
+
+    if (datePosted) {
+      const daysAgo = parseInt(datePosted)
+      if (!isNaN(daysAgo)) {
+        const cutoff = new Date()
+        cutoff.setDate(cutoff.getDate() - daysAgo)
+        dbQuery = dbQuery.gte('posted_date', cutoff.toISOString())
+      }
+    }
+
+    if (sortBy === 'newest') {
+      dbQuery = dbQuery.order('posted_date', { ascending: false })
     }
 
     const { data, error } = await dbQuery
