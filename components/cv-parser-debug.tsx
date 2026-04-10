@@ -1,1 +1,0 @@
-// This file has been removed - debug components cleaned up for production
