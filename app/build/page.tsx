@@ -33,6 +33,11 @@ const templateMap: Record<string, any> = {
   "9": { type: "sa-professional", name: "SA Professional" },
   "10": { type: "sa-modern", name: "SA Modern" },
   "11": { type: "sa-executive", name: "SA Executive" },
+  "12": { type: "compact", name: "Compact One-Page" },
+  "13": { type: "chronological", name: "Chronological" },
+  "14": { type: "functional", name: "Functional / Skills-First" },
+  "15": { type: "sidebar", name: "Sidebar" },
+  "16": { type: "matric", name: "Matric / School Leaver" },
 }
 
 function BuildPageContent() {

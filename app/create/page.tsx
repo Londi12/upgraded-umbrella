@@ -64,10 +64,11 @@ export default function CreateCVPage() {
     "6": { type: "technical", name: "Technical Expert" },
     "7": { type: "graduate", name: "Graduate Entry" },
     "8": { type: "digital", name: "Digital Portfolio" },
-    "9": { type: "sa-professional", name: "SA Professional" },
-    "10": { type: "sa-modern", name: "SA Modern" },
-    "11": { type: "sa-executive", name: "SA Executive" },
-  }
+    "12": { type: "compact", name: "Compact One-Page" },
+    "13": { type: "chronological", name: "Chronological" },
+    "14": { type: "functional", name: "Functional / Skills-First" },
+    "15": { type: "sidebar", name: "Sidebar" },
+    "16": { type: "matric", name: "Matric / School Leaver" },
 
   const [selectedTemplate, setSelectedTemplate] = useState(templateMap[templateId] || templateMap["1"])
 
@@ -109,9 +110,7 @@ export default function CreateCVPage() {
       },
     ],
     skills: "",
-  })
-
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
+    customSections: [] as {id: string, title: string, content: string}[], = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingCVId, setEditingCVId] = useState<string | null>(editId)
   const { user, isConfigured } = useAuth()
@@ -678,6 +677,7 @@ export default function CreateCVPage() {
                     <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Experience</TabsTrigger>
                     <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Education</TabsTrigger>
                     <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Skills</TabsTrigger>
+                    <TabsTrigger value="extra" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">+ Sections</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="personal" className="space-y-6">
@@ -1086,6 +1086,69 @@ export default function CreateCVPage() {
                             onFocus={handleInputFocus('skills')}
                           />
                         </div>
+                      </div>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="extra" className="space-y-6">
+                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">Custom Sections</h3>
+                          <p className="text-xs text-slate-500 mt-0.5">Add sections like Certifications, Volunteer Work, Awards, References, etc.</p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setFormData(prev => ({
+                            ...prev,
+                            customSections: [...(prev.customSections || []), { id: Date.now().toString(), title: '', content: '' }]
+                          }))}
+                        >
+                          + Add Section
+                        </Button>
+                      </div>
+                      {(formData.customSections || []).length === 0 && (
+                        <p className="text-sm text-slate-400 text-center py-6">No custom sections yet. Click "+ Add Section" to add one.</p>
+                      )}
+                      <div className="space-y-4">
+                        {(formData.customSections || []).map((section, index) => (
+                          <div key={section.id} className="border border-slate-200 rounded-lg p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Input
+                                placeholder="Section title (e.g. Certifications, Awards)"
+                                value={section.title}
+                                onChange={e => {
+                                  const updated = [...(formData.customSections || [])]
+                                  updated[index] = { ...updated[index], title: e.target.value }
+                                  setFormData(prev => ({ ...prev, customSections: updated }))
+                                }}
+                                className="flex-1"
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:text-red-600"
+                                onClick={() => setFormData(prev => ({
+                                  ...prev,
+                                  customSections: (prev.customSections || []).filter((_, i) => i !== index)
+                                }))}
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                            <Textarea
+                              placeholder="Section content..."
+                              value={section.content}
+                              onChange={e => {
+                                const updated = [...(formData.customSections || [])]
+                                updated[index] = { ...updated[index], content: e.target.value }
+                                setFormData(prev => ({ ...prev, customSections: updated }))
+                              }}
+                              className="min-h-[80px]"
+                            />
+                          </div>
+                        ))}
                       </div>
                     </Card>
                   </TabsContent>

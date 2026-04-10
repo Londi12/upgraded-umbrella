@@ -1,13 +1,20 @@
+export interface CustomSection {
+  id: string
+  title: string
+  content: string
+}
+
 export interface PersonalInfo {
   fullName: string
   jobTitle: string
   email: string
   phone: string
   location?: string
-  idNumber?: string // South African ID number
+  idNumber?: string
   linkedIn?: string
-  professionalRegistration?: string // For regulated professions in South Africa
-  languages?: string[] // Important in multilingual South Africa
+  professionalRegistration?: string
+  languages?: string[]
+  photo?: string
 }
 
 export interface Experience {
@@ -17,7 +24,7 @@ export interface Experience {
   startDate: string
   endDate: string
   description: string
-  isLearnership?: boolean // Common in South African employment
+  isLearnership?: boolean
   isInternship?: boolean
 }
 
@@ -26,9 +33,9 @@ export interface Education {
   institution: string
   location: string
   graduationDate: string
-  nqfLevel?: number // South African National Qualifications Framework level
-  saqa?: string // South African Qualifications Authority ID
-  internationalEquivalence?: string // For international qualifications
+  nqfLevel?: number
+  saqa?: string
+  internationalEquivalence?: string
 }
 
 export interface Skill {
@@ -42,6 +49,7 @@ export interface CVData {
   experience: Experience[]
   education: Education[]
   skills: string | Skill[]
+  customSections?: CustomSection[]
 }
 
 export interface RecipientInfo {
@@ -75,6 +83,11 @@ export type TemplateType =
   | "technical"
   | "graduate"
   | "digital"
-  | "sa-professional" // South African Professional template
-  | "sa-modern" // South African Modern template
-  | "sa-executive" // South African Executive template
+  | "sa-professional"
+  | "sa-modern"
+  | "sa-executive"
+  | "compact"
+  | "chronological"
+  | "functional"
+  | "sidebar"
+  | "matric"

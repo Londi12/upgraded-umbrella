@@ -84,27 +84,14 @@ export default function CVTemplatesPage() {
       template: "digital" as const,
       popular: true,
     },
-    {
-      id: 9,
-      name: "SA Professional",
-      category: "South African",
-      template: "sa-professional" as const,
-      popular: true,
-    },
-    {
-      id: 10,
-      name: "SA Modern",
-      category: "South African",
-      template: "sa-modern" as const,
-      popular: true,
-    },
-    {
-      id: 11,
-      name: "SA Executive",
-      category: "South African",
-      template: "sa-executive" as const,
-      popular: false,
-    },
+    { id: 9, name: "SA Professional", category: "South African", template: "sa-professional" as const, popular: true },
+    { id: 10, name: "SA Modern", category: "South African", template: "sa-modern" as const, popular: true },
+    { id: 11, name: "SA Executive", category: "South African", template: "sa-executive" as const, popular: false },
+    { id: 12, name: "Compact One-Page", category: "Simple", template: "compact" as const, popular: true },
+    { id: 13, name: "Chronological", category: "Professional", template: "chronological" as const, popular: false },
+    { id: 14, name: "Functional / Skills-First", category: "Modern", template: "functional" as const, popular: false },
+    { id: 15, name: "Sidebar", category: "Modern", template: "sidebar" as const, popular: false },
+    { id: 16, name: "Matric / School Leaver", category: "Simple", template: "matric" as const, popular: true },
   ]
 
   return (

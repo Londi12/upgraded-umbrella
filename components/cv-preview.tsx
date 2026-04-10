@@ -29,7 +29,7 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                 <p className="text-sm text-gray-600">
                   {userData?.personalInfo?.jobTitle || "Senior Financial Analyst"}
                 </p>
-                <div className="flex gap-4 text-xs text-gray-500 mt-2">
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-2">
                   <span>{userData?.personalInfo?.email || "john.smith@email.com"}</span>
                   <span>{userData?.personalInfo?.phone || "+27 11 123 4567"}</span>
                   <span>{userData?.personalInfo?.location || "Johannesburg, SA"}</span>
@@ -117,11 +117,16 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                   ))}
                 </div>
               </div>
-            </div>
-          </div>
-        )
 
-      // Similar updates for other templates...
+              {/* Custom Sections */}
+              {userData?.customSections && userData.customSections.length > 0 && userData.customSections.map(section => (
+                section.title && (
+                  <div key={section.id}>
+                    <h2 className="text-sm font-semibold text-gray-800 mb-2">{section.title.toUpperCase()}</h2>
+                    <p className="text-xs text-gray-600 whitespace-pre-line">{section.content}</p>
+                  </div>
+                )
+              ))}
       // For brevity, I'm only showing the professional template update here
       // In a real implementation, you would update all templates similarly
 
@@ -196,7 +201,13 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
           >
             <div className="p-4 space-y-3">
               <div className="text-center">
-                <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full mx-auto mb-2"></div>
+                {userData?.personalInfo?.photo ? (
+                  <img src={userData.personalInfo.photo} alt="Profile" className="w-12 h-12 rounded-full mx-auto mb-2 object-cover" />
+                ) : (
+                  <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-xs font-bold">
+                    {userData?.personalInfo?.fullName?.split(' ').map(n => n[0]).join('').slice(0,2) || 'AC'}
+                  </div>
+                )}
                 <h1 className="text-lg font-bold text-gray-900">
                   {userData?.personalInfo?.fullName || "Alex Creative"}
                 </h1>
@@ -650,8 +661,8 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                     {userData?.personalInfo?.jobTitle || "Digital Portfolio Designer"}
                   </p>
                   <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                    <span>🌐 portfolio.com</span>
                     <span>📧 {userData?.personalInfo?.email || "jordan@email.com"}</span>
+                    {userData?.personalInfo?.phone && <span>📱 {userData.personalInfo.phone}</span>}
                   </div>
                 </div>
               </div>
@@ -1144,6 +1155,260 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )
+
+      case "compact":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="p-4">
+              <div className="flex justify-between items-start border-b border-gray-300 pb-3 mb-3">
+                <div>
+                  <h1 className="text-base font-bold text-gray-900">{userData?.personalInfo?.fullName || "Lerato Mokoena"}</h1>
+                  <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "Operations Manager"}</p>
+                </div>
+                <div className="text-right text-xs text-gray-500 space-y-0.5">
+                  <p>{userData?.personalInfo?.email || "lerato@email.co.za"}</p>
+                  <p>{userData?.personalInfo?.phone || "082 345 6789"}</p>
+                  <p>{userData?.personalInfo?.location || "Johannesburg"}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2 space-y-3">
+                  {userData?.summary && <p className="text-xs text-gray-600">{userData.summary}</p>}
+                  <div>
+                    <p className="text-xs font-bold text-gray-800 uppercase mb-1">Experience</p>
+                    {(userData?.experience || []).slice(0,3).map((exp, i) => (
+                      <div key={i} className="mb-2">
+                        <div className="flex justify-between">
+                          <p className="text-xs font-medium">{exp.title}</p>
+                          <p className="text-xs text-gray-400">{exp.startDate}–{exp.endDate}</p>
+                        </div>
+                        <p className="text-xs text-gray-500">{exp.company}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-800 uppercase mb-1">Education</p>
+                    {(userData?.education || []).slice(0,2).map((edu, i) => (
+                      <div key={i} className="mb-1">
+                        <p className="text-xs font-medium">{edu.degree || "BCom"}</p>
+                        <p className="text-xs text-gray-500">{edu.institution || "University of Johannesburg"} · {edu.graduationDate || "2020"}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs font-bold text-gray-800 uppercase mb-1">Skills</p>
+                    {skillsArray.slice(0,8).map(s => <p key={s} className="text-xs text-gray-600">• {s}</p>)}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "chronological":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="p-5 space-y-3">
+              <div className="text-center pb-3 border-b-2 border-gray-800">
+                <h1 className="text-lg font-bold text-gray-900 uppercase tracking-wide">{userData?.personalInfo?.fullName || "Siphamandla Zulu"}</h1>
+                <p className="text-xs text-gray-600 mt-1">
+                  {[userData?.personalInfo?.email, userData?.personalInfo?.phone, userData?.personalInfo?.location].filter(Boolean).join(' | ') || "siphamandla@email.co.za | 071 234 5678 | Durban"}
+                </p>
+              </div>
+              {userData?.summary && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-800 border-b border-gray-300 pb-0.5 mb-1">Profile</p>
+                  <p className="text-xs text-gray-600">{userData.summary}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-800 border-b border-gray-300 pb-0.5 mb-2">Work Experience</p>
+                {(userData?.experience || [{title:'Accountant',company:'ABC Ltd',startDate:'2021',endDate:'Present',description:'Managed financial reporting and reconciliations.',location:'',isLearnership:false,isInternship:false}]).map((exp,i) => (
+                  <div key={i} className="mb-2">
+                    <div className="flex justify-between">
+                      <p className="text-xs font-semibold">{exp.title}</p>
+                      <p className="text-xs text-gray-500">{exp.startDate} – {exp.endDate}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 italic">{exp.company}</p>
+                    <p className="text-xs text-gray-600 mt-0.5">{exp.description}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-800 border-b border-gray-300 pb-0.5 mb-2">Education</p>
+                {(userData?.education || [{degree:'BCom Accounting',institution:'UKZN',graduationDate:'2020',location:'',nqfLevel:7,saqa:'',internationalEquivalence:''}]).map((edu,i) => (
+                  <div key={i} className="mb-1">
+                    <div className="flex justify-between">
+                      <p className="text-xs font-semibold">{edu.degree}</p>
+                      <p className="text-xs text-gray-500">{edu.graduationDate}</p>
+                    </div>
+                    <p className="text-xs text-gray-500 italic">{edu.institution}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-800 border-b border-gray-300 pb-0.5 mb-1">Skills</p>
+                <p className="text-xs text-gray-600">{skillsArray.join(' · ') || 'Excel · SAP · Financial Reporting · Pastel'}</p>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "functional":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="p-5 space-y-3">
+              <div className="pb-3 border-b border-gray-200">
+                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName || "Ayanda Khumalo"}</h1>
+                <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "Career Changer | Project Coordinator"}</p>
+                <p className="text-xs text-gray-500 mt-1">{userData?.personalInfo?.email || "ayanda@email.co.za"} · {userData?.personalInfo?.phone || "064 567 8901"}</p>
+              </div>
+              {userData?.summary && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-700 mb-1">Summary</p>
+                  <p className="text-xs text-gray-600">{userData.summary}</p>
+                </div>
+              )}
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-2">Core Competencies</p>
+                <div className="grid grid-cols-2 gap-1">
+                  {skillsArray.slice(0,8).map(s => (
+                    <div key={s} className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 bg-gray-600 rounded-full flex-shrink-0"></div>
+                      <p className="text-xs text-gray-700">{s}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-2">Relevant Experience</p>
+                {(userData?.experience || []).slice(0,2).map((exp,i) => (
+                  <div key={i} className="mb-2">
+                    <p className="text-xs font-semibold">{exp.title} — {exp.company}</p>
+                    <p className="text-xs text-gray-600">{exp.description}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-1">Education</p>
+                {(userData?.education || []).slice(0,1).map((edu,i) => (
+                  <p key={i} className="text-xs text-gray-600">{edu.degree || 'National Diploma'} · {edu.institution || 'Tshwane University of Technology'} · {edu.graduationDate || '2018'}</p>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      case "sidebar":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="flex h-full">
+              <div className="w-1/3 bg-gray-800 text-white p-3 space-y-3">
+                <div>
+                  <h1 className="text-xs font-bold leading-tight">{userData?.personalInfo?.fullName || "Precious Ndlovu"}</h1>
+                  <p className="text-xs opacity-75 mt-0.5">{userData?.personalInfo?.jobTitle || "HR Manager"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs opacity-60 uppercase font-bold">Contact</p>
+                  <p className="text-xs opacity-80 break-all">{userData?.personalInfo?.email || "precious@email.co.za"}</p>
+                  <p className="text-xs opacity-80">{userData?.personalInfo?.phone || "079 123 4567"}</p>
+                  <p className="text-xs opacity-80">{userData?.personalInfo?.location || "Cape Town"}</p>
+                </div>
+                <div>
+                  <p className="text-xs opacity-60 uppercase font-bold mb-1">Skills</p>
+                  {skillsArray.slice(0,6).map(s => <p key={s} className="text-xs opacity-80">· {s}</p>)}
+                </div>
+                {userData?.personalInfo?.languages && userData.personalInfo.languages.length > 0 && (
+                  <div>
+                    <p className="text-xs opacity-60 uppercase font-bold mb-1">Languages</p>
+                    {userData.personalInfo.languages.map(l => <p key={l} className="text-xs opacity-80">· {l}</p>)}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 p-3 space-y-3">
+                {userData?.summary && <p className="text-xs text-gray-600">{userData.summary}</p>}
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-700 border-b border-gray-200 pb-0.5 mb-2">Experience</p>
+                  {(userData?.experience || [{title:'HR Manager',company:'Retail Group',startDate:'2020',endDate:'Present',description:'Managed recruitment and employee relations.',location:'',isLearnership:false,isInternship:false}]).slice(0,3).map((exp,i) => (
+                    <div key={i} className="mb-2">
+                      <div className="flex justify-between">
+                        <p className="text-xs font-semibold">{exp.title}</p>
+                        <p className="text-xs text-gray-400">{exp.startDate}–{exp.endDate}</p>
+                      </div>
+                      <p className="text-xs text-gray-500">{exp.company}</p>
+                      <p className="text-xs text-gray-600">{exp.description}</p>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-700 border-b border-gray-200 pb-0.5 mb-1">Education</p>
+                  {(userData?.education || [{degree:'BA Human Resources',institution:'UWC',graduationDate:'2019',location:'',nqfLevel:7,saqa:'',internationalEquivalence:''}]).slice(0,2).map((edu,i) => (
+                    <div key={i} className="mb-1">
+                      <p className="text-xs font-semibold">{edu.degree}</p>
+                      <p className="text-xs text-gray-500">{edu.institution} · {edu.graduationDate}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+
+      case "matric":
+        return (
+          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
+            <div className="p-5 space-y-3">
+              <div className="text-center pb-3 border-b border-gray-200">
+                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName || "Thandeka Mthembu"}</h1>
+                <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "School Leaver | Seeking Learnership"}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {userData?.personalInfo?.email || "thandeka@gmail.com"} · {userData?.personalInfo?.phone || "073 456 7890"} · {userData?.personalInfo?.location || "Soweto, Gauteng"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-1">Objective</p>
+                <p className="text-xs text-gray-600">{userData?.summary || "Motivated Grade 12 graduate seeking a learnership or entry-level opportunity to develop practical skills and grow within a professional environment."}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-2">Education</p>
+                {(userData?.education || [{degree:'National Senior Certificate (Matric)',institution:'Soweto High School',graduationDate:'2024',location:'Soweto',nqfLevel:4,saqa:'',internationalEquivalence:''}]).map((edu,i) => (
+                  <div key={i} className="mb-1">
+                    <p className="text-xs font-semibold">{edu.degree || 'National Senior Certificate (Matric)'}</p>
+                    <p className="text-xs text-gray-500">{edu.institution} · {edu.graduationDate}</p>
+                    {edu.nqfLevel && <p className="text-xs text-gray-500">NQF Level {edu.nqfLevel}</p>}
+                  </div>
+                ))}
+              </div>
+              <div>
+                <p className="text-xs font-bold uppercase text-gray-700 mb-1">Skills & Abilities</p>
+                <div className="flex flex-wrap gap-1">
+                  {(skillsArray.length > 0 ? skillsArray : ['Microsoft Office','Communication','Teamwork','Time Management','Customer Service']).map(s => (
+                    <span key={s} className="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded">{s}</span>
+                  ))}
+                </div>
+              </div>
+              {userData?.experience && userData.experience.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-700 mb-1">Experience / Volunteering</p>
+                  {userData.experience.map((exp,i) => (
+                    <div key={i} className="mb-1">
+                      <p className="text-xs font-semibold">{exp.title} · {exp.company}</p>
+                      <p className="text-xs text-gray-600">{exp.description}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {userData?.personalInfo?.languages && userData.personalInfo.languages.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase text-gray-700 mb-1">Languages</p>
+                  <p className="text-xs text-gray-600">{userData.personalInfo.languages.join(', ')}</p>
+                </div>
+              )}
             </div>
           </div>
         )
