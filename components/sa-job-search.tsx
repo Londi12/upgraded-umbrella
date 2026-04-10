@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, ArrowLeft, Send, X, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
 import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
 import { ATSScoringPanel } from "@/components/cv-ats-scoring";
@@ -62,7 +61,6 @@ export default function SAJobSearch() {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   const { user } = useAuth();
-  const applicationTracker = new ApplicationTracker();
 
   useEffect(() => {
     const fetchSavedCVs = async () => {
