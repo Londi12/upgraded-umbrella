@@ -76,6 +76,11 @@ export default function SAJobSearch() {
     fetchSavedCVs();
   }, [user]);
 
+  // Auto-load jobs on mount
+  useEffect(() => {
+    handleSearch()
+  }, [])
+
   // Initialize cache on mount
   useEffect(() => {
     const initCache = async () => {
