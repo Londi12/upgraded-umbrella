@@ -97,7 +97,7 @@ function BuildPageContent() {
   }
 
   const handleDownload = async () => {
-    const pdfBlob = await generateCVPDF(selectedTemplate.type, formData as CVData, selectedTemplate.name)
+    const pdfBlob = await generateCVPDF(selectedTemplate.type, formData as CVData, selectedTemplate.name, !!user)
     const fileName = `${formData.personalInfo.fullName || "CV"}_${selectedTemplate.name}.pdf`
     downloadBlob(pdfBlob, fileName)
   }

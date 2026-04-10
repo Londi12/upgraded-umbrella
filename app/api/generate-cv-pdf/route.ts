@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const { template, userData, templateName } = await request.json()
+    const { template, userData, templateName, isAuthenticated: clientAuth } = await request.json()
 
     // Import jsPDF dynamically
     const { jsPDF } = await import("jspdf")
@@ -58,13 +58,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Watermark for unauthenticated users
-    let isAuthenticated = false
-    try {
-      const { cookies } = request
-      const supabaseToken = cookies.get("sb-access-token")?.value
-      if (supabaseToken) isAuthenticated = true
-    } catch {}
-    if (!isAuthenticated) {
+    if (!clientAuth) {
       // Add watermark to each page
       const watermarkText = "Created with CVKonnekt – Sign in to remove watermark"
       const totalPages = doc.getNumberOfPages()

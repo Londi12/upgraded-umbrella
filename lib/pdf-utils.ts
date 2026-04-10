@@ -1,7 +1,7 @@
 import type { CVData, CoverLetterData, TemplateType } from "@/types/cv-types"
 import { generateTemplateMarker, generateTemplateMetadata } from "@/lib/template-markers"
 
-export async function generateCVPDF(template: TemplateType, userData: CVData, templateName: string): Promise<Blob> {
+export async function generateCVPDF(template: TemplateType, userData: CVData, templateName: string, isAuthenticated = false): Promise<Blob> {
   try {
     const response = await fetch("/api/generate-cv-pdf", {
       method: "POST",
@@ -12,6 +12,7 @@ export async function generateCVPDF(template: TemplateType, userData: CVData, te
         template,
         userData,
         templateName,
+        isAuthenticated,
       }),
     })
 

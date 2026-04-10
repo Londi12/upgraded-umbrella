@@ -439,7 +439,7 @@ export default function CreateCVPage() {
     setError(null)
 
     try {
-      const pdfBlob = await generateCVPDF(selectedTemplate.type, formData as CVData, selectedTemplate.name)
+      const pdfBlob = await generateCVPDF(selectedTemplate.type, formData as CVData, selectedTemplate.name, !!user)
       const fileName = `${formData.personalInfo.fullName || "CV"}_${selectedTemplate.name}.pdf`
       downloadBlob(pdfBlob, fileName)
     } catch (error) {
