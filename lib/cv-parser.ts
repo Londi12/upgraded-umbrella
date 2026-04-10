@@ -1,4 +1,4 @@
-import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
+﻿import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
 import mammoth from 'mammoth';
 import { fileTypeFromBuffer } from 'file-type';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
@@ -165,69 +165,20 @@ export async function extractTextFromPDF(buffer: Buffer): Promise<{text: string,
         }
       }
       fullText += pageText + '\n';
-
-        if (!lineMap.has(y)) {
-          lineMap.set(y, []);
-        }
-
-        lineMap.get(y)!.push({
-          items: [item],
-          x: x
-        });
-      }
-
-      // Sort lines by Y position (top to bottom) and items by X position (left to right)
-      const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a); // Descending order (top to bottom)
-
-      let pageText = '';
-
-      for (const y of sortedYs) {
-        const lineItems = lineMap.get(y)!.sort((a, b) => a.x - b.x); // Sort by X position
-
-        let lineText = '';
-        let lastX = 0;
-
-        for (const item of lineItems) {
-          const x = item.x;
-          const str = item.items[0].str;
-
-          // Add appropriate spacing between words based on X distance
-          if (lineText && x - lastX > 10) {
-            lineText += ' ';
-          }
-
-          lineText += str;
-          lastX = x + (str.length * 5); // Approximate the end position
-        }
-
-        if (lineText.trim()) {
-          pageText += lineText.trim() + '\n';
-        }
-      }
-
-      text += pageText + '\n'; // Page separator
     }
 
-
-    text = text
-      .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newlines
+    fullText = fullText
+      .replace(/\n{3,}/g, '\n\n')
       .split('\n')
-      .map(line => {
-        // Preserve structure but clean up excessive spaces within each line
-        return line.replace(/\s{2,}/g, ' ').trim();
-      })
+      .map(line => line.replace(/\s{2,}/g, ' ').trim())
       .join('\n')
       .trim();
 
-    console.log('PDF text extraction completed');
-    console.log('Extracted text length:', text.length);
-    console.log('First 200 characters:', text.substring(0, 200));
-
-    if (!text.trim()) {
+    if (!fullText.trim()) {
       throw new Error('No text extracted from PDF');
     }
 
-    return text;
+    return { text: fullText, layout: allItems };
   } catch (error) {
     console.error('Error extracting text from PDF:', error);
     throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -790,227 +741,6 @@ function createSADateParser() {
     }
     return null;
   };
-}
-
-/**
- * Extract education from text
- */
-function extractEducation(text: string): Education[] {
-  const education: Education[] = [];
-
-  // Look for education section with more flexible patterns
-  const educationSectionPatterns = [
-    // Standard format with colon
-    /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience|projects|work):)/is,
-
-    // Uppercase headers
-    /WORK EXPERIENCE\s*\n([^]*?)(?=\n\s*(?:EDUCATION|SKILLS|ACTIVITIES|INTERESTS|PROJECTS|ACADEMIC|QUALIFICATIONS))/is,
-    /EXPERIENCE\s*\n([^]*?)(?=\n\s*(?:EDUCATION|SKILLS|ACTIVITIES|INTERESTS|PROJECTS|ACADEMIC|QUALIFICATIONS))/is,
-    /EMPLOYMENT\s*\n([^]*?)(?=\n\s*(?:EDUCATION|SKILLS|ACTIVITIES|INTERESTS|PROJECTS|ACADEMIC|QUALIFICATIONS))/is,
-
-    // Headers without clear end marker but ending at a capitalized section header
-    /(?:experience|work history|employment|work experience|professional experience|career history)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is,
-
-    // Experience section at the end of the document
-    /(?:experience|work history|employment|work experience|professional experience|career history)[:.\s]*\n([^]*?)$/is,
-    /WORK EXPERIENCE\s*\n([^]*?)$/is,
-    /EXPERIENCE\s*\n([^]*?)$/is
-  ];
-
-  let experienceText = '';
-  for (const pattern of experienceSectionPatterns) {
-    const match = text.match(pattern);
-    if (match && match[1] && match[1].trim()) {
-      experienceText = match[1].trim();
-      console.log('Experience section found:', experienceText.substring(0, 200) + '...'); // Debug log
-      break;
-    }
-  }
-
-  if (experienceText) {
-    // Split experience text into lines and process each line that contains pipes
-    const lines = experienceText.split('\n');
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Skip empty lines or lines without pipes
-      if (!trimmedLine || !trimmedLine.includes('|')) {
-        continue;
-      }
-
-      // Split by pipe and clean up each part
-      const parts = trimmedLine.split('|').map(part => part.trim()).filter(part => part.length > 0);
-
-      if (parts.length >= 2) {
-        let title = parts[0];
-        let company = parts[1];
-        let location = '';
-        let startDate = '';
-        let endDate = '';
-        let uncertain = false;
-
-        // Enhanced date pattern to catch more formats
-        const datePattern = /(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2})\s*(?:–|—|-|to)\s*(?:Present|Current|Now|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2}))|(?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{2}(?:XX|\d{2})|\d{4}\s*(?:–|—|-|to)\s*(?:\d{4}|Present|Current|Now)|\d{4}/i;
-
-        // Check remaining parts for dates and locations
-        const remainingParts = parts.slice(2);
-
-        for (const part of remainingParts) {
-          if (datePattern.test(part)) {
-            // Parse the date range
-            const dateMatch = part.match(datePattern);
-            if (dateMatch) {
-              const fullDate = dateMatch[0];
-              if (fullDate.includes('–') || fullDate.includes('-') || fullDate.includes('to')) {
-                const dateParts = fullDate.split(/\s*(?:-|to|–|—)\s*/);
-                startDate = dateParts[0]?.trim() || '';
-                endDate = dateParts[1]?.trim() || '';
-              } else {
-                startDate = fullDate;
-              }
-            }
-          } else if (part.length > 2 && !part.match(/^\d+$/)) {
-            // Likely a location if it's not just numbers
-            location = part;
-          }
-        }
-
-        // Only add if we have meaningful title and company
-        if (title.length > 1 && company.length > 1) {
-          experiences.push({
-            title,
-            company,
-            location,
-            startDate,
-            endDate,
-            description: '',
-            uncertain
-          });
-        }
-      }
-    }
-
-    // Format 2: Job Title followed by Company and Date on separate lines
-    if (experiences.length === 0) {
-      const lines = experienceText.split('\n');
-      let currentJob: Partial<Experience> | null = null;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue;
-
-        // Look for job title patterns (often in bold or at the start of an entry)
-        const jobTitleMatch = line.match(/^([A-Z][A-Za-z\s]+)$/);
-
-        // Enhanced date pattern to match formats like "September 20XX – Present"
-        const dateMatch = line.match(/(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))\s*(?:-|to|–|—)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:Present|Current|Now|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))/i) ||
-                          line.match(/((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2}(?:XX|\d{2}))\s*(?:–|-|to)\s*((?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{2}(?:XX|\d{2})|Present)/i);
-
-        const companyMatch = line.match(/^(?:at|with)?\s*([A-Z][A-Za-z0-9\s&.,]+)(?:\s*[-–—]\s*|\s*,\s*|\s+in\s+)([A-Za-z\s,]+)$/);
-
-        // Check for bullet points that might be part of job descriptions
-        const bulletMatch = line.match(/^[\s•\-*]+(.+)$/);
-
-        if (jobTitleMatch && !dateMatch && !line.includes(',')) {
-          // Start a new job entry
-          if (currentJob && currentJob.title && currentJob.company) {
-            experiences.push(currentJob as Experience);
-          }
-
-          currentJob = {
-            title: jobTitleMatch[1].trim(),
-            company: '',
-            location: '',
-            startDate: '',
-            endDate: '',
-            description: ''
-          };
-        } else if (companyMatch && currentJob) {
-          // Company and possibly location
-          currentJob.company = companyMatch[1].trim();
-          if (companyMatch[2]) {
-            currentJob.location = companyMatch[2].trim();
-          }
-        } else if (dateMatch && currentJob) {
-          // Date range
-          if (dateMatch[0].includes('–') || dateMatch[0].includes('-') || dateMatch[0].includes('to')) {
-            const dates = dateMatch[0].split(/\s*(?:-|to|–|—)\s*/);
-            if (dates.length >= 2) {
-              currentJob.startDate = dates[0].trim();
-              currentJob.endDate = dates[1].trim();
-            }
-          } else if (dateMatch[1] && dateMatch[2]) {
-            // Handle the full month name format
-            currentJob.startDate = dateMatch[1].trim();
-            currentJob.endDate = dateMatch[2].trim();
-          }
-        } else if (bulletMatch && currentJob && currentJob.title && currentJob.company) {
-          // This is a bullet point in the job description
-          const bulletContent = bulletMatch[1].trim();
-          if (currentJob.description) {
-            currentJob.description += '\n• ' + bulletContent;
-          } else {
-            currentJob.description = '• ' + bulletContent;
-          }
-        } else if (currentJob && currentJob.title && !currentJob.company) {
-          // If we have a title but no company yet, this line might be the company
-          currentJob.company = line;
-        } else if (currentJob && currentJob.title && currentJob.company) {
-          // This might be part of the description
-          if (currentJob.description) {
-            // Check if this is a continuation of a bullet point or a new paragraph
-            if (line.trim().startsWith('•') || line.trim().startsWith('-') || line.trim().startsWith('*')) {
-              currentJob.description += '\n' + line.trim();
-            } else {
-              currentJob.description += ' ' + line;
-            }
-          } else {
-            currentJob.description = line;
-          }
-        }
-      }
-
-      // Add the last job if it exists
-      if (currentJob && currentJob.title && currentJob.company) {
-        experiences.push(currentJob as Experience);
-      }
-    }
-
-    // Format 3: Bullet point style with job title as header
-    if (experiences.length === 0) {
-      const sections = experienceText.split(/\n\s*\n/);
-
-      for (const section of sections) {
-        if (!section.trim()) continue;
-
-        const lines = section.split('\n');
-        if (lines.length < 2) continue;
-
-        const titleLine = lines[0].trim();
-        const companyLine = lines[1].trim();
-
-        // Check if this looks like a job entry
-        if (titleLine && companyLine) {
-          const dateMatch = companyLine.match(/(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))\s*(?:-|to|–|—)\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|(?:Present|Current|Now|\d{1,2}\/\d{1,2}\/\d{4}|\d{4}))/i);
-
-          experiences.push({
-            title: titleLine,
-            company: dateMatch ? companyLine.replace(dateMatch[0], '').trim() : companyLine,
-            location: '',
-            startDate: dateMatch ? dateMatch[0].split(/\s*(?:-|to|–|—)\s*/)[0].trim() : '',
-            endDate: dateMatch ? dateMatch[0].split(/\s*(?:-|to|–|—)\s*/)[1].trim() : '',
-            description: lines.slice(2).join(' ').trim()
-          });
-        }
-      }
-    }
-  } else {
-    console.log('No experience section found'); // Debug log
-  }
-
-  console.log('Extracted experiences:', experiences.length); // Debug log
-  return experiences;
 }
 
 /**
