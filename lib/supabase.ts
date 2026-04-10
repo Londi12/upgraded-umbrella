@@ -94,104 +94,54 @@ export const getCurrentUser = async () => {
 
 // Check if user is admin by querying admin_users table
 export const checkIsAdmin = async (userId: string) => {
-  if (!hasValidCredentials) {
-    // In demo mode, check if user email contains 'admin'
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      return user?.email?.includes('admin') || false
-    } catch (err) {
-      console.error('Error in demo mode admin check:', err)
-      return false
-    }
-  }
+  if (!hasValidCredentials) return false
 
   try {
-    // First try the database table
     const { data, error } = await supabase
       .from('admin_users')
       .select('user_id')
       .eq('user_id', userId)
       .single()
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "not found" error
+    if (error && error.code !== 'PGRST116') {
       console.error('Error checking admin status:', error)
-      // Fall back to email check
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        return user?.email === 'admin@watashi.com'
-      } catch (fallbackErr) {
-        console.error('Fallback admin check failed:', fallbackErr)
-        return false
-      }
+      return false
     }
 
     return !!data
   } catch (err) {
     console.error('Error checking admin status:', err)
-    // Fall back to email check
-    try {
-      const { data: { user } } = await supabase.auth.getUser()
-      return user?.email === 'admin@watashi.com'
-    } catch (fallbackErr) {
-      console.error('Fallback admin check failed:', fallbackErr)
-      return false
-    }
+    return false
   }
 }
 
 // Admin dashboard data functions
 export const getUserStats = async () => {
-  if (!hasValidCredentials) {
-    // Return mock data for demo mode
-    return {
-      totalUsers: 2847,
-      totalCVs: 5634,
-      revenue: 89450,
-      activeUsers: Math.floor(Math.random() * 50) + 150,
-      todaySignups: Math.floor(Math.random() * 20) + 5,
-      todayDownloads: Math.floor(Math.random() * 100) + 50
-    }
-  }
+  if (!hasValidCredentials) return null
 
   try {
-    // Get total users count
-    const { count: totalUsers, error: usersError } = await supabase
+    const { count: totalUsers } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
 
-    if (usersError) {
-      console.error('Error fetching user count:', usersError)
-      return null
-    }
-
-    // Get CV count (assuming you have a cvs table)
-    const { count: totalCVs, error: cvsError } = await supabase
-      .from('cvs')
+    const { count: totalCVs } = await supabase
+      .from('saved_cvs')
       .select('*', { count: 'exact', head: true })
 
-    if (cvsError) {
-      console.error('Error fetching CV count:', cvsError)
-    }
-
-    // Get today's signups
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const { count: todaySignups, error: signupsError } = await supabase
+    const { count: todaySignups } = await supabase
       .from('profiles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', today.toISOString())
 
-    if (signupsError) {
-      console.error('Error fetching today signups:', signupsError)
-    }
-
     return {
       totalUsers: totalUsers || 0,
       totalCVs: totalCVs || 0,
-      revenue: 0, // Would need a payments table for this
-      activeUsers: Math.floor(Math.random() * 50) + 50, // Mock for now
+      revenue: 0,
+      activeUsers: 0,
       todaySignups: todaySignups || 0,
-      todayDownloads: Math.floor(Math.random() * 100) + 25 // Mock for now
+      todayDownloads: 0
     }
   } catch (err) {
     console.error('Error fetching user stats:', err)
@@ -200,52 +150,12 @@ export const getUserStats = async () => {
 }
 
 export const getRecentUsers = async () => {
-  if (!hasValidCredentials) {
-    // Return mock users for demo mode
-    return [
-      {
-        id: 1,
-        name: "John Smith",
-        email: "john@example.com",
-        plan: "Premium",
-        joined: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 3,
-        lastActive: "2 hours ago",
-        status: "online"
-      },
-      {
-        id: 2,
-        name: "Sarah Johnson",
-        email: "sarah@example.com",
-        plan: "Pro",
-        joined: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 7,
-        lastActive: "1 hour ago",
-        status: "offline"
-      },
-      {
-        id: 3,
-        name: "Mike Wilson",
-        email: "mike@example.com",
-        plan: "Base",
-        joined: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-        cvsCreated: 1,
-        lastActive: "30 minutes ago",
-        status: "online"
-      }
-    ]
-  }
+  if (!hasValidCredentials) return []
 
   try {
     const { data: users, error } = await supabase
       .from('profiles')
-      .select(`
-        id,
-        email,
-        full_name,
-        created_at,
-        updated_at
-      `)
+      .select('id, email, full_name, created_at')
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -254,16 +164,15 @@ export const getRecentUsers = async () => {
       return []
     }
 
-    // Transform the data to match expected format
     return users?.map(user => ({
       id: user.id,
-      name: user.full_name || user.email?.split('@')[0] || 'Unknown User',
+      name: user.full_name || user.email?.split('@')[0] || 'Unknown',
       email: user.email || '',
-      plan: 'Base', // Default plan, would need a subscription table
+      plan: 'Base',
       joined: user.created_at,
-      cvsCreated: 0, // Would need to count from cvs table
+      cvsCreated: 0,
       lastActive: 'Recently',
-      status: Math.random() > 0.5 ? 'online' : 'offline'
+      status: 'offline'
     })) || []
   } catch (err) {
     console.error('Error fetching recent users:', err)
@@ -272,23 +181,23 @@ export const getRecentUsers = async () => {
 }
 
 export const getLiveActivity = async () => {
-  if (!hasValidCredentials) {
-    // Return mock activity for demo mode
-    return [
-      { type: 'cv_created', user: 'John S.', time: '2 min ago', details: 'Created "Software Developer CV"' },
-      { type: 'user_signup', user: 'Lisa M.', time: '5 min ago', details: 'Signed up for Premium plan' },
-      { type: 'pdf_download', user: 'Mike W.', time: '8 min ago', details: 'Downloaded CV as PDF' },
-      { type: 'job_match', user: 'Sarah J.', time: '12 min ago', details: 'Generated 5 job matches' }
-    ]
-  }
+  if (!hasValidCredentials) return []
 
   try {
-    // This would typically come from an activity log table
-    // For now, return mock data since we don't have activity tracking
-    return [
-      { type: 'user_signup', user: 'New User', time: 'Just now', details: 'User registered' },
-      { type: 'cv_created', user: 'Recent User', time: '5 min ago', details: 'Created new CV' }
-    ]
+    const { data, error } = await supabase
+      .from('application_tracking')
+      .select('user_id, job_title, company_name, created_at')
+      .order('created_at', { ascending: false })
+      .limit(10)
+
+    if (error) return []
+
+    return (data || []).map(row => ({
+      type: 'application',
+      user: row.user_id?.slice(0, 8) + '...',
+      time: new Date(row.created_at).toLocaleTimeString(),
+      details: `Applied to ${row.job_title} at ${row.company_name}`
+    }))
   } catch (err) {
     console.error('Error fetching live activity:', err)
     return []

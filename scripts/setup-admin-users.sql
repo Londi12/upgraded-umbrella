@@ -28,7 +28,7 @@ SELECT
   auth.users.id,
   auth.users.email
 FROM auth.users
-WHERE auth.users.email = 'your-email@example.com'
+WHERE auth.users.email = 'amandashibe@petalmail.com'
 ON CONFLICT (user_id) DO NOTHING;
 
 -- Optional: Create a function to check if user is admin
