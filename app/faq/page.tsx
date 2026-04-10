@@ -36,7 +36,7 @@ const faqs = [
       },
       {
         question: "Do I need to sign in to create a CV?",
-        answer: "No — you can build and download a CV without signing in. However, signing in lets you save your CVs, track applications, and use AI job matching."
+        answer: "No — you can build and download a CV without signing in. However, signing in lets you save your CVs, track applications, and use Job Match."
       },
     ]
   },
@@ -52,8 +52,8 @@ const faqs = [
         answer: "You can filter by job type (including Learnerships/Internships), experience level, location, and date posted. There are also quick filter chips for common searches like Remote, No experience required, and Degree not required."
       },
       {
-        question: "What is AI Match?",
-        answer: "AI Match compares your saved CV against a job listing and gives you a match score, highlights skills you have that match, and shows gaps you could work on. You need to be signed in and have a saved CV to use it."
+        question: "What is Job Match?",
+        answer: "Job Match compares your saved CV against a job listing and gives you a match score, highlights skills you have that match, and shows gaps you could work on. You need to be signed in and have a saved CV to use it."
       },
     ]
   },

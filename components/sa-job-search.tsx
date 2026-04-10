@@ -388,15 +388,15 @@ export default function SAJobSearch() {
 
   const handleAIJobMatchReview = async () => {
     if (!user) {
-      alert("Please sign in to use AI Job-Match Review.");
+      alert("Please sign in to use Job Match.");
       return;
     }
     if (savedCVs.length === 0) {
-      alert("Please create a CV to use AI Job-Match Review.");
+      alert("Please create a CV to use Job Match.");
       return;
     }
     if (!selectedCVId) {
-      alert("Please select a CV for AI Job-Match Review.");
+      alert("Please select a CV for Job Match.");
       return;
     }
     if (!selectedJob) {
@@ -463,11 +463,11 @@ export default function SAJobSearch() {
         console.log("AI Job-Match Review completed for CV ID:", selectedCVId);
         console.log("Found", matches.length, "matches");
       } else {
-        setAiMatchError("No AI matches found. This could be due to missing API keys or insufficient job data. Try using the test page at /test-ai-job-match to verify the system is working.");
+        setAiMatchError("No matches found. Please try again.");
       }
     } catch (error) {
       console.error("AI Job-Match Review error:", error);
-      setAiMatchError(error instanceof Error ? error.message : "AI matching failed. Please try again.");
+      setAiMatchError(error instanceof Error ? error.message : "Job matching failed. Please try again.");
     } finally {
       setAiMatching(false);
     }
@@ -824,8 +824,8 @@ export default function SAJobSearch() {
                       >
                         <option value="">
                           {user
-                            ? (savedCVs.length ? "Select CV" : "Create CV for AI Match")
-                            : "Sign in to use AI Match"
+                            ? (savedCVs.length ? "Select CV" : "Create CV for Job Match")
+                            : "Sign in to use Job Match"
                           }
                         </option>
                         {user && savedCVs.length > 0 && savedCVs.map((cv) => (
@@ -842,9 +842,9 @@ export default function SAJobSearch() {
                       variant="outline"
                       size="sm"
                       className="flex-none whitespace-nowrap"
-                      aria-label="AI Job Match Review"
+                      aria-label="Job Match"
                     >
-                      {aiMatching ? "Matching..." : "AI Match"}
+                      {aiMatching ? "Matching..." : "Job Match"}
                     </Button>
                   </div>
 
@@ -892,10 +892,10 @@ export default function SAJobSearch() {
                   </div>
                 )}
 
-                {/* AI Match Results */}
+                {/* Job Match Results */}
                 {aiMatchResults.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">AI Match Results</h3>
+                    <h3 className="font-semibold text-gray-900 mb-3">Job Match Results</h3>
                     <div className="space-y-3">
                       {aiMatchResults.slice(0, 5).map((match, index) => (
                         <Card key={match.jobId} className="border-green-200 bg-green-50">
@@ -944,7 +944,7 @@ export default function SAJobSearch() {
                   </div>
                 )}
 
-                {/* AI Match Error */}
+                {/* Job Match Error */
                 {aiMatchError && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-700">{aiMatchError}</p>
@@ -1181,7 +1181,7 @@ export default function SAJobSearch() {
                       size="sm"
                       className="flex-none"
                     >
-                      {aiMatching ? "Matching..." : "AI Match"}
+                      {aiMatching ? "Matching..." : "Job Match"}
                     </Button>
                   </div>
 
@@ -1230,7 +1230,7 @@ export default function SAJobSearch() {
 
                 {aiMatchResults.length > 0 && (
                   <div className="mt-6">
-                    <h3 className="font-semibold text-gray-900 mb-3">AI Match Results</h3>
+                    <h3 className="font-semibold text-gray-900 mb-3">Job Match Results</h3>
                     <div className="space-y-3">
                       {aiMatchResults.slice(0, 3).map((match, index) => (
                         <Card key={match.jobId} className="border-green-200 bg-green-50">
