@@ -52,7 +52,7 @@ export default function DonatePage() {
             </div>
             <div className="flex justify-center">
               <Image
-                src="/SnapCode_X_26gpWE .png"
+                src="/SnapCode_X_26gpWE.png"
                 alt="SnapScan QR Code"
                 width={200}
                 height={200}
