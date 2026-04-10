@@ -319,11 +319,286 @@ const techProfile: SAJobProfile = {
 }
 
 // ─────────────────────────────────────────────
+// 3. ENGINEERING
+// ─────────────────────────────────────────────
+const engineeringProfile: SAJobProfile = {
+  id: 'engineering',
+  family: 'Engineering',
+  sector: 'Engineering & Construction',
+  description: 'Covers civil, mechanical, electrical, chemical, industrial, and mining engineering across SA industries.',
+  typicalTitles: [
+    'Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer', 'Chemical Engineer',
+    'Industrial Engineer', 'Structural Engineer', 'Mining Engineer', 'Metallurgical Engineer',
+    'Project Engineer', 'Site Engineer', 'Design Engineer', 'Process Engineer',
+    'Engineering Manager', 'Technical Manager', 'Plant Manager', 'Operations Engineer',
+    'Maintenance Engineer', 'Reliability Engineer', 'Quality Engineer', 'Safety Engineer',
+    'Draughtsman', 'Technician', 'Engineering Technologist', 'Graduate Engineer'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 3,
+      typicalTitles: ['Graduate Engineer', 'Junior Engineer', 'Engineering Trainee', 'Draughtsman', 'Technician']
+    },
+    {
+      level: 'mid',
+      minYears: 3,
+      maxYears: 8,
+      typicalTitles: ['Engineer', 'Project Engineer', 'Design Engineer', 'Process Engineer', 'Site Engineer', 'Engineering Technologist']
+    },
+    {
+      level: 'senior',
+      minYears: 8,
+      maxYears: 15,
+      typicalTitles: ['Senior Engineer', 'Principal Engineer', 'Lead Engineer', 'Engineering Manager', 'Technical Manager']
+    },
+    {
+      level: 'executive',
+      minYears: 15,
+      maxYears: 99,
+      typicalTitles: ['Plant Manager', 'Operations Director', 'Chief Engineer', 'Technical Director', 'VP Engineering']
+    }
+  ],
+  minNQF: 6,
+  preferredNQF: 7,
+  acceptedQualifications: [
+    'BEng Civil', 'BEng Mechanical', 'BEng Electrical', 'BEng Chemical', 'BEng Industrial',
+    'BSc Engineering', 'BTech Engineering', 'National Diploma Engineering',
+    'BEng Mining', 'BEng Metallurgical', 'BEng Structural',
+    'MEng', 'MSc Engineering', 'MBA'
+  ],
+  professionalRegistrations: [
+    {
+      name: 'Professional Engineer (Pr.Eng)',
+      body: 'ECSA',
+      required: false,
+      applicableRoles: ['Civil Engineer', 'Mechanical Engineer', 'Electrical Engineer', 'Chemical Engineer', 'Structural Engineer']
+    },
+    {
+      name: 'Engineering Technologist (Pr.Tech.Eng)',
+      body: 'ECSA',
+      required: false,
+      applicableRoles: ['Engineering Technologist', 'Technical Manager']
+    },
+    {
+      name: 'Engineering Technician (Pr.Techni.Eng)',
+      body: 'ECSA',
+      required: false,
+      applicableRoles: ['Engineering Technician', 'Draughtsman']
+    },
+    {
+      name: 'Professional Construction Manager',
+      body: 'SACPCMP',
+      required: false,
+      applicableRoles: ['Construction Manager', 'Site Manager', 'Project Manager']
+    },
+    {
+      name: 'Mine Manager Certificate of Competency',
+      body: 'DMRE',
+      required: true,
+      applicableRoles: ['Mine Manager', 'Mining Engineer']
+    }
+  ],
+  coreSkills: {
+    technical: [
+      'AutoCAD', 'SolidWorks', 'CATIA', 'Revit', 'Civil 3D', 'STAAD Pro',
+      'Project Management', 'Technical Drawing', 'Structural Analysis',
+      'Process Design', 'Plant Maintenance', 'Quality Control', 'ISO Standards',
+      'SANS Standards', 'OHS Act', 'MHSA', 'Risk Assessment', 'HAZOP',
+      'Commissioning', 'Procurement', 'Contract Management', 'NEC', 'FIDIC'
+    ],
+    soft: [
+      'Problem Solving', 'Analytical Thinking', 'Project Management',
+      'Leadership', 'Communication', 'Attention to Detail', 'Safety Conscious'
+    ],
+    tools: [
+      'AutoCAD', 'SolidWorks', 'Revit', 'MS Project', 'Primavera P6',
+      'SAP PM', 'CMMS', 'MATLAB', 'ANSYS', 'Civil 3D'
+    ]
+  },
+  industryKeywords: [
+    'engineering', 'design', 'construction', 'commissioning', 'maintenance',
+    'plant', 'site', 'project', 'technical', 'specifications', 'drawings',
+    'ohs act', 'mhsa', 'iso 9001', 'sans', 'nec contract', 'fidic',
+    'bill of quantities', 'boq', 'tender', 'procurement', 'epc'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: true,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: true,
+    bilingualAdvantage: false,
+    notes: [
+      'ECSA registration (Pr.Eng) is the gold standard — required for signing off designs',
+      'OHS Act and MHSA compliance knowledge mandatory for site-based roles',
+      'Mining engineering roles require DMRE Certificate of Competency',
+      'SANS and SABS standards knowledge expected for SA-based design work',
+      'Driver\'s licence and own vehicle commonly required for site visits',
+      'NEC and FIDIC contract knowledge valued in infrastructure projects'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'ECSA', weight: 0.7, message: 'ECSA registration (Pr.Eng) is required or strongly preferred for senior engineering roles in SA' },
+    { skill: 'AutoCAD', weight: 0.6, message: 'AutoCAD or equivalent CAD software is a baseline requirement for most engineering roles' },
+    { skill: 'OHS Act', weight: 0.7, message: 'OHS Act knowledge is mandatory for site-based engineering roles in SA' },
+    { skill: 'Project Management', weight: 0.5, message: 'Project management skills are expected at mid-senior engineering level' },
+    { skill: 'Driver\'s Licence', weight: 0.6, message: 'Valid driver\'s licence is required for most site-based engineering roles' }
+  ],
+  detectionKeywords: [
+    'engineer', 'engineering', 'civil', 'mechanical', 'electrical', 'chemical',
+    'structural', 'industrial', 'mining engineer', 'process engineer',
+    'autocad', 'solidworks', 'revit', 'ecsa', 'pr.eng', 'beng', 'bsc eng',
+    'plant', 'site engineer', 'commissioning', 'maintenance engineer',
+    'ohs', 'mhsa', 'draughtsman', 'technician', 'technologist'
+  ]
+}
+
+// ─────────────────────────────────────────────
+// 4. HEALTHCARE
+// ─────────────────────────────────────────────
+const healthcareProfile: SAJobProfile = {
+  id: 'healthcare',
+  family: 'Healthcare',
+  sector: 'Health & Medical',
+  description: 'Covers medical, nursing, pharmacy, allied health, and healthcare management roles across SA public and private sectors.',
+  typicalTitles: [
+    'Medical Doctor', 'General Practitioner', 'Specialist', 'Registrar',
+    'Registered Nurse', 'Professional Nurse', 'Staff Nurse', 'Enrolled Nurse',
+    'Pharmacist', 'Pharmacy Manager', 'Pharmacist\'s Assistant',
+    'Physiotherapist', 'Occupational Therapist', 'Speech Therapist',
+    'Radiographer', 'Sonographer', 'Medical Technologist', 'Biomedical Technologist',
+    'Dietitian', 'Social Worker', 'Clinical Psychologist', 'Counsellor',
+    'Theatre Nurse', 'ICU Nurse', 'Midwife', 'Community Health Worker',
+    'Hospital Manager', 'Clinical Manager', 'Ward Manager', 'Practice Manager'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 3,
+      typicalTitles: ['Community Service Doctor', 'Junior Doctor', 'Staff Nurse', 'Enrolled Nurse', 'Intern Pharmacist', 'Graduate Physiotherapist']
+    },
+    {
+      level: 'mid',
+      minYears: 3,
+      maxYears: 8,
+      typicalTitles: ['General Practitioner', 'Registered Nurse', 'Pharmacist', 'Physiotherapist', 'Occupational Therapist', 'Radiographer']
+    },
+    {
+      level: 'senior',
+      minYears: 8,
+      maxYears: 15,
+      typicalTitles: ['Senior Nurse', 'Ward Manager', 'Pharmacy Manager', 'Senior Physiotherapist', 'Registrar', 'Clinical Specialist']
+    },
+    {
+      level: 'executive',
+      minYears: 12,
+      maxYears: 99,
+      typicalTitles: ['Hospital Manager', 'Clinical Manager', 'Medical Director', 'Chief Medical Officer', 'Head of Department']
+    }
+  ],
+  minNQF: 6,
+  preferredNQF: 7,
+  acceptedQualifications: [
+    'MBChB', 'MBBCh', 'Bachelor of Nursing', 'BCur', 'BPharm',
+    'BSc Physiotherapy', 'BSc Occupational Therapy', 'BSc Radiography',
+    'BSc Medical Technology', 'BSc Dietetics', 'BSocSci Social Work',
+    'BA Psychology', 'MA Clinical Psychology', 'PhD',
+    'Diploma Nursing', 'Diploma Midwifery'
+  ],
+  professionalRegistrations: [
+    {
+      name: 'HPCSA Registration',
+      body: 'HPCSA',
+      required: true,
+      applicableRoles: ['Medical Doctor', 'Physiotherapist', 'Occupational Therapist', 'Radiographer', 'Dietitian', 'Clinical Psychologist']
+    },
+    {
+      name: 'SANC Registration',
+      body: 'SANC',
+      required: true,
+      applicableRoles: ['Registered Nurse', 'Professional Nurse', 'Midwife', 'Enrolled Nurse']
+    },
+    {
+      name: 'SAPC Registration',
+      body: 'SAPC',
+      required: true,
+      applicableRoles: ['Pharmacist', 'Pharmacy Manager', 'Pharmacist\'s Assistant']
+    },
+    {
+      name: 'SACSSP Registration',
+      body: 'SACSSP',
+      required: true,
+      applicableRoles: ['Social Worker', 'Counsellor']
+    }
+  ],
+  coreSkills: {
+    technical: [
+      'Patient Assessment', 'Clinical Diagnosis', 'Treatment Planning',
+      'Medication Administration', 'Wound Care', 'IV Therapy', 'CPR/BLS',
+      'ACLS', 'Theatre Procedures', 'ICU Care', 'Infection Control',
+      'Medical Records', 'ICD-10 Coding', 'Clinical Governance',
+      'Dispensing', 'Pharmacovigilance', 'Drug Interactions'
+    ],
+    soft: [
+      'Empathy', 'Communication', 'Attention to Detail', 'Stress Management',
+      'Teamwork', 'Ethical Practice', 'Cultural Sensitivity', 'Resilience'
+    ],
+    tools: [
+      'MEDITECH', 'SAP Healthcare', 'GoodX', 'Elixir', 'Nexus',
+      'PACS', 'EMR Systems', 'Dispensing Software'
+    ]
+  },
+  industryKeywords: [
+    'patient care', 'clinical', 'medical', 'nursing', 'pharmacy', 'diagnosis',
+    'treatment', 'ward', 'theatre', 'icu', 'emergency', 'outpatient',
+    'hpcsa', 'sanc', 'sapc', 'community service', 'public health',
+    'nhi', 'national health insurance', 'doh', 'department of health',
+    'private hospital', 'netcare', 'mediclinic', 'life healthcare'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: false,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: false,
+    bilingualAdvantage: true,
+    notes: [
+      'HPCSA/SANC/SAPC registration is non-negotiable — unregistered practitioners cannot legally practice',
+      'Community service year is compulsory for all SA-trained health professionals',
+      'NHI implementation will significantly reshape public sector healthcare roles',
+      'Bilingual ability (especially isiZulu, Sesotho, Afrikaans) is a strong advantage in public sector',
+      'Foreign-qualified health professionals must have HPCSA/SANC equivalence assessment',
+      'PMDS (Performance Management) knowledge required for public sector roles'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'HPCSA', weight: 1.0, message: 'HPCSA registration is legally required to practice — this is a hard requirement' },
+    { skill: 'SANC', weight: 1.0, message: 'SANC registration is legally required for all nursing roles in SA' },
+    { skill: 'SAPC', weight: 1.0, message: 'SAPC registration is legally required for all pharmacy roles in SA' },
+    { skill: 'BLS/CPR', weight: 0.7, message: 'Basic Life Support certification is expected for all clinical roles' },
+    { skill: 'ICD-10', weight: 0.5, message: 'ICD-10 coding knowledge is required for billing and medical records roles' }
+  ],
+  detectionKeywords: [
+    'nurse', 'nursing', 'doctor', 'physician', 'pharmacist', 'pharmacy',
+    'physiotherapist', 'occupational therapist', 'radiographer', 'dietitian',
+    'social worker', 'psychologist', 'hpcsa', 'sanc', 'sapc', 'mbchb',
+    'clinical', 'patient', 'ward', 'theatre', 'icu', 'hospital',
+    'medical', 'healthcare', 'health', 'midwife', 'community service',
+    'netcare', 'mediclinic', 'life healthcare', 'department of health'
+  ]
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 export const SA_JOB_PROFILES: SAJobProfile[] = [
   financeProfile,
   techProfile,
+  engineeringProfile,
+  healthcareProfile,
 ]
 
 export const getProfileById = (id: string): SAJobProfile | undefined =>
