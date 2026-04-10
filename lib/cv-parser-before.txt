@@ -1,0 +1,619 @@
+﻿import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
+import mammoth from 'mammoth';
+import { fileTypeFromBuffer } from 'file-type';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
+
+// Configure PDF.js worker for server-side usage
+if (typeof window === 'undefined') {
+  // For server-side rendering, we need to handle PDF.js differently
+  const pdfjsWorker = require('pdfjs-dist/build/pdf.worker.entry');
+  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
+
+  // Polyfill DOMMatrix for Node.js environment
+  class DOMMatrixPolyfill {
+    constructor() {
+      this.isIdentity = true;
+    }
+    multiply() { return this; }
+    invertSelf() { return this; }
+    translate() { return this; }
+    scale() { return this; }
+    rotate() { return this; }
+  }
+  global.DOMMatrix = global.DOMMatrix || DOMMatrixPolyfill;
+}
+
+/**
+ * Supported file types for CV parsing
+ */
+export enum CVFileType {
+  PDF = 'pdf',
+  DOCX = 'docx',
+  TXT = 'txt',
+  UNKNOWN = 'unknown'
+}
+
+export enum TemplateType {
+  PROFESSIONAL = 'professional',
+  MODERN = 'modern',
+  CREATIVE = 'creative',
+  SIMPLE = 'simple',
+  EXECUTIVE = 'executive',
+  TECHNICAL = 'technical',
+  GRADUATE = 'graduate',
+  DIGITAL = 'digital',
+  SA_PROFESSIONAL = 'sa-professional',
+  SA_MODERN = 'sa-modern',
+  SA_EXECUTIVE = 'sa-executive'
+}
+
+/**
+ * Result of the CV parsing operation
+ */
+export interface CVParseResult {
+  success: boolean;
+  data?: CVData;
+  rawText?: string;
+  error?: string;
+  confidence: number;
+  ownTemplate?: boolean;
+  templateType?: string;
+}
+
+/**
+ * Detects the type of file from the buffer
+ */
+export async function detectFileType(buffer: Buffer): Promise<CVFileType> {
+  try {
+    const type = await fileTypeFromBuffer(buffer);
+
+    if (!type) {
+      return CVFileType.UNKNOWN;
+    }
+
+    switch (type.mime) {
+      case 'application/pdf':
+        return CVFileType.PDF;
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        return CVFileType.DOCX;
+      default:
+        return CVFileType.UNKNOWN;
+    }
+  } catch (error) {
+    console.error('Error detecting file type:', error);
+    return CVFileType.UNKNOWN;
+  }
+}
+
+/**
+ * Extract text from a PDF file using pdfjs-dist with better formatting
+ */
+export async function extractTextFromPDF(buffer: Buffer): Promise<{text: string, layout: any[]}> {
+  try {
+    console.log('Starting enhanced PDF extraction for SA CVs...');
+
+    // Convert Buffer to Uint8Array as required by PDF.js
+    const uint8Array = new Uint8Array(buffer);
+    const loadingTask = pdfjsLib.getDocument({ data: uint8Array });
+    const pdf = await loadingTask.promise;
+
+    const allItems: any[] = [];
+    let fullText = '';
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageItems = textContent.items as any[];
+
+      // SA CV enhanced extraction with font info
+      pageItems.forEach(item => {
+        if (!item.str?.trim()) return;
+        const fontSize = item.width / item.str.length || 12;
+        const isBold = /bold/i.test(item.fontName || '');
+        
+        allItems.push({
+          str: item.str.trim(),
+          x: item.transform[4],
+          y: item.transform[5],
+          fontSize: Math.round(fontSize),
+          isBold,
+          isHeader: fontSize > 14 || isBold
+        });
+      });
+
+      for (const item of items) {
+        if (!item.str.trim()) continue; // Skip empty strings
+
+        const y = Math.round(item.transform[5]); // Round Y position to group nearby items
+        const x = item.transform[4]; // X position
+
+        if (!lineMap.has(y)) {
+          lineMap.set(y, []);
+        }
+
+        lineMap.get(y)!.push({
+          items: [item],
+          x: x
+        });
+      }
+
+      // Sort lines by Y position (top to bottom) and items by X position (left to right)
+      const sortedYs = Array.from(lineMap.keys()).sort((a, b) => b - a); // Descending order (top to bottom)
+
+      let pageText = '';
+
+      for (const y of sortedYs) {
+        const lineItems = lineMap.get(y)!.sort((a, b) => a.x - b.x); // Sort by X position
+
+        let lineText = '';
+        let lastX = 0;
+
+        for (const item of lineItems) {
+          const x = item.x;
+          const str = item.items[0].str;
+
+          // Add appropriate spacing between words based on X distance
+          if (lineText && x - lastX > 10) {
+            lineText += ' ';
+          }
+
+          lineText += str;
+          lastX = x + (str.length * 5); // Approximate the end position
+        }
+
+        if (lineText.trim()) {
+          pageText += lineText.trim() + '\n';
+        }
+      }
+
+      text += pageText + '\n'; // Page separator
+    }
+
+    // Post-processing to clean up the text
+    text = text
+      .replace(/\n{3,}/g, '\n\n') // Replace multiple newlines with double newlines
+      .split('\n')
+      .map(line => {
+        // Preserve structure but clean up excessive spaces within each line
+        return line.replace(/\s{2,}/g, ' ').trim();
+      })
+      .join('\n')
+      .trim();
+
+    console.log('PDF text extraction completed');
+    console.log('Extracted text length:', text.length);
+    console.log('First 200 characters:', text.substring(0, 200));
+
+    if (!text.trim()) {
+      throw new Error('No text extracted from PDF');
+    }
+
+    return text;
+  } catch (error) {
+    console.error('Error extracting text from PDF:', error);
+    throw new Error(`Failed to extract text from PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Extract text from a DOCX file with better formatting
+ */
+export async function extractTextFromDOCX(buffer: Buffer): Promise<string> {
+  try {
+    const result = await mammoth.extractRawText({ buffer });
+    if (!result.value || !result.value.trim()) {
+      throw new Error('No text extracted from DOCX');
+    }
+
+    // Clean up the extracted text
+    let text = result.value
+      .replace(/\r\n/g, '\n') // Normalize line endings
+      .replace(/\n\s*\n/g, '\n') // Remove excessive blank lines
+      .trim();
+
+    return text;
+  } catch (error) {
+    console.error('Error extracting text from DOCX:', error);
+    throw new Error('Failed to extract text from DOCX');
+  }
+}
+
+/**
+ * Extract text from a text file
+ */
+export function extractTextFromTXT(buffer: Buffer): string {
+  try {
+    const text = buffer.toString('utf-8');
+    if (!text.trim()) {
+      throw new Error('No text extracted from TXT');
+    }
+    return text;
+  } catch (error) {
+    console.error('Error extracting text from TXT:', error);
+    throw new Error('Failed to extract text from TXT');
+  }
+}
+
+/**
+ * Extract text from a file based on its type
+ */
+export async function extractTextFromFile(buffer: Buffer, fileType: CVFileType): Promise<string> {
+  switch (fileType) {
+    case CVFileType.PDF:
+      return await extractTextFromPDF(buffer);
+    case CVFileType.DOCX:
+      return await extractTextFromDOCX(buffer);
+    case CVFileType.TXT:
+      return extractTextFromTXT(buffer);
+    default:
+      throw new Error('Unsupported file type');
+  }
+}
+
+/**
+ * Detect if this is one of our own templates
+ */
+function detectOwnTemplate(text: string): { isOwnTemplate: boolean; templateType?: string } {
+  // Look for our template markers
+  const templateMarkers = [
+    { type: TemplateType.PROFESSIONAL, patterns: ['professional template', 'corporate professional', 'cvkonnekt professional'] },
+    { type: TemplateType.MODERN, patterns: ['modern template', 'modern minimalist', 'cvkonnekt modern'] },
+    { type: TemplateType.CREATIVE, patterns: ['creative template', 'creative design', 'cvkonnekt creative'] },
+    { type: TemplateType.SIMPLE, patterns: ['simple template', 'simple clean', 'cvkonnekt simple'] },
+    { type: TemplateType.EXECUTIVE, patterns: ['executive template', 'executive elite', 'cvkonnekt executive'] },
+    { type: TemplateType.TECHNICAL, patterns: ['technical template', 'technical expert', 'cvkonnekt technical'] },
+    { type: TemplateType.GRADUATE, patterns: ['graduate template', 'graduate entry', 'cvkonnekt graduate'] },
+    { type: TemplateType.DIGITAL, patterns: ['digital template', 'digital portfolio', 'cvkonnekt digital'] },
+    { type: TemplateType.SA_PROFESSIONAL, patterns: ['sa professional template', 'sa corporate professional', 'cvkonnekt sa professional', 'south african professional'] },
+    { type: TemplateType.SA_MODERN, patterns: ['sa modern template', 'sa modern minimalist', 'cvkonnekt sa modern', 'south african modern'] },
+    { type: TemplateType.SA_EXECUTIVE, patterns: ['sa executive template', 'sa executive elite', 'cvkonnekt sa executive', 'south african executive'] }
+  ];
+
+  const lowerText = text.toLowerCase();
+
+  for (const marker of templateMarkers) {
+    for (const pattern of marker.patterns) {
+      if (lowerText.includes(pattern)) {
+        return { isOwnTemplate: true, templateType: marker.type };
+      }
+    }
+  }
+
+  // Also check for our specific formatting patterns
+  if (lowerText.includes('cvkonnekt') || lowerText.includes('generated by cvkonnekt')) {
+    return { isOwnTemplate: true, templateType: TemplateType.PROFESSIONAL };
+  }
+
+  return { isOwnTemplate: false };
+}
+
+/**
+ * Main CV parsing function
+ */
+export async function parseCV(buffer: Buffer): Promise<CVParseResult> {
+  try {
+    // Detect file type
+    const fileType = await detectFileType(buffer);
+
+    // Extract text
+    const rawText = await extractTextFromFile(buffer, fileType);
+
+    // Detect if it's our own template
+    const templateDetection = detectOwnTemplate(rawText);
+
+    // Parse the text into CV data
+    const result = parseTextToCV(rawText, templateDetection.isOwnTemplate);
+
+    return {
+      success: true,
+      data: result.data,
+      rawText,
+      confidence: result.confidence,
+      ownTemplate: templateDetection.isOwnTemplate,
+      templateType: templateDetection.templateType
+    };
+  } catch (error) {
+    console.error('Error parsing CV:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      confidence: 0
+    };
+  }
+}
+
+/**
+ * Parse text into CV data structure
+ */
+export function parseTextToCV(textOrLayout: string | {text: string, layout: any[]}, isOwnTemplate: boolean = false): CVParseResult {
+  const text = typeof textOrLayout === 'string' ? textOrLayout : textOrLayout.text;
+  const layout = typeof textOrLayout === 'string' ? [] : textOrLayout.layout;
+  try {
+    console.log('Starting CV parsing with text:', text.substring(0, 200) + '...'); // Debug log
+
+    const personalInfo = extractPersonalInfo(text);
+    console.log('Extracted personal info:', personalInfo); // Debug log
+
+    const summary = extractSummary(text);
+    console.log('Extracted summary:', summary.substring(0, 100) + '...'); // Debug log
+
+    const experience = extractExperience(text);
+    console.log('Extracted experience:', experience); // Debug log
+
+    const education = extractEducation(text);
+    console.log('Extracted education:', education); // Debug log
+
+    const skills = extractSkills(text);
+    console.log('Extracted skills:', skills); // Debug log
+
+    const cvData: CVData = {
+      personalInfo,
+      summary,
+      experience,
+      education,
+      skills,
+      projects: []
+    };
+
+    const confidence = calculateConfidence(cvData, isOwnTemplate);
+    console.log('Final CV data:', cvData); // Debug log
+    console.log('Confidence score:', confidence); // Debug log
+
+    return {
+      success: true,
+      data: cvData,
+      rawText: text,
+      confidence,
+      ownTemplate: isOwnTemplate
+    };
+  } catch (error) {
+    console.error('Error parsing text to CV:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      confidence: 0
+    };
+  }
+}
+
+/**
+ * Extract personal information from text
+ */
+function extractPersonalInfo(text: string): PersonalInfo {
+  // Clean the text first
+  const cleanText = text.replace(/\r\n/g, '\n').replace(/\t/g, ' ');
+
+  // Extract name from the first line (assuming it's the first non-empty line)
+  const lines = cleanText.split('\n').filter(line => line.trim());
+  const firstLine = lines[0] || '';
+
+  console.log('First line for name extraction:', firstLine); // Debug log
+
+  // Try multiple patterns for name extraction
+  let fullName = '';
+
+  // Pattern 1: Name before any contact info (email, phone, etc.)
+  const nameMatch1 = firstLine.match(/^([^|@\d\n\r]+?)(?:\s*\||\s*@|\s*\d|$)/);
+  if (nameMatch1 && nameMatch1[1].trim().length > 2) {
+    fullName = nameMatch1[1].trim();
+  }
+
+  // Pattern 2: Look for capitalized name pattern
+  if (!fullName) {
+    const nameMatch2 = firstLine.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+    if (nameMatch2) {
+      fullName = nameMatch2[1].trim();
+    }
+  }
+
+  // Pattern 3: Look for name in the first few lines
+  if (!fullName) {
+    for (let i = 0; i < Math.min(5, lines.length); i++) {
+      const line = lines[i].trim();
+      // More flexible name pattern for PDF files
+      const nameMatch = line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/) || 
+                        line.match(/^([A-Z][A-Z]+\s+[A-Z][a-z]+)/) ||  // ALL CAPS first name
+                        line.match(/^([A-Z][a-z]+\s+[A-Z][A-Z]+)/);    // ALL CAPS last name
+      if (nameMatch && nameMatch[1].length > 3) {
+        fullName = nameMatch[1].trim();
+        break;
+      }
+    }
+  }
+
+  console.log('Extracted name:', fullName); // Debug log
+
+  // Look for professional summary or job title
+  let jobTitle = '';
+
+  // First try to find a job title in a professional summary section
+  const summaryMatch = cleanText.match(/(?:professional\s+summary|profile|summary)[\s:]*\n+([^\n]+)/i);
+  if (summaryMatch && summaryMatch[1].length < 100) { // Not too long to be a full summary
+    jobTitle = summaryMatch[1].trim();
+  }
+
+  // Look for job title patterns in the first few lines after the name
+  if (!jobTitle) {
+    for (let i = 1; i < Math.min(8, lines.length); i++) {
+      const line = lines[i].trim();
+
+      // Skip lines that look like contact info or addresses
+      if (line.includes('@') ||
+          line.includes('|') ||
+          line.match(/\(\d{3}\)/) ||
+          line.match(/\d+\s+\w+\s+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)/i) ||
+          line.match(/^\d+\s/) || // Starts with a number (likely address)
+          line.includes(',') && line.match(/\d{5}/) // Contains zip code
+         ) {
+        continue;
+      }
+
+      // Look for job title patterns - professional titles
+      if ((line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/) ||
+           line.match(/Manager|Director|Engineer|Developer|Analyst|Coordinator|Specialist|Assistant|Executive|Officer|Consultant|Administrator|Supervisor|Lead|Senior|Junior/i)) &&
+          line.length < 60 &&
+          line.length > 5 &&
+          !line.match(/\d{4}/) && // Not a date
+          !line.match(/Profile|Summary|Experience|Education|Skills|Contact/i)) { // Not a section header
+        jobTitle = line;
+        break;
+      }
+    }
+  }
+
+  // If still not found, look for job title in the experience section
+  if (!jobTitle) {
+    const jobTitleMatch = cleanText.match(/(?:^|\n)([^|\n\r]+?)\s*\|\s*[^|\n\r]+(?:\s*–|\s*to|\s*-)/im) ||
+                          cleanText.match(/(?:job title|position|role)[\s:]*([^\n]+)/i);
+    if (jobTitleMatch) {
+      jobTitle = jobTitleMatch[1].trim();
+    }
+  }
+
+  // Look for email with more flexible pattern
+  const emailMatch = cleanText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+  const email = emailMatch ? emailMatch[1].trim() : '';
+
+  // Look for phone number with various formats
+  // First try to find a phone number in standard US format (XXX) XXX-XXXX
+  const usPhoneMatch = cleanText.match(/\((\d{3})\)\s*(\d{3})-(\d{4})/);
+
+  // Then try other international formats
+  const phoneMatch = !usPhoneMatch && (
+    cleanText.match(/(?:^|\s)(?:\+\d{1,3}|0)?[\s.-]?(\d{1,3})[\s.-]?(\d{3})[\s.-]?(\d{4})(?:\s|$)/) ||
+    cleanText.match(/(?:phone|tel|mobile|cell)[\s:]*([+\d\s.-]{7,})/i)
+  );
+
+  let phone = '';
+  if (usPhoneMatch) {
+    // Preserve the US format
+    phone = `(${usPhoneMatch[1]}) ${usPhoneMatch[2]}-${usPhoneMatch[3]}`;
+  } else if (phoneMatch) {
+    if (phoneMatch[1] && phoneMatch[2] && phoneMatch[3]) {
+      // Format the phone number consistently if we have the parts
+      phone = `${phoneMatch[1]}-${phoneMatch[2]}-${phoneMatch[3]}`;
+    } else if (phoneMatch[1]) {
+      // Just use the matched phone string
+      phone = phoneMatch[1].trim();
+    }
+  }
+
+  // Look for location/address with more flexible patterns
+  let location = '';
+
+  // Try multiple location patterns, being more specific to avoid job titles
+  const locationPatterns = [
+    // Full address with street number and zip
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)[^|\n\r]*?,\s*[^|\n\r]+?,\s*[A-Z]{2}\s*\d{5})/im,
+    // Street address with city and state
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)[^|\n\r]*?,\s*[^|\n\r]+?,\s*[A-Z]{2})/im,
+    // Just street address
+    /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr))/im,
+    // City, State, ZIP format
+    /([A-Z][a-z]+,\s*[A-Z]{2}\s*\d{5})/,
+    // City, State format
+    /([A-Z][a-z]+,\s*[A-Z]{2})/,
+    // Address labeled
+    /(?:address|location)[\s:]*([^\n]+)/i
+  ];
+
+  for (const pattern of locationPatterns) {
+    const match = cleanText.match(pattern);
+    if (match && match[1]) {
+      const potentialLocation = match[1].trim();
+      // Make sure it's not a job title or name
+      if (!potentialLocation.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/) ||
+          potentialLocation.includes(',') ||
+          potentialLocation.match(/\d/)) {
+        location = potentialLocation;
+        break;
+      }
+    }
+  }
+
+  console.log('Extracted personal info:', { fullName, jobTitle, email, phone, location }); // Debug log
+
+  return {
+    fullName,
+    jobTitle,
+    email,
+    phone,
+    location
+  };
+}
+
+/**
+ * Extract summary from text
+ */
+function extractSummary(text: string): string {
+  // Look for profile/summary section with more flexible patterns
+  const profilePatterns = [
+    // Standard section header with content until next major section
+    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*(?:experience|education|skills|activities|interests|work|employment):)/i,
+
+    // Look for PROFESSIONAL SUMMARY as a standalone header until next major section
+    /PROFESSIONAL\s+SUMMARY\s*\n+([^]*?)(?=\n\s*(?:EXPERIENCE|EDUCATION|SKILLS|WORK|EMPLOYMENT):)/i,
+
+    // Section header without clear end marker but ending at a capitalized section header
+    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/i,
+
+    // Section header with content until double newline (less strict fallback)
+    /(?:profile|summary|professional\s+summary|objective|about\s+me)[:.\s]*\n+([^]*?)(?=\n\s*\n)/i
+  ];
+
+  for (const pattern of profilePatterns) {
+    const match = text.match(pattern);
+    if (match && match[1] && match[1].trim()) {
+      // Clean up the summary
+      let summary = match[1].trim()
+        .replace(/^\s*[-•*]\s*/gm, '') // Remove bullet points
+        .replace(/\n+/g, ' '); // Join multiple lines
+
+      console.log('Summary found with pattern:', summary.substring(0, 100) + '...'); // Debug log
+      return summary;
+    }
+  }
+
+  // Fallback: look for any paragraph that seems like a summary
+  // Usually appears near the top of the document after the contact info
+  const lines = text.split('\n');
+  const startLine = Math.min(15, lines.length); // Look in the first 15 lines (increased from 10)
+
+  // Look for a substantial paragraph in the first few lines
+  for (let i = 0; i < startLine; i++) {
+    const line = lines[i].trim();
+    // Look for a substantial paragraph that's likely to be a summary
+    if (line.length > 50 && !line.includes('|') && !line.includes('@') && !line.match(/^\d/) && 
+        !line.match(/^(education|experience|skills|work|employment)/i)) {
+      console.log('Summary found in first lines:', line.substring(0, 100) + '...'); // Debug log
+      return line;
+    }
+  }
+
+  // Second fallback: look for a longer paragraph anywhere in the first part of the document
+  const firstThird = lines.slice(0, Math.floor(lines.length / 3));
+  for (const line of firstThird) {
+    if (line.length > 80) { // Reduced from 100 to catch more potential summaries
+      console.log('Summary found in first third:', line.substring(0, 100) + '...'); // Debug log
+      return line;
+    }
+  }
+
+  // Third fallback: try to find multiple consecutive lines that might form a summary
+  for (let i = 0; i < startLine; i++) {
+    if (lines[i].trim().length > 30 && lines[i+1] && lines[i+1].trim().length > 30) {
+      const combinedLines = lines.slice(i, i+3).join(' ').trim();
+      if (combinedLines.length > 60) {
+        console.log('Summary found from consecutive lines:', combinedLines.substring(0, 100) + '...'); // Debug log
+        return combinedLines;
+      }
+    }
+  }
+
+  console.log('No summary found'); // Debug log
+  return '';
+}
+
+/**
+ * Extract experience from text - Fixed version
+ */

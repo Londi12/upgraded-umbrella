@@ -167,6 +167,7 @@ export default function CreateCVPage() {
   const [parseError, setParseError] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [parseStep, setParseStep] = useState<'uploading' | 'parsing' | 'complete' | 'error'>('complete')
+  const [isDragActive, setIsDragActive] = useState(false)
 
 
   const [showPreviewDialog, setShowPreviewDialog] = useState(false)
@@ -606,26 +607,57 @@ export default function CreateCVPage() {
                   {(parseStep === 'complete' || parseStep === 'error') && (
                     <>
                       <Input 
-                        type="file" 
-                        accept=".pdf,.docx,.txt" 
-                        onChange={handleFileUpload} 
-                        disabled={parseStep === 'uploading' || parseStep === 'parsing'}
-                        className="mb-4 border-slate-300 focus:border-blue-500 focus:ring-blue-500"
-                      />
-                      <div 
-                        className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-blue-600 hover:bg-blue-100 transition-all duration-200 cursor-pointer"
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const files = e.dataTransfer.files;
-                          if (files.length > 0) {
-                            const event = { target: { files } } as React.ChangeEvent<HTMLInputElement>;
-                            handleFileUpload(event);
+                        ref={(el) => {
+                          if (el) {
+                            el.style.display = 'none';
                           }
                         }}
-                        onDragOver={(e) => e.preventDefault()}
+                        type="file" 
+                        id="cv-upload"
+                        accept=".pdf,.docx,.txt" 
+                        onChange={handleFileUpload} 
+                        className="hidden"
+                      />
+                      <div 
+                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
+                          isDragActive 
+                            ? 'border-green-500 bg-green-50 shadow-2xl ring-4 ring-green-200/50 scale-[1.02]' 
+                            : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50'
+                        }`}
+                        onClick={() => {
+                          const input = document.getElementById('cv-upload') as HTMLInputElement;
+                          if (input) input.click();
+                        }}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragActive(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setIsDragActive(false);
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          e.dataTransfer.dropEffect = 'copy';
+                          setIsDragActive(true);
+                        }}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragActive(false);
+                          const files = Array.from(e.dataTransfer.files);
+                          if (files.length > 0) {
+                            const file = files[0];
+                            if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.txt')) && file.size <= 10 * 1024 * 1024) {
+                              const event = { target: { files: [file] as unknown as FileList } } as React.ChangeEvent<HTMLInputElement>;
+                              handleFileUpload(event);
+                            }
+                          }
+                        }}
                       >
-                        <p className="text-slate-600 font-medium">Drag and drop your CV here</p>
-                        <p className="text-xs text-slate-500 mt-1">or click to browse files</p>
+                        <p className="text-slate-600 font-medium">{parseStep === 'uploading' || parseStep === 'parsing' ? 'Uploading...' : 'Drag and drop your CV here'}</p>
+                        <p className="text-xs text-slate-500 mt-1">or click to browse files (PDF, DOCX, TXT ≤10MB)</p>
                       </div>
                     </>
                   )}
