@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 interface ATSScoringPanelProps {
   cvData: CVData
   currentSection: string
+  jobDescription?: string
 }
 
 interface SectionScore {
@@ -25,9 +26,10 @@ interface ATSScore {
   sections: Record<string, SectionScore>
 }
 
-export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps) {
+export function ATSScoringPanel({ cvData, currentSection, jobDescription: externalJobDescription }: ATSScoringPanelProps) {
   const [isPanelCollapsed, setIsPanelCollapsed] = useState(false)
-  const [jobDescription, setJobDescription] = useState('')
+  const [internalJobDescription, setInternalJobDescription] = useState('')
+  const jobDescription = externalJobDescription || internalJobDescription
 
   // Calculate scores for each section
   const scores = useMemo(() => {
@@ -37,13 +39,7 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
   // Calculate job match score when job description is provided
   const jobMatchScore = useMemo(() => {
     if (!jobDescription.trim()) return null
-
-    // Create a default job match result
-    return {
-      score: 65,
-      matchingKeywords: ['experienced', 'team', 'management', 'analysis', 'communication'],
-      missingKeywords: ['excel', 'powerpoint', 'strategy', 'budget', 'forecasting']
-    };
+    return calculateJobMatch(cvData, jobDescription)
   }, [cvData, jobDescription])
 
   // Get current section score details
@@ -207,14 +203,19 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
               Match to Job Description
             </h4>
 
-            <div className="mb-3">
-              <Textarea
-                placeholder="Paste job description here to see how well your CV matches..."
-                value={jobDescription}
-                onChange={(e) => setJobDescription(e.target.value)}
-                className="text-xs min-h-[100px]"
-              />
-            </div>
+            {!externalJobDescription && (
+              <div className="mb-3">
+                <Textarea
+                  placeholder="Paste job description here to see how well your CV matches..."
+                  value={internalJobDescription}
+                  onChange={(e) => setInternalJobDescription(e.target.value)}
+                  className="text-xs min-h-[100px]"
+                />
+              </div>
+            )}
+            {externalJobDescription && (
+              <p className="text-xs text-blue-600 mb-3">Auto-matched against selected job description</p>
+            )}
 
             {jobDescription && jobMatchScore && (
               <>

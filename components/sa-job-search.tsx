@@ -865,6 +865,7 @@ export default function SAJobSearch() {
                     <ATSScoringPanel
                       cvData={savedCVs.find(cv => cv.id === selectedCVId)?.cv_data}
                       currentSection="job-matching"
+                      jobDescription={selectedJob?.description || selectedJob?.snippet || ''}
                     />
                   </div>
                 )}
