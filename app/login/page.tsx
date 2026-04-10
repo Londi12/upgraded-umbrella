@@ -169,6 +169,8 @@ function LoginForm() {
                 </>
               )}
 
+            </form>
+
             <div className="mt-6 text-center space-y-4">
               <p className="text-sm text-slate-600">
                 Don't have an account?{" "}

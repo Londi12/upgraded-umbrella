@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CVPreview } from "@/components/cv-preview"
-import { StructuredData } from "@/components/structured-data"
 import { PageHeader } from "@/components/ui/page-header"
 import {
   generateMetadata as generateSEOMetadata,
@@ -110,7 +109,6 @@ export default function CVTemplatesPage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <StructuredData data={generateBreadcrumbStructuredData(breadcrumbs)} />
       <main className="flex-1">
         <PageHeader 
           title="CV Templates"

@@ -5,7 +5,6 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { StructuredData } from "@/components/structured-data"
 import { generateMetadata as generateSEOMetadata, seoConfigs, generateBreadcrumbStructuredData } from "@/lib/utils"
 
 export const metadata = generateSEOMetadata(seoConfigs.blog)
@@ -112,8 +111,6 @@ export default function BlogPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
-      <StructuredData data={generateBreadcrumbStructuredData(breadcrumbs)} />
-      
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">

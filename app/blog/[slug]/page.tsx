@@ -6,7 +6,6 @@ import { Metadata } from 'next'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { StructuredData } from "@/components/structured-data"
 import { generateBreadcrumbStructuredData, generateStructuredData } from "@/lib/utils"
 
 // Blog post data (in a real app, this would come from a CMS or database)
@@ -224,9 +223,6 @@ export default function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <StructuredData data={generateBreadcrumbStructuredData(breadcrumbs)} />
-      <StructuredData data={articleStructuredData} />
-      
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Back to Blog */}
         <div className="mb-8">
