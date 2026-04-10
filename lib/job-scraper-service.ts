@@ -77,6 +77,7 @@ export class JobScraperService {
     for (const company of SA_COMPANIES) {
       try {
         const jobs = await fetchJSearchJobs(company)
+        console.log(`${company}: fetched ${jobs.length} jobs`)
         for (const job of jobs) {
           if (!seen.has(job.url)) {
             seen.add(job.url)
@@ -84,16 +85,23 @@ export class JobScraperService {
           }
         }
       } catch (err: any) {
-        errors.push(`${company}: ${err.message}`)
+        const msg = `${company}: ${err.message}`
+        console.error(msg)
+        errors.push(msg)
       }
     }
+
+    console.log(`Total unique jobs collected: ${allJobs.length}`)
 
     if (allJobs.length > 0) {
       const { error } = await supabase.from('scraped_jobs').upsert(
         allJobs.map(j => ({ ...j, created_at: new Date().toISOString() })),
         { onConflict: 'url' }
       )
-      if (error) errors.push(`DB insert: ${error.message}`)
+      if (error) {
+        console.error('DB upsert error:', error)
+        errors.push(`DB insert: ${error.message}`)
+      }
     }
 
     return { inserted: allJobs.length, errors }
