@@ -944,7 +944,7 @@ export default function SAJobSearch() {
                   </div>
                 )}
 
-                {/* Job Match Error */
+                {/* Job Match Error */}
                 {aiMatchError && (
                   <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
                     <p className="text-sm text-red-700">{aiMatchError}</p>

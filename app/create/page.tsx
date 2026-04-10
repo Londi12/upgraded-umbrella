@@ -72,7 +72,9 @@ export default function CreateCVPage() {
     "14": { type: "functional", name: "Functional / Skills-First" },
     "15": { type: "sidebar", name: "Sidebar" },
     "16": { type: "matric", name: "Matric / School Leaver" },
-  } = useState(templateMap[templateId] || templateMap["1"])
+  }
+
+  const [selectedTemplate, setSelectedTemplate] = useState(templateMap[templateId] || templateMap["1"])
 
   // Form state
   const [formData, setFormData] = useState({

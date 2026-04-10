@@ -127,8 +127,9 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                   </div>
                 )
               ))}
-      // For brevity, I'm only showing the professional template update here
-      // In a real implementation, you would update all templates similarly
+            </div>
+          </div>
+        )
 
       case "modern":
         return (
