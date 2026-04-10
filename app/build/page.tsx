@@ -158,11 +158,13 @@ function BuildPageContent() {
                     ATS Score
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
                   <DialogHeader>
                     <DialogTitle>ATS Score Analysis</DialogTitle>
                   </DialogHeader>
-                  <ATSScoringPanel cvData={formData as CVData} currentSection={activeSection} />
+                  <div className="overflow-y-auto flex-1 pr-1">
+                    <ATSScoringPanel cvData={formData as CVData} currentSection={activeSection} />
+                  </div>
                 </DialogContent>
               </Dialog>
 

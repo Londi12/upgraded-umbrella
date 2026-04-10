@@ -1,5 +1,5 @@
 import Image from "next/image"
-import { Heart, Smartphone, Copy } from "lucide-react"
+import { Heart, Copy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 export const metadata = {
@@ -20,25 +20,6 @@ export default function DonatePage() {
         </p>
 
         <div className="grid gap-6">
-          {/* PayShap */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 text-left shadow-sm">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <Smartphone className="h-5 w-5 text-blue-600" />
-              </div>
-              <div>
-                <h2 className="font-semibold text-gray-900">PayShap</h2>
-                <p className="text-xs text-gray-500">Instant · Any SA banking app</p>
-              </div>
-            </div>
-            <ol className="text-sm text-gray-600 space-y-1 mb-4 list-decimal list-inside">
-              <li>Open your banking app</li>
-              <li>Go to PayShap</li>
-              <li>Send to <span className="font-semibold text-gray-900">0813695601</span></li>
-              <li>Use reference: <span className="font-semibold text-gray-900">Cvkonnekt</span></li>
-            </ol>
-          </div>
-
           {/* SnapScan */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 text-left shadow-sm">
             <div className="flex items-center gap-3 mb-4">

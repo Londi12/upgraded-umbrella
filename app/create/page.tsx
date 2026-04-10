@@ -545,14 +545,16 @@ export default function CreateCVPage() {
                   ATS Score
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>ATS Compatibility Analysis</DialogTitle>
                   <DialogDescription>
                     See how well your CV performs with Applicant Tracking Systems
                   </DialogDescription>
                 </DialogHeader>
-                <WorkingATSScore cvData={formData as CVData} />
+                <div className="overflow-y-auto flex-1 pr-1">
+                  <WorkingATSScore cvData={formData as CVData} />
+                </div>
               </DialogContent>
             </Dialog>
             <Button
