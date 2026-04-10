@@ -44,16 +44,62 @@ interface SAJobSearchResponse {
 
 export default function SAJobSearch() {
   const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [jobType, setJobType] = useState("");
   const [experience, setExperience] = useState("");
   const [salary, setSalary] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
-  const [datePosted, setDatePosted] = useState("");
+  const [datePosted, setDatePosted] = useState("7");
+  const [sortBy, setSortBy] = useState("relevant");
+  const [quickFilters, setQuickFilters] = useState<string[]>([]);
   const [results, setResults] = useState<SAJobResult[]>([]);
   const [searchResponse, setSearchResponse] = useState<SAJobSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [filteredResults, setFilteredResults] = useState<SAJobResult[]>([]);
+
+  const JOB_SUGGESTIONS = [
+    "Account Manager", "Software Developer", "Data Analyst", "Project Manager",
+    "Supply Chain", "Customer Support", "Financial Analyst", "HR Manager",
+    "Sales Representative", "Logistics Coordinator", "Civil Engineer", "Nurse",
+    "Teacher", "Marketing Manager", "Business Analyst", "Accountant",
+    "CRM", "Python", "SQL", "Retail", "Call Centre", "Learnership",
+  ];
+
+  const QUICK_FILTER_OPTIONS = [
+    { label: "🏠 Remote", value: "remote" },
+    { label: "🎓 No experience", value: "no experience" },
+    { label: "📄 Degree not required", value: "matric" },
+    { label: "📋 Learnership", value: "learnership" },
+  ];
+
+  const handleQueryChange = (val: string) => {
+    setQuery(val);
+    if (val.length > 1) {
+      const filtered = JOB_SUGGESTIONS.filter(s => s.toLowerCase().includes(val.toLowerCase()));
+      setSuggestions(filtered.slice(0, 6));
+      setShowSuggestions(filtered.length > 0);
+    } else {
+      setShowSuggestions(false);
+    }
+  };
+
+  const toggleQuickFilter = (value: string) => {
+    setQuickFilters(prev =>
+      prev.includes(value) ? prev.filter(f => f !== value) : [...prev, value]
+    );
+  };
+
+  const resetFilters = () => {
+    setJobType("");
+    setExperience("");
+    setSalary("");
+    setLocationFilter("");
+    setDatePosted("7");
+    setSortBy("relevant");
+    setQuickFilters([]);
+  };
 
   const [selectedJob, setSelectedJob] = useState<SAJobResult | null>(null);
   const [savedCVs, setSavedCVs] = useState<any[]>([]);
@@ -131,15 +177,19 @@ export default function SAJobSearch() {
 
     if (jobType) {
       filtered = filtered.filter((job) =>
-        job.snippet.toLowerCase().includes(jobType.replace("-", " "))
+        (job.snippet + job.title).toLowerCase().includes(jobType.replace("-", " "))
       );
     }
 
     if (experience) {
-      filtered = filtered.filter(
-        (job) =>
-          job.snippet.toLowerCase().includes(experience) ||
-          job.title.toLowerCase().includes(experience)
+      const expMap: Record<string, string[]> = {
+        entry: ["entry", "junior", "graduate", "0-2", "no experience", "learnership"],
+        mid: ["mid", "intermediate", "2-5", "3 years", "4 years"],
+        senior: ["senior", "5+", "lead", "principal", "head of"],
+      };
+      const keywords = expMap[experience] || [experience];
+      filtered = filtered.filter((job) =>
+        keywords.some(k => (job.snippet + job.title).toLowerCase().includes(k))
       );
     }
 
@@ -164,12 +214,22 @@ export default function SAJobSearch() {
       const daysAgo = parseInt(datePosted);
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-
       filtered = filtered.filter((job) => {
         if (!job.posted_date) return true;
-        const jobDate = new Date(job.posted_date);
-        return jobDate >= cutoffDate;
+        return new Date(job.posted_date) >= cutoffDate;
       });
+    }
+
+    if (quickFilters.length > 0) {
+      filtered = filtered.filter((job) =>
+        quickFilters.every(f => (job.snippet + job.title + (job.location || "")).toLowerCase().includes(f))
+      );
+    }
+
+    if (sortBy === "newest") {
+      filtered = [...filtered].sort((a, b) =>
+        new Date(b.posted_date || 0).getTime() - new Date(a.posted_date || 0).getTime()
+      );
     }
 
     setFilteredResults(filtered);
@@ -177,7 +237,7 @@ export default function SAJobSearch() {
 
   useEffect(() => {
     applyFilters(results);
-  }, [jobType, experience, salary, locationFilter, datePosted, results]);
+  }, [jobType, experience, salary, locationFilter, datePosted, quickFilters, sortBy, results]);
 
   // Get company logo or fallback to initials
   const getCompanyLogo = (companyName: string) => {
@@ -454,101 +514,108 @@ export default function SAJobSearch() {
     <div className="max-w-7xl mx-auto p-4">
       {/* Search Section */}
       <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5" />
-            South African Job Search
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSearch} className="space-y-4">
-            <div className="space-y-4">
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  placeholder="Job title or keywords (optional)"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="flex-1"
-                />
-                <select
-                  id="location-filter"
-                  name="location-filter"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  className="px-3 py-2 border rounded-md min-w-[150px]"
-                >
-                  <option value="">Select Location</option>
-                  <option value="johannesburg">Johannesburg</option>
-                  <option value="cape town">Cape Town</option>
-                  <option value="durban">Durban</option>
-                  <option value="pretoria">Pretoria</option>
-                  <option value="port elizabeth">Port Elizabeth</option>
-                </select>
-                <Button
-                  type="button"
-                  onClick={() => handleSearch()}
-                  disabled={loading}
-                >
-                  {loading ? "Searching..." : "Search"}
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <select
-                  id="job-type"
-                  name="job-type"
-                  value={jobType}
-                  onChange={(e) => setJobType(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Job Types</option>
-                  <option value="full-time">Full Time</option>
-                  <option value="part-time">Part Time</option>
-                  <option value="contract">Contract</option>
-                  <option value="internship">Internship</option>
-                </select>
-                <select
-                  id="experience"
-                  name="experience"
-                  value={experience}
-                  onChange={(e) => setExperience(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Experience</option>
-                  <option value="entry">Entry Level</option>
-                  <option value="mid">Mid Level</option>
-                  <option value="senior">Senior Level</option>
-                  <option value="executive">Executive</option>
-                </select>
-                <select
-                  id="salary"
-                  name="salary"
-                  value={salary}
-                  onChange={(e) => setSalary(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">All Salaries</option>
-                  <option value="0-15000">R0 - R15,000</option>
-                  <option value="15000-30000">R15,000 - R30,000</option>
-                  <option value="30000-50000">R30,000 - R50,000</option>
-                  <option value="50000+">R50,000+</option>
-                </select>
-
-                <select
-                  id="date-posted"
-                  name="date-posted"
-                  value={datePosted}
-                  onChange={(e) => setDatePosted(e.target.value)}
-                  className="px-3 py-2 border rounded-md"
-                >
-                  <option value="">Any Time</option>
-                  <option value="1">Last 24 hours</option>
-                  <option value="7">Last 7 days</option>
-                  <option value="30">Last 30 days</option>
-                </select>
-              </div>
+        <CardContent className="pt-5 space-y-4">
+          {/* Search bar */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="e.g. Account Manager, Supply Chain, CRM, Logistics"
+                value={query}
+                onChange={(e) => handleQueryChange(e.target.value)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                onFocus={() => query.length > 1 && setShowSuggestions(suggestions.length > 0)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                className="pl-9"
+              />
+              {showSuggestions && (
+                <div className="absolute z-10 top-full left-0 right-0 bg-white border border-gray-200 rounded-md shadow-lg mt-1">
+                  {suggestions.map(s => (
+                    <button key={s} className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      onMouseDown={() => { setQuery(s); setShowSuggestions(false); }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          </form>
+            <select
+              value={locationFilter}
+              onChange={(e) => setLocationFilter(e.target.value)}
+              className="px-3 py-2 border rounded-md min-w-[140px] text-sm"
+            >
+              <option value="">All Locations</option>
+              <option value="johannesburg">Johannesburg</option>
+              <option value="cape town">Cape Town</option>
+              <option value="durban">Durban</option>
+              <option value="pretoria">Pretoria</option>
+              <option value="port elizabeth">Gqeberha</option>
+            </select>
+            <Button onClick={() => handleSearch()} disabled={loading}>
+              {loading ? "Searching..." : "Search"}
+            </Button>
+          </div>
+
+          {/* Quick filters */}
+          <div className="flex flex-wrap gap-2">
+            {QUICK_FILTER_OPTIONS.map(({ label, value }) => (
+              <button
+                key={value}
+                onClick={() => toggleQuickFilter(value)}
+                className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                  quickFilters.includes(value)
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Dropdowns row */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+            <select value={jobType} onChange={(e) => setJobType(e.target.value)} className="px-3 py-2 border rounded-md text-sm">
+              <option value="">Job Type</option>
+              <option value="full-time">Full-time</option>
+              <option value="part-time">Part-time</option>
+              <option value="contract">Contract</option>
+              <option value="learnership">Learnership / Internship</option>
+            </select>
+            <select value={experience} onChange={(e) => setExperience(e.target.value)} className="px-3 py-2 border rounded-md text-sm">
+              <option value="">Experience</option>
+              <option value="entry">Entry (0–2 yrs)</option>
+              <option value="mid">Mid (2–5 yrs)</option>
+              <option value="senior">Senior (5+ yrs)</option>
+            </select>
+            <select value={salary} onChange={(e) => setSalary(e.target.value)} className="px-3 py-2 border rounded-md text-sm">
+              <option value="">Salary</option>
+              <option value="0-15000">Up to R15k</option>
+              <option value="15000-30000">R15k – R30k</option>
+              <option value="30000-50000">R30k – R50k</option>
+              <option value="50000+">R50k+</option>
+            </select>
+            <select value={datePosted} onChange={(e) => setDatePosted(e.target.value)} className="px-3 py-2 border rounded-md text-sm">
+              <option value="1">Today</option>
+              <option value="3">Last 3 days</option>
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="">Any time</option>
+            </select>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="px-3 py-2 border rounded-md text-sm">
+              <option value="relevant">Most relevant</option>
+              <option value="newest">Newest first</option>
+            </select>
+          </div>
+
+          {/* Active filters + reset */}
+          {(jobType || experience || salary || datePosted !== "7" || sortBy !== "relevant" || quickFilters.length > 0) && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">Active filters:</span>
+              <button onClick={resetFilters} className="text-xs text-red-500 hover:text-red-700 underline">Reset all</button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
