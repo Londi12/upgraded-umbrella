@@ -67,7 +67,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
 
   const mapped = (data.data || []).map((j: any) => ({
     title: j.job_title,
-    snippet: j.job_description?.substring(0, 300) || '',
+    snippet: j.job_description?.substring(0, 1500) || '',
     url: j.job_apply_link || j.job_google_link || '',
     source: j.employer_name,
     company: j.employer_name,

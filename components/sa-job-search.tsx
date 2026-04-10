@@ -702,10 +702,10 @@ export default function SAJobSearch() {
                 {/* Job Description */}
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg max-h-72 overflow-y-auto">
                     <MarkdownRenderer
                       content={selectedJob.description || selectedJob.snippet || "No description available."}
-                      className="text-gray-700"
+                      className="text-gray-700 text-sm"
                     />
                   </div>
                 </div>
@@ -1039,10 +1039,10 @@ export default function SAJobSearch() {
 
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg">
+                  <div className="bg-gray-50 p-4 rounded-lg max-h-72 overflow-y-auto">
                     <MarkdownRenderer
                       content={selectedJob.description || selectedJob.snippet || "No description available."}
-                      className="text-gray-700"
+                      className="text-gray-700 text-sm"
                     />
                   </div>
                 </div>
