@@ -1,4 +1,20 @@
-import { fuzzyMatch } from 'fuzzy-match'; // Will add proper fuzzy lib or implement simple one
+function fuzzyScore(a: string, b: string): number {
+  if (a === b) return 1;
+  const longer = a.length > b.length ? a : b;
+  const shorter = a.length > b.length ? b : a;
+  if (longer.length === 0) return 1;
+  const costs: number[] = [];
+  for (let i = 0; i <= shorter.length; i++) {
+    let last = i;
+    for (let j = 1; j <= longer.length; j++) {
+      const c = i === 0 ? j : (shorter[i - 1] === longer[j - 1] ? costs[j - 1] : 1 + Math.min(costs[j - 1], last, costs[j]));
+      costs[j - 1] = last;
+      last = c;
+    }
+    costs[longer.length] = last;
+  }
+  return (longer.length - costs[longer.length]) / longer.length;
+}
 
 export interface JobProfile {
   family: string;
@@ -174,8 +190,7 @@ const knowledgebase: SAKnowledgebase = {
       // Score titles
       let score = 0;
       for (const title of profile.typicalTitles) {
-        const fm = new fuzzyMatch(title.toLowerCase(), { algorithm: 'levenshtein' });
-        score = Math.max(score, fm(cleanInput));
+        score = Math.max(score, fuzzyScore(title.toLowerCase(), cleanInput));
       }
 
       // Boost if keywords match
