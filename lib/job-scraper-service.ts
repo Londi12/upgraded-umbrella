@@ -11,7 +11,6 @@ interface ScrapedJob {
 }
 
 const SOURCES = [
-  // Workday companies — JSON API
   {
     company: 'Standard Bank',
     url: 'https://standardbank.wd3.myworkdayjobs.com/wday/cxs/standardbank/StandardBankGroup/jobs',
@@ -34,8 +33,14 @@ const SOURCES = [
   },
   {
     company: 'Capitec',
-    url: 'https://boards-api.greenhouse.io/v1/boards/capitec/jobs?content=true',
+    url: 'https://boards-api.greenhouse.io/v1/boards/capitecbank/jobs?content=true',
     type: 'greenhouse',
+  },
+  {
+    company: 'Nedbank',
+    url: 'https://jobs.nedbank.co.za/api/jobs?limit=50',
+    type: 'pageup',
+    fallbackUrl: 'https://jobs.nedbank.co.za',
   },
   {
     company: 'Shoprite',
@@ -62,11 +67,15 @@ const PURGE_DAYS = 21
 async function fetchWorkday(source: typeof SOURCES[0]): Promise<ScrapedJob[]> {
   const res = await fetch(source.url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'User-Agent': 'Mozilla/5.0' },
     body: JSON.stringify({ limit: 50, offset: 0, searchText: '', locations: [], appliedFacets: {} }),
   })
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error(`Workday ${source.company} failed: ${res.status}`)
+    return []
+  }
   const data = await res.json()
+  console.log(`Workday ${source.company}: ${data.jobPostings?.length || 0} jobs`)
   return (data.jobPostings || []).map((j: any) => ({
     title: j.title,
     snippet: j.locationsText || '',
@@ -80,8 +89,12 @@ async function fetchWorkday(source: typeof SOURCES[0]): Promise<ScrapedJob[]> {
 
 async function fetchGreenhouse(source: typeof SOURCES[0]): Promise<ScrapedJob[]> {
   const res = await fetch(source.url)
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error(`Greenhouse ${source.company} failed: ${res.status}`)
+    return []
+  }
   const data = await res.json()
+  console.log(`Greenhouse ${source.company}: ${data.jobs?.length || 0} jobs`)
   return (data.jobs || []).map((j: any) => ({
     title: j.title,
     snippet: j.departments?.[0]?.name || '',
@@ -95,8 +108,12 @@ async function fetchGreenhouse(source: typeof SOURCES[0]): Promise<ScrapedJob[]>
 
 async function fetchSmartRecruiters(source: typeof SOURCES[0]): Promise<ScrapedJob[]> {
   const res = await fetch(source.url)
-  if (!res.ok) return []
+  if (!res.ok) {
+    console.error(`SmartRecruiters ${source.company} failed: ${res.status}`)
+    return []
+  }
   const data = await res.json()
+  console.log(`SmartRecruiters ${source.company}: ${data.content?.length || 0} jobs`)
   return (data.content || []).map((j: any) => ({
     title: j.name,
     snippet: j.department?.label || '',
