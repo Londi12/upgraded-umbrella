@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     let dbQuery = supabase
       .from('scraped_jobs')
       .select('*')
-      .or('location.ilike.%South Africa%,location.ilike.%, ZA%,location.ilike.%Gauteng%,location.ilike.%Western Cape%,location.ilike.%KwaZulu%,location.ilike.%Eastern Cape%,location.ilike.%Limpopo%,location.ilike.%Mpumalanga%,location.ilike.%North West%,location.ilike.%Northern Cape%,location.ilike.%Free State%')
+      .ilike('location', '%South Africa%')
       .order('posted_date', { ascending: false })
       .limit(100)
 
