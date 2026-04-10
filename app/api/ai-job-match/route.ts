@@ -8,55 +8,68 @@ interface AIJobMatch {
   skillsMatch: string[]
   skillsGap: string[]
   atsKeywords: string[]
+  breakdown: {
+    skills: number
+    seniority: number
+    experience: number
+    education: number
+    location: number
+  }
+}
+
+const SENIORITY_LEVELS = {
+  junior: ['junior', 'entry', 'graduate', 'intern', 'trainee', 'assistant'],
+  mid: ['mid', 'intermediate', 'developer', 'analyst', 'specialist', 'officer'],
+  senior: ['senior', 'lead', 'principal', 'expert', 'architect'],
+  executive: ['manager', 'head', 'director', 'vp', 'chief', 'executive', 'ceo', 'cto', 'cfo']
+}
+
+const SA_QUALIFICATIONS = {
+  matric: { nqf: 4, keywords: ['matric', 'grade 12', 'n3'] },
+  certificate: { nqf: 5, keywords: ['certificate', 'n4', 'n5', 'n6'] },
+  diploma: { nqf: 6, keywords: ['diploma', 'national diploma'] },
+  degree: { nqf: 7, keywords: ['degree', 'bachelor', 'bcom', 'bsc', 'ba', 'beng'] },
+  honours: { nqf: 8, keywords: ['honours', 'hons', 'postgraduate diploma'] },
+  masters: { nqf: 9, keywords: ['masters', 'mba', 'msc', 'ma'] },
+  doctorate: { nqf: 10, keywords: ['phd', 'doctorate', 'dba'] }
+}
+
+const SA_REGISTRATIONS = ['saica', 'ecsa', 'hpcsa', 'sacpcmp', 'sacap', 'saqa']
+
+const SKILL_FAMILIES = {
+  'javascript': ['js', 'javascript', 'typescript', 'react', 'vue', 'angular', 'node'],
+  'python': ['python', 'django', 'flask', 'fastapi', 'pandas', 'numpy'],
+  'java': ['java', 'spring', 'hibernate', 'maven', 'gradle'],
+  'cloud': ['aws', 'azure', 'gcp', 'cloud', 'kubernetes', 'docker'],
+  'database': ['sql', 'mysql', 'postgresql', 'mongodb', 'database', 'nosql'],
+  'accounting': ['ifrs', 'gaap', 'financial reporting', 'audit', 'tax', 'sage', 'pastel'],
+  'project management': ['agile', 'scrum', 'pmp', 'prince2', 'jira', 'project management']
 }
 
 export async function POST(request: NextRequest) {
   try {
     const { cvData, jobs } = await request.json()
 
-    // Validate input data
     if (!cvData) {
-      console.error('AI matching error: No CV data provided')
       return NextResponse.json({ error: 'CV data is required' }, { status: 400 })
     }
 
     if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
-      console.error('AI matching error: No jobs provided')
       return NextResponse.json({ error: 'Jobs data is required' }, { status: 400 })
     }
 
-    console.log(`AI Job-Match Review started for CV ID: ${cvData.id || 'unknown'}`)
-    console.log(`Processing ${jobs.length} jobs for matching`)
-
-    const cvText = createCVText(cvData)
     const matches: AIJobMatch[] = []
 
     for (const job of jobs) {
       try {
-        const jobText = `${job.title} ${job.description} ${job.requirements?.join(' ') || ''}`
-        const similarity = await getSemanticSimilarity(cvText, jobText)
-        const skillsAnalysis = analyzeSkills(cvData, job)
-
-        const reasoning = generateReasoning(cvData, job, similarity, skillsAnalysis)
-
-        matches.push({
-          jobId: job.id || job.url,
-          matchScore: Math.round(similarity * 100),
-          reasoning,
-          skillsMatch: skillsAnalysis.matched,
-          skillsGap: skillsAnalysis.missing,
-          atsKeywords: extractATSKeywords(job)
-        })
+        const match = calculateJobMatch(cvData, job)
+        matches.push(match)
       } catch (jobError) {
         console.error(`Error processing job ${job.id || job.title}:`, jobError)
-        // Continue processing other jobs even if one fails
       }
     }
 
-    const sortedMatches = matches.sort((a, b) => b.matchScore - a.matchScore)
-    console.log(`AI Job-Match Review completed. Found ${sortedMatches.length} matches`)
-
-    return NextResponse.json(sortedMatches)
+    return NextResponse.json(matches.sort((a, b) => b.matchScore - a.matchScore))
   } catch (error) {
     console.error('AI matching error:', error)
     return NextResponse.json({
@@ -66,76 +79,237 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function getSemanticSimilarity(cvText: string, jobText: string): Promise<number> {
-  try {
-    // Use Hugging Face for CV text analysis
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/sentence-transformers/all-MiniLM-L6-v2',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY || 'hf_demo'}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: {
-            source_sentence: cvText,
-            sentences: [jobText]
-          }
-        })
-      }
-    )
+function calculateJobMatch(cvData: CVData, job: any): AIJobMatch {
+  const skillsScore = scoreSkills(cvData, job)
+  const seniorityScore = scoreSeniority(cvData, job)
+  const experienceScore = scoreExperience(cvData, job)
+  const educationScore = scoreEducation(cvData, job)
+  const locationScore = scoreLocation(cvData, job)
 
-    if (!response.ok) return calculateBasicSimilarity(cvText, jobText)
-    const result = await response.json()
-    return result[0] || 0.5
-  } catch (error) {
-    return calculateBasicSimilarity(cvText, jobText)
-  }
-}
-
-function calculateBasicSimilarity(cvText: string, jobText: string): number {
-  const cvWords = cvText.toLowerCase().split(/\W+/)
-  const jobWords = jobText.toLowerCase().split(/\W+/)
-  const commonWords = cvWords.filter(word => word.length > 3 && jobWords.includes(word))
-  return Math.min(0.9, commonWords.length / Math.max(jobWords.length, 10))
-}
-
-function createCVText(cvData: CVData): string {
-  return [
-    cvData.personalInfo?.jobTitle || '',
-    cvData.summary || '',
-    cvData.skills || '',
-    cvData.experience?.map(exp => `${exp.title} ${exp.description}`).join(' ') || ''
-  ].filter(Boolean).join(' ')
-}
-
-function analyzeSkills(cvData: CVData, job: any): { matched: string[], missing: string[] } {
-  // Handle skills as either string or array of Skill objects
-  let cvSkills: string[] = []
-  if (typeof cvData.skills === 'string') {
-    cvSkills = cvData.skills.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean)
-  } else if (Array.isArray(cvData.skills)) {
-    cvSkills = cvData.skills.map((skill: any) => {
-      if (typeof skill === 'string') {
-        return skill.toLowerCase()
-      } else if (skill && typeof skill === 'object' && 'name' in skill) {
-        return String(skill.name).toLowerCase()
-      }
-      return ''
-    }).filter(Boolean)
-  }
-
-  const jobSkills: string[] = (job.requirements || []).map((req: string) => req.toLowerCase())
-
-  const matched: string[] = jobSkills.filter((skill: string) =>
-    cvSkills.some((cvSkill: string) => cvSkill.includes(skill) || skill.includes(cvSkill))
+  const weights = { skills: 0.35, seniority: 0.25, experience: 0.20, education: 0.15, location: 0.05 }
+  
+  const matchScore = Math.round(
+    skillsScore.score * weights.skills +
+    seniorityScore.score * weights.seniority +
+    experienceScore.score * weights.experience +
+    educationScore.score * weights.education +
+    locationScore.score * weights.location
   )
 
+  const reasoning = generateReasoning(matchScore, skillsScore, seniorityScore, experienceScore, educationScore, job)
+
   return {
-    matched,
-    missing: jobSkills.filter((skill: string) => !matched.includes(skill)).slice(0, 3)
+    jobId: job.id || job.url,
+    matchScore,
+    reasoning,
+    skillsMatch: skillsScore.matched,
+    skillsGap: skillsScore.missing,
+    atsKeywords: extractATSKeywords(job),
+    breakdown: {
+      skills: Math.round(skillsScore.score),
+      seniority: Math.round(seniorityScore.score),
+      experience: Math.round(experienceScore.score),
+      education: Math.round(educationScore.score),
+      location: Math.round(locationScore.score)
+    }
   }
+}
+
+function scoreSkills(cvData: CVData, job: any): { score: number, matched: string[], missing: string[] } {
+  const cvSkills = extractSkills(cvData)
+  const jobSkills = extractJobSkills(job)
+
+  if (jobSkills.length === 0) return { score: 50, matched: [], missing: [] }
+
+  const matched: string[] = []
+  const cvSkillsLower = cvSkills.map(s => s.toLowerCase())
+
+  for (const jobSkill of jobSkills) {
+    const jobSkillLower = jobSkill.toLowerCase()
+    
+    // Direct match
+    if (cvSkillsLower.some(cv => cv.includes(jobSkillLower) || jobSkillLower.includes(cv))) {
+      matched.push(jobSkill)
+      continue
+    }
+
+    // Skill family match
+    for (const [family, variants] of Object.entries(SKILL_FAMILIES)) {
+      if (variants.some(v => jobSkillLower.includes(v))) {
+        if (cvSkillsLower.some(cv => variants.some(v => cv.includes(v)))) {
+          matched.push(jobSkill)
+          break
+        }
+      }
+    }
+  }
+
+  const missing = jobSkills.filter(s => !matched.includes(s)).slice(0, 5)
+  const score = (matched.length / jobSkills.length) * 100
+
+  return { score, matched, missing }
+}
+
+function scoreSeniority(cvData: CVData, job: any): { score: number, reason: string } {
+  const cvSeniority = detectSeniority(cvData)
+  const jobSeniority = detectJobSeniority(job)
+
+  if (cvSeniority === jobSeniority) return { score: 100, reason: 'Perfect seniority match' }
+  
+  const levels = ['junior', 'mid', 'senior', 'executive']
+  const cvIndex = levels.indexOf(cvSeniority)
+  const jobIndex = levels.indexOf(jobSeniority)
+  const gap = Math.abs(cvIndex - jobIndex)
+
+  if (gap === 1) return { score: 70, reason: 'One level difference' }
+  if (gap === 2) return { score: 40, reason: 'Two levels difference' }
+  return { score: 20, reason: 'Significant seniority mismatch' }
+}
+
+function scoreExperience(cvData: CVData, job: any): { score: number } {
+  const yearsExp = calculateYearsOfExperience(cvData)
+  const requiredYears = extractRequiredYears(job)
+
+  if (requiredYears === 0) return { score: 70 }
+  if (yearsExp >= requiredYears) return { score: 100 }
+  if (yearsExp >= requiredYears * 0.7) return { score: 80 }
+  if (yearsExp >= requiredYears * 0.5) return { score: 60 }
+  return { score: 30 }
+}
+
+function scoreEducation(cvData: CVData, job: any): { score: number } {
+  const cvNQF = getHighestNQF(cvData)
+  const requiredNQF = extractRequiredNQF(job)
+
+  if (requiredNQF === 0) return { score: 70 }
+  if (cvNQF >= requiredNQF) return { score: 100 }
+  if (cvNQF === requiredNQF - 1) return { score: 70 }
+  if (cvNQF === requiredNQF - 2) return { score: 40 }
+  return { score: 20 }
+}
+
+function scoreLocation(cvData: CVData, job: any): { score: number } {
+  const cvLocation = (cvData.personalInfo?.location || '').toLowerCase()
+  const jobLocation = (job.location || '').toLowerCase()
+
+  if (!jobLocation || jobLocation.includes('remote')) return { score: 100 }
+  if (cvLocation.includes(jobLocation) || jobLocation.includes(cvLocation)) return { score: 100 }
+  
+  const cvProvince = extractProvince(cvLocation)
+  const jobProvince = extractProvince(jobLocation)
+  if (cvProvince && cvProvince === jobProvince) return { score: 80 }
+  
+  return { score: 50 }
+}
+
+function extractSkills(cvData: CVData): string[] {
+  if (typeof cvData.skills === 'string') {
+    return cvData.skills.split(',').map(s => s.trim()).filter(Boolean)
+  }
+  if (Array.isArray(cvData.skills)) {
+    return cvData.skills.map(s => typeof s === 'string' ? s : s.name).filter(Boolean)
+  }
+  return []
+}
+
+function extractJobSkills(job: any): string[] {
+  const text = `${job.description || ''} ${job.requirements?.join(' ') || ''}`
+  const skills: string[] = []
+
+  for (const [family, variants] of Object.entries(SKILL_FAMILIES)) {
+    for (const variant of variants) {
+      if (text.toLowerCase().includes(variant)) {
+        skills.push(variant)
+      }
+    }
+  }
+
+  return [...new Set(skills)]
+}
+
+function detectSeniority(cvData: CVData): string {
+  const title = (cvData.personalInfo?.jobTitle || '').toLowerCase()
+  const yearsExp = calculateYearsOfExperience(cvData)
+
+  for (const [level, keywords] of Object.entries(SENIORITY_LEVELS)) {
+    if (keywords.some(k => title.includes(k))) return level
+  }
+
+  if (yearsExp >= 10) return 'senior'
+  if (yearsExp >= 5) return 'mid'
+  if (yearsExp >= 2) return 'mid'
+  return 'junior'
+}
+
+function detectJobSeniority(job: any): string {
+  const title = (job.title || '').toLowerCase()
+  const desc = (job.description || '').toLowerCase()
+
+  for (const [level, keywords] of Object.entries(SENIORITY_LEVELS)) {
+    if (keywords.some(k => title.includes(k) || desc.includes(k))) return level
+  }
+
+  return 'mid'
+}
+
+function calculateYearsOfExperience(cvData: CVData): number {
+  if (!cvData.experience || cvData.experience.length === 0) return 0
+
+  let totalMonths = 0
+  for (const exp of cvData.experience) {
+    const start = new Date(exp.startDate)
+    const end = exp.endDate.toLowerCase().includes('present') ? new Date() : new Date(exp.endDate)
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
+    totalMonths += Math.max(0, months)
+  }
+
+  return Math.round(totalMonths / 12)
+}
+
+function extractRequiredYears(job: any): number {
+  const text = `${job.title || ''} ${job.description || ''} ${job.requirements?.join(' ') || ''}`
+  const match = text.match(/(\d+)\+?\s*years?/i)
+  return match ? parseInt(match[1]) : 0
+}
+
+function getHighestNQF(cvData: CVData): number {
+  if (!cvData.education || cvData.education.length === 0) return 4
+
+  let highest = 4
+  for (const edu of cvData.education) {
+    if (edu.nqfLevel) {
+      highest = Math.max(highest, edu.nqfLevel)
+    } else {
+      const degree = (edu.degree || '').toLowerCase()
+      for (const [qual, data] of Object.entries(SA_QUALIFICATIONS)) {
+        if (data.keywords.some(k => degree.includes(k))) {
+          highest = Math.max(highest, data.nqf)
+        }
+      }
+    }
+  }
+
+  return highest
+}
+
+function extractRequiredNQF(job: any): number {
+  const text = `${job.description || ''} ${job.requirements?.join(' ') || ''}`.toLowerCase()
+
+  for (const [qual, data] of Object.entries(SA_QUALIFICATIONS).reverse()) {
+    if (data.keywords.some(k => text.includes(k))) {
+      return data.nqf
+    }
+  }
+
+  return 0
+}
+
+function extractProvince(location: string): string | null {
+  const provinces = ['gauteng', 'western cape', 'kwazulu-natal', 'eastern cape', 'free state', 'limpopo', 'mpumalanga', 'northern cape', 'north west']
+  for (const province of provinces) {
+    if (location.includes(province)) return province
+  }
+  return null
 }
 
 function extractATSKeywords(job: any): string[] {
@@ -143,7 +317,7 @@ function extractATSKeywords(job: any): string[] {
   const words = text.toLowerCase().split(/\W+/)
   const keywords = words.filter(word => 
     word.length > 3 && 
-    !['the', 'and', 'for', 'with', 'you', 'will'].includes(word)
+    !['the', 'and', 'for', 'with', 'you', 'will', 'this', 'that', 'from', 'have', 'been'].includes(word)
   )
   
   const frequency: Record<string, number> = {}
@@ -155,18 +329,37 @@ function extractATSKeywords(job: any): string[] {
     .map(([word]) => word)
 }
 
-function generateReasoning(cvData: any, job: any, similarity: number, skillsAnalysis: any): string {
-  const matchedSkills = skillsAnalysis.matched.length
-  const missingSkills = skillsAnalysis.missing.length
-  
-  if (similarity > 0.8) {
-    return `Excellent ${Math.round(similarity * 100)}% match! You have ${matchedSkills} matching skills for this ${job.title} role. Strong alignment with requirements.`
+function generateReasoning(
+  matchScore: number,
+  skillsScore: any,
+  seniorityScore: any,
+  experienceScore: any,
+  educationScore: any,
+  job: any
+): string {
+  const parts: string[] = []
+
+  if (matchScore >= 80) {
+    parts.push(`Strong ${matchScore}% match for ${job.title}.`)
+  } else if (matchScore >= 60) {
+    parts.push(`Good ${matchScore}% match for ${job.title}.`)
+  } else if (matchScore >= 40) {
+    parts.push(`Moderate ${matchScore}% match for ${job.title}.`)
+  } else {
+    parts.push(`${matchScore}% match for ${job.title}.`)
   }
-  if (similarity > 0.6) {
-    return `Good ${Math.round(similarity * 100)}% match for ${job.title}. ${matchedSkills} skills match. ${missingSkills > 0 ? `Consider highlighting ${skillsAnalysis.missing.slice(0,2).join(', ')} experience.` : ''}`
+
+  if (skillsScore.matched.length > 0) {
+    parts.push(`${skillsScore.matched.length} matching skills.`)
   }
-  if (similarity > 0.4) {
-    return `Moderate ${Math.round(similarity * 100)}% match. Focus on transferable skills and relevant experience for ${job.title}.`
+
+  if (skillsScore.missing.length > 0) {
+    parts.push(`Missing: ${skillsScore.missing.slice(0, 3).join(', ')}.`)
   }
-  return `${Math.round(similarity * 100)}% match. Consider developing skills in ${skillsAnalysis.missing.slice(0,2).join(', ')} for better alignment.`
+
+  if (seniorityScore.score < 70) {
+    parts.push(`Seniority mismatch detected.`)
+  }
+
+  return parts.join(' ')
 }
