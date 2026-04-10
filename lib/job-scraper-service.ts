@@ -10,7 +10,34 @@ interface ScrapedJob {
   posted_date: string
 }
 
-const SA_COMPANIES = [
+const SA_CITIES = [
+  'johannesburg', 'cape town', 'durban', 'pretoria', 'sandton', 'midrand',
+  'port elizabeth', 'gqeberha', 'bloemfontein', 'east london', 'polokwane',
+  'nelspruit', 'mbombela', 'kimberley', 'rustenburg', 'george', 'pietermaritzburg',
+  'centurion', 'soweto', 'benoni', 'boksburg', 'randburg', 'roodepoort',
+  'germiston', 'springs', 'krugersdorp', 'vanderbijlpark', 'vereeniging',
+  'witbank', 'emalahleni', 'klerksdorp', 'potchefstroom', 'upington',
+  'stellenbosch', 'paarl', 'worcester', 'bellville', 'mitchells plain'
+]
+
+const SA_PROVINCES = [
+  'gauteng', 'western cape', 'kwazulu-natal', 'eastern cape', 'limpopo',
+  'mpumalanga', 'north west', 'northern cape', 'free state'
+]
+
+function isSALocation(city: string, state: string, country: string): boolean {
+  const all = [city, state, country].map(s => s?.toLowerCase() || '')
+  if (all.some(s => s.includes('south africa') || s === 'za')) return true
+  if (all.some(s => SA_PROVINCES.some(p => s.includes(p)))) return true
+  if (all.some(s => SA_CITIES.some(c => s.includes(c)))) return true
+  return false
+}
+
+function formatLocation(city: string, state: string): string {
+  const parts = [city, state].filter(Boolean)
+  return parts.length ? `${parts.join(', ')}, South Africa` : 'South Africa'
+}
+
   'Standard Bank', 'Absa', 'Discovery', 'Nedbank',
   'Capitec', 'Vodacom', 'MTN', 'Shoprite',
   'Pick n Pay', 'Woolworths', 'Sasol', 'FirstRand'
@@ -43,15 +70,22 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   const data = await res.json()
   console.log(`JSearch "${query}": ${data.data?.length || 0} jobs`)
 
-  return (data.data || []).map((j: any) => ({
+  const mapped: ScrapedJob[] = (data.data || []).map((j: any) => ({
     title: j.job_title,
     snippet: j.job_description?.substring(0, 300) || '',
     url: j.job_apply_link || j.job_google_link || '',
     source: j.employer_name,
     company: j.employer_name,
-    location: `${j.job_city || ''}${j.job_city ? ', ' : ''}${j.job_country || 'South Africa'}`,
+    location: formatLocation(j.job_city || '', j.job_state || ''),
     posted_date: j.job_posted_at_datetime_utc || new Date().toISOString(),
-  })).filter((j: ScrapedJob) => j.url)
+    _city: j.job_city || '',
+    _state: j.job_state || '',
+    _country: j.job_country || '',
+  } as any))
+
+  return mapped
+    .filter((j: any) => j.url && isSALocation(j._city, j._state, j._country))
+    .map(({ _city, _state, _country, ...j }: any) => j)
 }
 
 export class JobScraperService {
