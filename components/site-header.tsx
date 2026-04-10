@@ -93,10 +93,6 @@ export function SiteHeader() {
               Applications
             </Link>
             
-            <Link href="/pricing" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
-              Pricing
-            </Link>
-            
             <Link href="/faq" className="px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-all duration-200">
               FAQ
             </Link>
@@ -186,13 +182,6 @@ export function SiteHeader() {
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
                   Cover Letters
-                </Link>
-                <Link
-                  href="/pricing"
-                  className="block px-3 py-2 text-base font-medium text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all duration-200"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  Pricing
                 </Link>
                 <Link
                   href="/faq"

@@ -3,7 +3,6 @@
 import { 
   User, 
   Settings, 
-  CreditCard, 
   Bell, 
   HelpCircle, 
   LogOut,
@@ -12,11 +11,8 @@ import {
   Lock,
   MapPin,
   Briefcase,
-  DollarSign,
   FileText,
   Eye,
-  History,
-  X
 } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -43,15 +39,6 @@ export function ProfileMenu() {
         { icon: Lock, label: "Change Password", href: "/profile/password" },
         { icon: MapPin, label: "Job Preferences", href: "/profile/preferences" },
         { icon: FileText, label: "Notes & Follow-Ups", href: "/profile/notes" }
-      ]
-    },
-    {
-      title: "Billing & Subscription", 
-      items: [
-        { icon: CreditCard, label: "Current Plan", href: "/billing/plan" },
-        { icon: DollarSign, label: "Upgrade/Downgrade", href: "/pricing" },
-        { icon: History, label: "Payment History", href: "/billing/history" },
-        { icon: X, label: "Cancel Subscription", href: "/billing/cancel" }
       ]
     },
     {
