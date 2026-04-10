@@ -39,7 +39,7 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
     
-      console.log(`Processing ${file.name} (${fileType}) - size: ${buffer.length} bytes`);
+
     
     let rawText = '';
     let result: any = { success: false };
@@ -51,8 +51,8 @@ export async function POST(req: Request) {
         const complexResult = await cvParser.parseCV(buffer);
         if (complexResult.success) result = complexResult;
       }
-    } catch (error) {
-      console.log('Parser failed, trying fallback');
+    } catch {
+      // fall through to next attempt
     }
     
     if (!result.success) {
@@ -66,8 +66,8 @@ export async function POST(req: Request) {
             rawText: complexResult.rawText
           });
         }
-      } catch (error) {
-        console.log('Complex parser failed, using basic extraction');
+      } catch {
+        // fall through to basic extraction
       }
     }
     
@@ -92,14 +92,7 @@ export async function POST(req: Request) {
       };
     }
 
-    // Log template detection result
-    if (result.success) {
-      if (result.ownTemplate) {
-        console.log(`Detected our own template: ${result.templateType} (confidence: ${result.confidence}%)`);
-      } else {
-        console.log(`Parsed external CV (confidence: ${result.confidence}%)`);
-      }
-    }
+
 
     if (!result.success) {
       return NextResponse.json({ 

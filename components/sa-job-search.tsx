@@ -11,7 +11,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, ArrowLeft, Send, X, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
-import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
 import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
 import { ATSScoringPanel } from "@/components/cv-ats-scoring";
@@ -62,7 +61,6 @@ export default function SAJobSearch() {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
 
   const { user } = useAuth();
-  const applicationTracker = new ApplicationTracker();
 
   useEffect(() => {
     const fetchSavedCVs = async () => {
@@ -342,28 +340,34 @@ export default function SAJobSearch() {
     setTrackSaving(false)
   }
 
+  const trackAndOpen = async (job: SAJobResult) => {
+    try {
+      await fetch('/api/track-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cv_id: selectedCVId || null,
+          job_title: job.title,
+          company_name: job.company || job.source,
+          job_board: 'SA Job Search',
+          application_date: new Date().toISOString().split('T')[0],
+          status: 'applied',
+          ats_score_at_application: 0,
+          job_description: job.description || job.snippet,
+          notes: `Applied via SA Job Search: ${job.url}`
+        })
+      })
+      setApplyToast(true)
+      setTimeout(() => setApplyToast(false), 5000)
+    } catch (error) {
+      console.error('Error tracking application:', error)
+    }
+    window.open(job.url, '_blank')
+  }
+
   const [aiMatching, setAiMatching] = useState(false);
   const [aiMatchResults, setAiMatchResults] = useState<AIJobMatch[]>([]);
   const [aiMatchError, setAiMatchError] = useState("");
-
-  // Test function to verify API connectivity
-  const testJobsAPI = async () => {
-    try {
-      console.log("Testing jobs API connectivity...");
-      const response = await fetch('/api/sa-jobs?q=test&limit=1');
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Jobs API test successful:", data);
-        return true;
-      } else {
-        console.error("Jobs API test failed:", response.status, response.statusText);
-        return false;
-      }
-    } catch (error) {
-      console.error("Jobs API test error:", error);
-      return false;
-    }
-  };
 
   const handleAIJobMatchReview = async () => {
     if (!user) {
@@ -388,19 +392,9 @@ export default function SAJobSearch() {
     setAiMatchResults([]);
 
     try {
-      // Test API connectivity first
-      const apiWorking = await testJobsAPI();
-      if (!apiWorking) {
-        console.warn("Jobs API is not working, but continuing with fallback...");
-      }
-
-      // Get the selected CV data
       const selectedCV = savedCVs.find(cv => cv.id === selectedCVId);
-      if (!selectedCV) {
-        throw new Error("Selected CV not found");
-      }
+      if (!selectedCV) throw new Error("Selected CV not found");
 
-      // Get recent jobs for matching with better error handling
       let jobsToMatch: any[] = [];
 
       try {
@@ -411,9 +405,8 @@ export default function SAJobSearch() {
         } else {
           console.warn("Failed to fetch jobs from API, using selected job only");
         }
-      } catch (fetchError) {
-        console.warn("Error fetching jobs from API:", fetchError);
-        console.log("Using selected job only for AI matching");
+      } catch {
+        // use selected job only
       }
 
       // Add the selected job to the list if not already included
@@ -439,8 +432,6 @@ export default function SAJobSearch() {
 
       if (matches && matches.length > 0) {
         setAiMatchResults(matches);
-        console.log("AI Job-Match Review completed for CV ID:", selectedCVId);
-        console.log("Found", matches.length, "matches");
       } else {
         setAiMatchError("No AI matches found. This could be due to missing API keys or insufficient job data. Try using the test page at /test-ai-job-match to verify the system is working.");
       }
@@ -825,46 +816,7 @@ export default function SAJobSearch() {
                     <Button 
                       className="w-full" 
                       size="lg"
-                      onClick={async () => {
-                        try {
-                          await fetch('/api/track-application', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              cv_id: selectedCVId || null,
-                              job_title: selectedJob.title,
-                              company_name: selectedJob.company || selectedJob.source,
-                              job_board: 'SA Job Search',
-                              application_date: new Date().toISOString().split('T')[0],
-                              status: 'applied',
-                              ats_score_at_application: 0,
-                              job_description: selectedJob.description || selectedJob.snippet,
-                              notes: `Applied via SA Job Search: ${selectedJob.url}`
-                            })
-                          })
-                          setApplyToast(true)
-                          setTimeout(() => setApplyToast(false), 5000)
-                        } catch (error) {
-                          console.error('Error tracking application:', error)
-                        }
-                        window.open(selectedJob.url, '_blank')
-                      }}
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      Apply Now
-                    </Button>
-                  </div>
-                </div>
-
-                {applyToast && (
-                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-green-800">Application tracked!</span>
-                    <a href="/dashboard" className="text-sm font-medium text-green-700 underline whitespace-nowrap">View Tracker →</a>
-                  </div>
-                )}
-
-                {/* AI Match Results */}
+                      onClick={() => trackAndOpen(selectedJob!)}
                 {aiMatchResults.length > 0 && (
                   <div className="mt-6">
                     <h3 className="font-semibold text-gray-900 mb-3">AI Match Results</h3>
@@ -1161,30 +1113,7 @@ export default function SAJobSearch() {
                     <Button 
                       className="w-full" 
                       size="lg"
-                      onClick={async () => {
-                        try {
-                          await fetch('/api/track-application', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              cv_id: selectedCVId || null,
-                              job_title: selectedJob.title,
-                              company_name: selectedJob.company || selectedJob.source,
-                              job_board: 'SA Job Search',
-                              application_date: new Date().toISOString().split('T')[0],
-                              status: 'applied',
-                              ats_score_at_application: 0,
-                              job_description: selectedJob.description || selectedJob.snippet,
-                              notes: `Applied via SA Job Search: ${selectedJob.url}`
-                            })
-                          })
-                          setApplyToast(true)
-                          setTimeout(() => setApplyToast(false), 5000)
-                        } catch (error) {
-                          console.error('Error tracking application:', error)
-                        }
-                        window.open(selectedJob.url, '_blank')
-                      }}
+                      onClick={() => trackAndOpen(selectedJob!)}
                     >
                       <Send className="w-4 h-4 mr-2" />
                       Apply Now

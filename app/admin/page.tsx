@@ -29,8 +29,8 @@ export default function AdminDashboard() {
   const [lastRefresh, setLastRefresh] = useState(new Date())
 
   const [stats, setStats] = useState({ totalUsers: 0, totalCVs: 0, revenue: 0, activeUsers: 0, todaySignups: 0, todayDownloads: 0 })
-  const [recentUsers, setRecentUsers] = useState<any[]>([])
-  const [liveActivity, setLiveActivity] = useState<any[]>([])
+  const [recentUsers, setRecentUsers] = useState<{id: string, name: string, email: string, plan: string, joined: string, cvsCreated: number, lastActive: string, status: string}[]>([])
+  const [liveActivity, setLiveActivity] = useState<{type: string, user: string, time: string, details: string}[]>([])
 
   useEffect(() => { checkAdminPermissions() }, [user, loading])
 
@@ -155,7 +155,7 @@ export default function AdminDashboard() {
   )
 }
 
-function OverviewTab({ stats }: { stats: any }) {
+function OverviewTab({ stats }: { stats: { totalUsers: number, totalCVs: number, revenue: number, activeUsers: number, todaySignups: number, todayDownloads: number } }) {
   const cards = [
     { label: 'Total Users', value: stats.totalUsers, sub: `+${stats.todaySignups} today`, color: 'text-blue-400' },
     { label: 'CVs Created', value: stats.totalCVs, sub: `+${stats.todayDownloads} downloads today`, color: 'text-green-400' },
@@ -178,7 +178,7 @@ function OverviewTab({ stats }: { stats: any }) {
   )
 }
 
-function UsersTab({ users }: { users: any[] }) {
+function UsersTab({ users }: { users: {id: string, name: string, email: string, plan: string, joined: string}[] }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-800">
@@ -204,7 +204,7 @@ function UsersTab({ users }: { users: any[] }) {
   )
 }
 
-function ActivityTab({ activity }: { activity: any[] }) {
+function ActivityTab({ activity }: { activity: {type: string, user: string, time: string, details: string}[] }) {
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
       <div className="px-6 py-4 border-b border-slate-800">
@@ -230,12 +230,12 @@ function ActivityTab({ activity }: { activity: any[] }) {
 }
 
 function JobsTab() {
-  const [existingJobs, setExistingJobs] = useState<any[]>([])
+  const [existingJobs, setExistingJobs] = useState<{id: string, title: string, company: string, location: string, source: string, snippet: string, posted_date: string, url: string}[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState('')
   const [isUploading, setIsUploading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [editingJob, setEditingJob] = useState<any>(null)
+  const [editingJob, setEditingJob] = useState<{id: string, title: string, company: string, location: string, source: string, snippet: string, posted_date: string, url: string} | null>(null)
 
   const loadJobs = async () => {
     setIsLoading(true)
