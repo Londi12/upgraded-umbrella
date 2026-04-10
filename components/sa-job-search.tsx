@@ -1103,13 +1103,13 @@ export default function SAJobSearch() {
                 <div className="flex flex-col gap-3 pt-4 border-t">
                   <div className="flex flex-wrap gap-2 items-center">
                     <Button
-                      onClick={handleSave}
+                      onClick={() => selectedJob && openTrackDialog(selectedJob)}
                       disabled={!user}
                       variant="outline"
                       size="sm"
                       className="flex-none"
                     >
-                      <Save className="w-4 h-4 mr-1" /> Save
+                      <Save className="w-4 h-4 mr-1" /> Save & Track
                     </Button>
 
                     <div className="flex items-center gap-2 min-w-0 flex-1">
