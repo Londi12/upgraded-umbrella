@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Search, Save, ArrowLeft, Send, X, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
-import { getAIJobMatches, type AIJobMatch } from "@/lib/ai-job-service";
+import { getAIJobMatches, getJobMatches, type JobMatchResult, type DisambiguationOption } from "@/lib/ai-job-service";
 import { ATSScoringPanel } from "@/components/cv-ats-scoring";
 import { formatJobCardDate } from "@/lib/date-formatter";
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer";
@@ -364,109 +364,52 @@ export default function SAJobSearch() {
   }
 
   const [aiMatching, setAiMatching] = useState(false);
-  const [aiMatchResults, setAiMatchResults] = useState<AIJobMatch[]>([]);
+  const [aiMatchResults, setAiMatchResults] = useState<JobMatchResult[]>([]);
   const [aiMatchError, setAiMatchError] = useState("");
+  const [disambiguationOptions, setDisambiguationOptions] = useState<DisambiguationOption[]>([]);
+  const [cvClassification, setCvClassification] = useState<{detectedFamily: string, confidence: string, tier: string} | null>(null);
 
-  // Test function to verify API connectivity
-  const testJobsAPI = async () => {
-    try {
-      console.log("Testing jobs API connectivity...");
-      const response = await fetch('/api/sa-jobs?q=test&limit=1');
-      if (response.ok) {
-        const data = await response.json();
-        console.log("Jobs API test successful:", data);
-        return true;
-      } else {
-        console.error("Jobs API test failed:", response.status, response.statusText);
-        return false;
-      }
-    } catch (error) {
-      console.error("Jobs API test error:", error);
-      return false;
-    }
-  };
-
-  const handleAIJobMatchReview = async () => {
-    if (!user) {
-      alert("Please sign in to use Job Match.");
-      return;
-    }
-    if (savedCVs.length === 0) {
-      alert("Please create a CV to use Job Match.");
-      return;
-    }
-    if (!selectedCVId) {
-      alert("Please select a CV for Job Match.");
-      return;
-    }
-    if (!selectedJob) {
-      alert("No job selected.");
-      return;
-    }
+  const handleAIJobMatchReview = async (confirmedFamily?: string) => {
+    if (!user) { alert("Please sign in to use Job Match."); return; }
+    if (savedCVs.length === 0) { alert("Please create a CV to use Job Match."); return; }
+    if (!selectedCVId) { alert("Please select a CV for Job Match."); return; }
+    if (!selectedJob) { alert("No job selected."); return; }
 
     setAiMatching(true);
     setAiMatchError("");
     setAiMatchResults([]);
+    setDisambiguationOptions([]);
 
     try {
-      // Test API connectivity first
-      const apiWorking = await testJobsAPI();
-      if (!apiWorking) {
-        console.warn("Jobs API is not working, but continuing with fallback...");
-      }
-
-      // Get the selected CV data
       const selectedCV = savedCVs.find(cv => cv.id === selectedCVId);
-      if (!selectedCV) {
-        throw new Error("Selected CV not found");
-      }
+      if (!selectedCV) throw new Error("Selected CV not found");
 
-      // Get recent jobs for matching with better error handling
       let jobsToMatch: any[] = [];
-
       try {
-        const recentJobsResponse = await fetch(`/api/sa-jobs?q=${encodeURIComponent(selectedJob.title || "jobs")}&limit=10`);
-        if (recentJobsResponse.ok) {
-          const jobsData = await recentJobsResponse.json();
-          jobsToMatch = jobsData.results || [];
-        } else {
-          console.warn("Failed to fetch jobs from API, using selected job only");
-        }
-      } catch (fetchError) {
-        console.warn("Error fetching jobs from API:", fetchError);
-        console.log("Using selected job only for AI matching");
-      }
+        const res = await fetch(`/api/sa-jobs?q=${encodeURIComponent(selectedJob.title || 'jobs')}&limit=10`);
+        if (res.ok) { const d = await res.json(); jobsToMatch = d.results || []; }
+      } catch { /* use selected job only */ }
 
-      // Add the selected job to the list if not already included
-      const jobExists = jobsToMatch.some((job: any) => job.url === selectedJob.url);
-      if (!jobExists && selectedJob) {
+      if (!jobsToMatch.some((j: any) => j.url === selectedJob.url)) {
         jobsToMatch.unshift(selectedJob);
       }
-
-      // If no jobs available, create a fallback job from the selected job
       if (jobsToMatch.length === 0) {
-        jobsToMatch = [{
-          id: selectedJob.url,
-          title: selectedJob.title,
-          company: selectedJob.company || selectedJob.source,
-          description: selectedJob.description || selectedJob.snippet,
-          requirements: [] // Will be extracted from description
-        }];
+        jobsToMatch = [{ id: selectedJob.url, title: selectedJob.title, company: selectedJob.company || selectedJob.source, description: selectedJob.description || selectedJob.snippet, requirements: [] }];
       }
 
-      // Call AI job matching service
-      console.log("Starting AI job matching with", jobsToMatch.length, "jobs");
-      const matches = await getAIJobMatches(selectedCV.cv_data, jobsToMatch);
+      const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily);
 
-      if (matches && matches.length > 0) {
-        setAiMatchResults(matches);
-        console.log("AI Job-Match Review completed for CV ID:", selectedCVId);
-        console.log("Found", matches.length, "matches");
+      if ('needsDisambiguation' in result) {
+        setDisambiguationOptions(result.topMatches);
       } else {
-        setAiMatchError("No matches found. Please try again.");
+        setAiMatchResults(result.matches);
+        setCvClassification(result.cvClassification);
+        if (result.matches.length === 0) {
+          setAiMatchError("No job matches found. Try selecting a different CV or job.");
+        }
       }
     } catch (error) {
-      console.error("AI Job-Match Review error:", error);
+      console.error("Job match error:", error);
       setAiMatchError(error instanceof Error ? error.message : "Job matching failed. Please try again.");
     } finally {
       setAiMatching(false);
@@ -892,49 +835,81 @@ export default function SAJobSearch() {
                   </div>
                 )}
 
+                {/* Disambiguation UI */}
+                {disambiguationOptions.length > 0 && (
+                  <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm font-medium text-blue-900 mb-3">We detected multiple possible job families. Which best describes your role?</p>
+                    <div className="space-y-2">
+                      {disambiguationOptions.map(opt => (
+                        <button
+                          key={opt.id}
+                          onClick={() => handleAIJobMatchReview(opt.id)}
+                          className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors"
+                        >
+                          <span className="text-sm font-medium text-gray-900">{opt.family}</span>
+                          <span className="text-xs text-gray-500 ml-2">{opt.tier} level</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* CV Classification Banner */}
+                {cvClassification && aiMatchResults.length > 0 && (
+                  <div className="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-2">
+                    <span className="text-xs text-slate-500">CV classified as</span>
+                    <span className="text-xs font-medium text-slate-700">{cvClassification.detectedFamily}</span>
+                    <span className="text-xs text-slate-400">·</span>
+                    <span className="text-xs text-slate-500">{cvClassification.tier} level</span>
+                    <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${
+                      cvClassification.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                      cvClassification.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>{cvClassification.confidence} confidence</span>
+                  </div>
+                )}
+
                 {/* Job Match Results */}
                 {aiMatchResults.length > 0 && (
-                  <div className="mt-6">
+                  <div className="mt-4">
                     <h3 className="font-semibold text-gray-900 mb-3">Job Match Results</h3>
                     <div className="space-y-3">
                       {aiMatchResults.slice(0, 5).map((match, index) => (
-                        <Card key={match.jobId} className="border-green-200 bg-green-50">
+                        <Card key={match.jobId} className={`${
+                          match.dealBreakers.length > 0 ? 'border-red-200 bg-red-50' :
+                          match.matchScore >= 70 ? 'border-green-200 bg-green-50' :
+                          'border-yellow-200 bg-yellow-50'
+                        }`}>
                           <CardContent className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <Badge className="bg-green-100 text-green-800">
-                                    {match.matchScore}% Match
-                                  </Badge>
-                                  <span className="text-sm text-gray-600">#{index + 1}</span>
-                                </div>
-                                <p className="text-sm text-gray-700 leading-relaxed">
-                                  {match.reasoning}
-                                </p>
-                              </div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge className={`${
+                                match.dealBreakers.length > 0 ? 'bg-red-100 text-red-800' :
+                                match.matchScore >= 70 ? 'bg-green-100 text-green-800' :
+                                'bg-yellow-100 text-yellow-800'
+                              }`}>
+                                {match.matchScore}% · {match.recommendation}
+                              </Badge>
+                              <span className="text-xs text-gray-500 capitalize">{match.confidence} confidence</span>
                             </div>
-                            {match.skillsMatch.length > 0 && (
-                              <div className="mt-2">
-                                <span className="text-xs font-medium text-green-700">Matched Skills: </span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {match.skillsMatch.slice(0, 3).map((skill, idx) => (
-                                    <Badge key={idx} variant="outline" className="text-xs bg-green-50">
-                                      {skill}
-                                    </Badge>
-                                  ))}
-                                </div>
+                            <p className="text-sm text-gray-700 mb-3">{match.reasoning}</p>
+
+                            {match.dealBreakers.length > 0 && (
+                              <div className="mb-2 p-2 bg-red-100 rounded text-xs text-red-800">
+                                ⚠️ {match.dealBreakers[0]}
                               </div>
                             )}
-                            {match.skillsGap.length > 0 && (
-                              <div className="mt-2">
-                                <span className="text-xs font-medium text-orange-700">Skills to Develop: </span>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {match.skillsGap.map((skill, idx) => (
-                                    <Badge key={idx} variant="outline" className="text-xs bg-orange-50 text-orange-700">
-                                      {skill}
-                                    </Badge>
-                                  ))}
-                                </div>
+
+                            {match.strengths.length > 0 && (
+                              <div className="mb-2">
+                                <span className="text-xs font-medium text-green-700">✓ Strengths: </span>
+                                <span className="text-xs text-gray-600">{match.strengths.slice(0, 2).join(' · ')}</span>
+                              </div>
+                            )}
+
+                            {match.gaps.length > 0 && (
+                              <div>
+                                <span className="text-xs font-medium text-orange-700">△ Gaps: </span>
+                                <span className="text-xs text-gray-600">{match.gaps.slice(0, 2).join(' · ')}</span>
                               </div>
                             )}
                           </CardContent>
