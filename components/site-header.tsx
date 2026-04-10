@@ -57,7 +57,7 @@ export function SiteHeader() {
       <div className="container mx-auto px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link className="flex items-center gap-2 group" href="/templates">
+          <Link className="flex items-center gap-2 group" href="/jobs">
             <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg group-hover:scale-110 transition-transform duration-200">
               <FileText className="h-4 w-4 text-white" />
             </div>

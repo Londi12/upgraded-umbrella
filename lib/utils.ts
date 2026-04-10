@@ -227,9 +227,9 @@ export function generateHowToStructuredData(title: string, steps: Array<{name: s
 // Common SEO configurations
 export const seoConfigs = {
   home: {
-    title: 'CVKonnekt - Professional CV Builder for South Africans',
-    description: 'Create professional CVs and cover letters designed for the South African job market. Free CV builder with templates, ATS optimization, and job search integration.',
-    keywords: ['CV builder', 'resume builder', 'South Africa', 'job search', 'career', 'professional CV', 'ATS optimization', 'cover letter'],
+    title: 'CVKonnekt - Find Jobs & Build Your CV | South Africa',
+    description: 'Search thousands of South African jobs, build a professional CV, and track your applications — all free. Built for SA job seekers.',
+    keywords: ['job search South Africa', 'CV builder', 'SA jobs', 'learnership', 'find jobs', 'free CV builder', 'job search', 'South Africa careers'],
     canonical: '/',
     ogImage: '/og-image-home.png',
   },

@@ -11,7 +11,7 @@ export function SiteFooter() {
             <p className="text-sm text-blue-200">
               Professional CV builder for South African job seekers.
             </p>
-            <p className="text-xs text-blue-300">Built by one person, free for everyone.</p>
+            <p className="text-xs text-blue-300">Built by one person, free for everyone 🇿🇦</p>
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <p className="text-sm text-blue-200">© {new Date().getFullYear()} CVKonnekt. All rights reserved.</p>
