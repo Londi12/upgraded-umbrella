@@ -34,14 +34,12 @@ export function SiteFooter() {
               <p className="text-white text-sm font-medium">CVKonnekt is free and always will be.</p>
               <p className="text-blue-200 text-xs mt-0.5">If it helped you land an interview or build a better CV, a small donation keeps the lights on — and means the world to me. No amount is too small 🙏</p>
             </div>
-            <a
-              href="https://www.snapscan.co.za"
-              target="_blank"
-              rel="noopener noreferrer"
+            <Link
+              href="/donate"
               className="flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               Donate via SnapScan
-            </a>
+            </Link>
           </div>
         </div>
       </div>
