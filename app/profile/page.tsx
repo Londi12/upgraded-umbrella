@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -100,6 +101,11 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+            <div className="mt-4 text-right">
+              <Link href="/profile/password" className="text-sm text-blue-600 hover:text-blue-500">
+                Change password →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
