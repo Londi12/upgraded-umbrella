@@ -13,6 +13,7 @@ import {
   Briefcase,
   FileText,
   Eye,
+  LayoutTemplate,
 } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/contexts/auth-context"
@@ -38,6 +39,7 @@ export function ProfileMenu() {
         { icon: Camera, label: "Upload Profile Picture", href: "/profile/photo" },
         { icon: Lock, label: "Change Password", href: "/profile/password" },
         { icon: MapPin, label: "Job Preferences", href: "/profile/preferences" },
+        { icon: LayoutTemplate, label: "My CVs", href: "/profile/cvs" },
         { icon: FileText, label: "Notes & Follow-Ups", href: "/profile/notes" }
       ]
     },
