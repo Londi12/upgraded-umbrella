@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Save, ArrowLeft, Send, X } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
@@ -264,24 +268,73 @@ export default function SAJobSearch() {
 
   
 
-  const handleSave = async () => {
-    if (!user || !selectedJob) return;
+  const [trackDialogOpen, setTrackDialogOpen] = useState(false)
+  const [trackForm, setTrackForm] = useState({
+    cv_id: '',
+    cover_letter: '',
+    job_title: '',
+    company_name: '',
+    job_board: 'CVKonnekt',
+    application_date: new Date().toISOString().split('T')[0],
+    status: 'applied' as 'applied' | 'viewed' | 'interview' | 'offered' | 'hired' | 'rejected',
+    notes: '',
+    job_description: '',
+    job_url: '',
+  })
+  const [trackSaving, setTrackSaving] = useState(false)
+  const [trackSuccess, setTrackSuccess] = useState(false)
 
+  const openTrackDialog = (job: SAJobResult) => {
+    setTrackForm({
+      cv_id: selectedCVId || '',
+      cover_letter: '',
+      job_title: job.title,
+      company_name: job.company || job.source || '',
+      job_board: 'CVKonnekt',
+      application_date: new Date().toISOString().split('T')[0],
+      status: 'applied',
+      notes: '',
+      job_description: job.description || job.snippet || '',
+      job_url: job.url,
+    })
+    setTrackSuccess(false)
+    setTrackDialogOpen(true)
+  }
+
+  const handleTrackSave = async () => {
+    if (!user) return
+    setTrackSaving(true)
     try {
       await saveJob({
-        job_title: selectedJob.title,
-        company_name: selectedJob.company || selectedJob.source || "",
-        job_url: selectedJob.url,
-        job_description: selectedJob.description || selectedJob.snippet || "",
-        location: selectedJob.location || "",
-        posted_date: selectedJob.posted_date || "",
-        source: selectedJob.source || "",
-      });
-      alert("Job saved successfully.");
-    } catch (error) {
-      alert("Failed to save job.");
+        job_title: trackForm.job_title,
+        company_name: trackForm.company_name,
+        job_url: trackForm.job_url,
+        job_description: trackForm.job_description,
+        location: selectedJob?.location || '',
+        posted_date: selectedJob?.posted_date || '',
+        source: trackForm.job_board,
+      })
+      await fetch('/api/track-application', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cv_id: trackForm.cv_id || null,
+          job_title: trackForm.job_title,
+          company_name: trackForm.company_name,
+          job_board: trackForm.job_board,
+          application_date: trackForm.application_date,
+          status: trackForm.status,
+          ats_score_at_application: 0,
+          job_description: trackForm.job_description,
+          notes: trackForm.notes + (trackForm.cover_letter ? `\n\nCover Letter: ${trackForm.cover_letter}` : ''),
+        })
+      })
+      setTrackSuccess(true)
+    } catch (e) {
+      console.error(e)
     }
-  };
+    setTrackSaving(false)
+  }
 
   const [aiMatching, setAiMatching] = useState(false);
   const [aiMatchResults, setAiMatchResults] = useState<AIJobMatch[]>([]);
@@ -504,9 +557,9 @@ export default function SAJobSearch() {
       )}
 
       {/* Two Column Layout - Desktop */}
-      <div className="hidden lg:grid lg:grid-cols-2 gap-6">
-        {/* Job List Column */}
-        <div className="space-y-4">
+      <div className="hidden lg:grid lg:grid-cols-2 gap-6" style={{ height: 'calc(100vh - 280px)' }}>
+        {/* Job List Column - scrollable */}
+        <div className="overflow-y-auto space-y-4 pr-2">
           {searchResponse && (
             <Card>
               <CardHeader>
@@ -634,8 +687,8 @@ export default function SAJobSearch() {
           )}
         </div>
 
-        {/* Job Details Column */}
-        <div className="space-y-4">
+        {/* Job Details Column - scrollable */}
+        <div className="overflow-y-auto space-y-4 pl-2">
           {selectedJob ? (
             <Card>
               <CardHeader>
@@ -702,7 +755,7 @@ export default function SAJobSearch() {
                 {/* Job Description */}
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                  <div className="bg-gray-50 p-4 rounded-lg max-h-72 overflow-y-auto">
+                  <div className="bg-gray-50 p-4 rounded-lg">
                     <MarkdownRenderer
                       content={selectedJob.description || selectedJob.snippet || "No description available."}
                       className="text-gray-700 text-sm"
@@ -715,14 +768,14 @@ export default function SAJobSearch() {
                   {/* Single Row with Save, CV Selection, and AI Match */}
                   <div className="flex flex-wrap gap-2 items-center">
                     <Button
-                      onClick={handleSave}
+                      onClick={() => selectedJob && openTrackDialog(selectedJob)}
                       disabled={!user}
                       variant="outline"
                       size="sm"
                       className="flex-none"
                       aria-label="Save Job"
                     >
-                      <Save className="w-4 h-4 mr-1" /> Save
+                      <Save className="w-4 h-4 mr-1" /> Save & Track
                     </Button>
 
                     <div className="flex items-center gap-2 min-w-0 flex-1 max-w-xs">
@@ -1161,6 +1214,79 @@ export default function SAJobSearch() {
           )}
         </SheetContent>
       </Sheet>
+      {/* Track Application Dialog */}
+      <Dialog open={trackDialogOpen} onOpenChange={setTrackDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Save & Track Application</DialogTitle>
+          </DialogHeader>
+          {trackSuccess ? (
+            <div className="py-6 text-center">
+              <div className="text-green-600 text-4xl mb-2">✓</div>
+              <p className="font-medium text-gray-900">Saved to your Application Tracker</p>
+              <p className="text-sm text-gray-500 mt-1">View it under Dashboard → Applications</p>
+              <Button className="mt-4" onClick={() => setTrackDialogOpen(false)}>Done</Button>
+            </div>
+          ) : (
+            <div className="space-y-3 py-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="t-title">Job Title</Label>
+                  <Input id="t-title" value={trackForm.job_title} onChange={e => setTrackForm(p => ({ ...p, job_title: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="t-company">Company</Label>
+                  <Input id="t-company" value={trackForm.company_name} onChange={e => setTrackForm(p => ({ ...p, company_name: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="t-date">Date Applied</Label>
+                  <Input id="t-date" type="date" value={trackForm.application_date} onChange={e => setTrackForm(p => ({ ...p, application_date: e.target.value }))} />
+                </div>
+                <div>
+                  <Label htmlFor="t-status">Status</Label>
+                  <Select value={trackForm.status} onValueChange={v => setTrackForm(p => ({ ...p, status: v as any }))}>
+                    <SelectTrigger id="t-status"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="applied">Applied</SelectItem>
+                      <SelectItem value="viewed">Viewed</SelectItem>
+                      <SelectItem value="interview">Interview</SelectItem>
+                      <SelectItem value="offered">Offered</SelectItem>
+                      <SelectItem value="hired">Hired</SelectItem>
+                      <SelectItem value="rejected">Rejected</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="t-cv">CV Used</Label>
+                <Select value={trackForm.cv_id || 'none'} onValueChange={v => setTrackForm(p => ({ ...p, cv_id: v === 'none' ? '' : v }))}>
+                  <SelectTrigger id="t-cv"><SelectValue placeholder="Select CV (optional)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No specific CV</SelectItem>
+                    {savedCVs.map(cv => <SelectItem key={cv.id} value={cv.id}>{cv.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="t-cover">Cover Letter Used (optional)</Label>
+                <Input id="t-cover" placeholder="e.g. Software Dev Cover Letter" value={trackForm.cover_letter} onChange={e => setTrackForm(p => ({ ...p, cover_letter: e.target.value }))} />
+              </div>
+              <div>
+                <Label htmlFor="t-notes">Notes & Follow-ups</Label>
+                <Textarea id="t-notes" rows={3} placeholder="Interview date, recruiter name, follow-up reminders..." value={trackForm.notes} onChange={e => setTrackForm(p => ({ ...p, notes: e.target.value }))} />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setTrackDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleTrackSave} disabled={trackSaving} className="bg-blue-600 hover:bg-blue-700">
+                  {trackSaving ? 'Saving...' : 'Save & Track'}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
