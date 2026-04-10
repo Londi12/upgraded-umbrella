@@ -1,13 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { User, Camera } from "lucide-react"
+import { User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { PageHeader } from "@/components/ui/page-header"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -31,30 +30,8 @@ export default function ProfilePage() {
       />
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1">
-            <Card>
-              <CardHeader className="text-center">
-                <div className="flex justify-center mb-4">
-                  <div className="relative">
-                    <Avatar className="w-24 h-24">
-                      <AvatarImage src={user?.user_metadata?.avatar_url} />
-                      <AvatarFallback>
-                        <User className="h-12 w-12" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <Button size="sm" className="absolute -bottom-2 -right-2 w-8 h-8 p-0 rounded-full">
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <CardTitle>{formData.fullName || "Your Name"}</CardTitle>
-                <CardDescription>{formData.jobTitle || "Job Title"}</CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
-
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-1 gap-8">
+          <div>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
