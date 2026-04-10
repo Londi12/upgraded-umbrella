@@ -691,11 +691,11 @@ export default function SAJobSearch() {
           )}
         </div>
 
-        {/* Job Details Column - scrollable */}
-        <div className="overflow-y-auto space-y-4 pl-2">
+        {/* Job Details Column - fixed with internal scroll */}
+        <div className="flex flex-col pl-2 min-h-0">
           {selectedJob ? (
-            <Card>
-              <CardHeader>
+            <Card className="flex flex-col flex-1 min-h-0">
+              <CardHeader className="flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <Button
                     variant="ghost"
@@ -708,7 +708,7 @@ export default function SAJobSearch() {
                   <CardTitle className="text-lg">Job Details</CardTitle>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="flex flex-col flex-1 min-h-0 space-y-4">
                 {/* Job Header */}
                 <div className="flex items-start gap-3">
                   {/* Company Logo in Job Details */}
@@ -756,8 +756,8 @@ export default function SAJobSearch() {
                   </div>
                 </div>
 
-                {/* Job Description */}
-                <div>
+                {/* Job Description - scrollable */}
+                <div className="flex-1 overflow-y-auto min-h-0">
                   <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <MarkdownRenderer
@@ -767,8 +767,8 @@ export default function SAJobSearch() {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col gap-3 pt-4 border-t">
+                {/* Action Buttons - sticky at bottom */}
+                <div className="flex-shrink-0 flex flex-col gap-3 pt-4 border-t bg-white">
                   {/* Single Row with Save, CV Selection, and AI Match */}
                   <div className="flex flex-wrap gap-2 items-center">
                     <Button
@@ -935,7 +935,7 @@ export default function SAJobSearch() {
               </CardContent>
             </Card>
           ) : (
-            <Card>
+            <Card className="flex-1">
               <CardContent className="pt-6 text-center text-muted-foreground">
                 <div className="py-12">
                   <div className="text-6xl mb-4">👈</div>
