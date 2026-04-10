@@ -592,6 +592,515 @@ const healthcareProfile: SAJobProfile = {
 }
 
 // ─────────────────────────────────────────────
+// 5. MINING
+// ─────────────────────────────────────────────
+const miningProfile: SAJobProfile = {
+  id: 'mining',
+  family: 'Mining',
+  sector: 'Mining & Resources',
+  description: 'Covers mining engineering, geology, metallurgy, mine management, and safety roles in SA\'s gold, platinum, coal, iron ore, and diamond sectors.',
+  typicalTitles: [
+    'Mining Engineer', 'Mine Manager', 'Mine Overseer', 'Shift Boss',
+    'Rock Engineer', 'Rock Mechanics Engineer', 'Geologist', 'Senior Geologist',
+    'Metallurgical Engineer', 'Metallurgist', 'Process Engineer', 'Plant Metallurgist',
+    'Mine Surveyor', 'Survey Manager', 'Ventilation Engineer', 'Ventilation Officer',
+    'Safety Officer', 'Safety Manager', 'SHEQ Manager', 'Environmental Manager',
+    'Production Manager', 'Underground Manager', 'Open Cast Manager',
+    'Drill and Blast Engineer', 'Blasting Foreman', 'Mining Foreman',
+    'Mineral Resource Manager', 'Competent Person', 'Technical Services Manager'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 3,
+      typicalTitles: ['Graduate Mining Engineer', 'Junior Geologist', 'Mining Trainee', 'Learner Miner', 'Junior Metallurgist']
+    },
+    {
+      level: 'mid',
+      minYears: 3,
+      maxYears: 8,
+      typicalTitles: ['Mining Engineer', 'Geologist', 'Metallurgist', 'Shift Boss', 'Mine Surveyor', 'Safety Officer']
+    },
+    {
+      level: 'senior',
+      minYears: 8,
+      maxYears: 15,
+      typicalTitles: ['Senior Mining Engineer', 'Rock Engineer', 'Mine Overseer', 'Production Manager', 'Technical Services Manager', 'SHEQ Manager']
+    },
+    {
+      level: 'executive',
+      minYears: 15,
+      maxYears: 99,
+      typicalTitles: ['Mine Manager', 'General Manager', 'VP Mining', 'Chief Mining Officer', 'Mineral Resource Manager']
+    }
+  ],
+  minNQF: 7,
+  preferredNQF: 7,
+  acceptedQualifications: [
+    'BEng Mining Engineering', 'BSc Mining Engineering',
+    'BEng Metallurgical Engineering', 'BSc Geology', 'BSc Geological Sciences',
+    'BEng Rock Engineering', 'BSc Rock Engineering',
+    'National Certificate Rock Breaking', 'Blasting Certificate',
+    'Mine Overseer Certificate', 'Mine Manager Certificate of Competency',
+    'BTech Mining', 'National Diploma Mining'
+  ],
+  professionalRegistrations: [
+    {
+      name: 'Pr.Eng (Mining)',
+      body: 'ECSA',
+      required: false,
+      applicableRoles: ['Mining Engineer', 'Rock Engineer', 'Metallurgical Engineer']
+    },
+    {
+      name: 'Mine Manager Certificate of Competency',
+      body: 'DMRE',
+      required: true,
+      applicableRoles: ['Mine Manager', 'Underground Manager', 'Open Cast Manager']
+    },
+    {
+      name: 'Mine Overseer Certificate',
+      body: 'DMRE',
+      required: true,
+      applicableRoles: ['Mine Overseer', 'Shift Boss']
+    },
+    {
+      name: 'Blasting Certificate',
+      body: 'DMRE',
+      required: true,
+      applicableRoles: ['Blasting Foreman', 'Drill and Blast Engineer', 'Shift Boss']
+    },
+    {
+      name: 'Rock Engineering Certificate',
+      body: 'SANIRE',
+      required: false,
+      applicableRoles: ['Rock Engineer', 'Rock Mechanics Engineer']
+    },
+    {
+      name: 'Professional Natural Scientist',
+      body: 'SACNASP',
+      required: false,
+      applicableRoles: ['Geologist', 'Senior Geologist', 'Mineral Resource Manager']
+    }
+  ],
+  coreSkills: {
+    technical: [
+      'MHSA', 'Mine Health and Safety Act', 'Section 54', 'Section 55',
+      'Stope Design', 'Drill and Blast', 'Rock Mechanics', 'Ground Control',
+      'Ventilation Design', 'Mine Planning', 'Reserve Estimation',
+      'Mineral Resource Management', 'SAMREC', 'JORC',
+      'Metallurgical Process', 'Comminution', 'Flotation', 'Leaching',
+      'Mine Surveying', 'Geotechnical Assessment', 'Environmental Management',
+      'SHEQ', 'Risk Assessment', 'Incident Investigation'
+    ],
+    soft: [
+      'Safety Leadership', 'Decision Making Under Pressure', 'Team Management',
+      'Communication', 'Problem Solving', 'Attention to Detail', 'Accountability'
+    ],
+    tools: [
+      'Surpac', 'Datamine', 'Vulcan', 'Deswik', 'MineSight',
+      'AutoCAD', 'Micromine', 'Leapfrog', 'FLAC', 'Phase2',
+      'SAP PM', 'JDE', 'Isometrix'
+    ]
+  },
+  industryKeywords: [
+    'underground', 'open cast', 'open pit', 'stope', 'shaft', 'decline',
+    'reef', 'ore body', 'grade', 'recovery', 'milling', 'crushing',
+    'mhsa', 'dmre', 'section 54', 'section 55', 'lta', 'fatality',
+    'gold', 'platinum', 'pgm', 'coal', 'iron ore', 'chrome', 'manganese',
+    'anglogold', 'impala', 'sibanye', 'kumba', 'exxaro', 'glencore',
+    'samrec', 'jorc', 'competent person', 'mineral resource'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: true,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: false,
+    bilingualAdvantage: false,
+    notes: [
+      'MHSA compliance is non-negotiable — all site roles require demonstrated knowledge',
+      'DMRE Certificates of Competency are legally required for Mine Manager and Overseer roles',
+      'Section 54 and 55 stoppages knowledge is expected at all supervisory levels',
+      'SAMREC/JORC code knowledge required for Competent Person and Resource Manager roles',
+      'Most SA mining operations are in Limpopo, Mpumalanga, North West, Northern Cape',
+      'Accommodation provided on many mine sites — willingness to be site-based is critical',
+      'Safety record (LTI-free) is actively screened — incidents must be disclosed',
+      'NOTE: Profile accuracy should be validated with practising mining engineers before production use'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'MHSA', weight: 1.0, message: 'MHSA knowledge is legally required for all supervisory mining roles in SA — this is a hard requirement' },
+    { skill: 'DMRE Certificate', weight: 0.9, message: 'DMRE Certificate of Competency is legally required for Mine Manager and Overseer roles' },
+    { skill: 'Mine Planning', weight: 0.7, message: 'Mine planning experience is expected for mid-senior mining engineering roles' },
+    { skill: 'Surpac', weight: 0.5, message: 'Surpac or equivalent mine planning software is standard in SA mining operations' },
+    { skill: 'Rock Mechanics', weight: 0.6, message: 'Rock mechanics knowledge is critical for underground mining roles' }
+  ],
+  detectionKeywords: [
+    'mining', 'mine', 'underground', 'open cast', 'open pit', 'shaft',
+    'mining engineer', 'mine manager', 'mine overseer', 'shift boss',
+    'geologist', 'geology', 'metallurgist', 'metallurgy', 'rock engineer',
+    'mhsa', 'dmre', 'blasting', 'drill', 'stope', 'reef', 'ore',
+    'surpac', 'datamine', 'vulcan', 'deswik', 'micromine',
+    'gold', 'platinum', 'pgm', 'coal', 'iron ore', 'chrome',
+    'anglogold', 'impala', 'sibanye', 'kumba', 'exxaro',
+    'samrec', 'jorc', 'competent person', 'mineral resource'
+  ]
+}
+
+// ─────────────────────────────────────────────
+// 6. RETAIL & FMCG
+// ─────────────────────────────────────────────
+const retailProfile: SAJobProfile = {
+  id: 'retail',
+  family: 'Retail & FMCG',
+  sector: 'Retail & Consumer Goods',
+  description: 'Covers store management, merchandising, buying, supply chain, and FMCG sales roles across SA\'s large retail and consumer goods sector.',
+  typicalTitles: [
+    'Store Manager', 'Assistant Store Manager', 'Branch Manager', 'Area Manager',
+    'Regional Manager', 'Retail Manager', 'Floor Manager', 'Department Manager',
+    'Buyer', 'Senior Buyer', 'Assistant Buyer', 'Category Manager',
+    'Merchandiser', 'Visual Merchandiser', 'Merchandise Planner',
+    'Sales Representative', 'Key Account Manager', 'Trade Marketing Manager',
+    'FMCG Sales Manager', 'National Sales Manager', 'Territory Manager',
+    'Supply Chain Manager', 'Demand Planner', 'Replenishment Analyst',
+    'Loss Prevention Manager', 'Shrinkage Controller'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 2,
+      typicalTitles: ['Sales Assistant', 'Cashier Supervisor', 'Junior Merchandiser', 'Graduate Buyer', 'Trainee Manager']
+    },
+    {
+      level: 'mid',
+      minYears: 2,
+      maxYears: 6,
+      typicalTitles: ['Store Manager', 'Buyer', 'Merchandiser', 'Sales Representative', 'Key Account Manager', 'Department Manager']
+    },
+    {
+      level: 'senior',
+      minYears: 6,
+      maxYears: 12,
+      typicalTitles: ['Senior Buyer', 'Area Manager', 'Category Manager', 'FMCG Sales Manager', 'Supply Chain Manager']
+    },
+    {
+      level: 'executive',
+      minYears: 12,
+      maxYears: 99,
+      typicalTitles: ['Regional Manager', 'National Sales Manager', 'Head of Buying', 'Retail Director', 'Commercial Director']
+    }
+  ],
+  minNQF: 5,
+  preferredNQF: 6,
+  acceptedQualifications: [
+    'Matric', 'National Certificate Retail', 'National Diploma Retail Management',
+    'BCom Marketing', 'BCom Business Management', 'BCom Supply Chain',
+    'National Diploma Marketing', 'National Diploma Business Administration',
+    'BTech Retail Business Management', 'MBA'
+  ],
+  professionalRegistrations: [
+    {
+      name: 'FMCG Forum Membership',
+      body: 'Consumer Goods Council of SA',
+      required: false,
+      applicableRoles: ['FMCG Sales Manager', 'National Sales Manager', 'Key Account Manager']
+    }
+  ],
+  coreSkills: {
+    technical: [
+      'Stock Management', 'Inventory Control', 'Shrinkage Control', 'Loss Prevention',
+      'Merchandising', 'Planogram', 'Category Management', 'Buying',
+      'Sales Targets', 'KPI Management', 'P&L Management', 'Budgeting',
+      'Customer Service', 'Staff Management', 'Scheduling', 'Payroll',
+      'Supply Chain', 'Demand Planning', 'Replenishment', 'Vendor Management',
+      'Trade Marketing', 'Promotions', 'Pricing Strategy'
+    ],
+    soft: [
+      'Customer Focus', 'Leadership', 'Communication', 'Problem Solving',
+      'Target Driven', 'Resilience', 'Adaptability', 'Attention to Detail'
+    ],
+    tools: [
+      'SAP Retail', 'Oracle Retail', 'JDA', 'Blue Yonder', 'Manhattan',
+      'Excel', 'Power BI', 'Nielsen', 'IRI', 'Syspro',
+      'POS Systems', 'WMS'
+    ]
+  },
+  industryKeywords: [
+    'retail', 'store', 'branch', 'fmcg', 'consumer goods', 'buying',
+    'merchandising', 'planogram', 'category', 'shrinkage', 'stock',
+    'sales target', 'footfall', 'basket size', 'conversion rate',
+    'woolworths', 'pick n pay', 'checkers', 'shoprite', 'spar',
+    'clicks', 'dischem', 'mr price', 'truworths', 'foschini', 'edgars',
+    'unilever', 'p&g', 'nestle', 'tiger brands', 'pioneer foods',
+    'trade marketing', 'key account', 'route to market'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: true,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: true,
+    bilingualAdvantage: true,
+    notes: [
+      'SA retail is dominated by Shoprite/Checkers, Pick n Pay, Woolworths, SPAR, Clicks, Dis-Chem',
+      'FMCG sales roles almost always require own vehicle and valid driver\'s licence',
+      'Bilingual ability is a strong advantage — Afrikaans particularly valued in Western Cape and Northern Cape',
+      'B-BBEE compliance knowledge increasingly required for buying and supplier management roles',
+      'Retail hours include weekends and public holidays — flexibility is expected',
+      'Nielsen/IRI data analysis skills are a strong differentiator for FMCG roles'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'Stock Management', weight: 0.8, message: 'Stock management experience is a baseline requirement for retail management roles' },
+    { skill: 'P&L', weight: 0.7, message: 'P&L management is expected for store manager and above roles in SA retail' },
+    { skill: 'Driver\'s Licence', weight: 0.7, message: 'Valid driver\'s licence is required for most FMCG sales and area management roles' },
+    { skill: 'SAP', weight: 0.5, message: 'SAP Retail or equivalent ERP experience is expected in large SA retail operations' },
+    { skill: 'Merchandising', weight: 0.6, message: 'Merchandising and planogram knowledge is expected for buying and category roles' }
+  ],
+  detectionKeywords: [
+    'retail', 'store manager', 'branch manager', 'fmcg', 'buyer', 'buying',
+    'merchandiser', 'merchandising', 'category manager', 'area manager',
+    'sales representative', 'key account', 'trade marketing',
+    'stock', 'inventory', 'shrinkage', 'planogram', 'replenishment',
+    'woolworths', 'pick n pay', 'checkers', 'shoprite', 'spar',
+    'clicks', 'dischem', 'mr price', 'truworths', 'foschini',
+    'unilever', 'tiger brands', 'pioneer foods', 'consumer goods'
+  ]
+}
+
+// ─────────────────────────────────────────────
+// 7. SALES
+// ─────────────────────────────────────────────
+const salesProfile: SAJobProfile = {
+  id: 'sales',
+  family: 'Sales',
+  sector: 'Sales & Business Development',
+  description: 'Covers B2B and B2C sales, business development, account management, and sales leadership across all SA industries.',
+  typicalTitles: [
+    'Sales Representative', 'Sales Consultant', 'Sales Executive', 'Sales Manager',
+    'Senior Sales Manager', 'National Sales Manager', 'Regional Sales Manager',
+    'Key Account Manager', 'Account Executive', 'Account Manager',
+    'Business Development Manager', 'Business Development Executive',
+    'Territory Manager', 'Area Sales Manager', 'Channel Manager',
+    'Inside Sales Representative', 'External Sales Representative',
+    'Technical Sales Representative', 'Medical Sales Representative',
+    'Head of Sales', 'VP Sales', 'Chief Revenue Officer'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 2,
+      typicalTitles: ['Sales Consultant', 'Sales Representative', 'Junior Sales Executive', 'Telesales Agent']
+    },
+    {
+      level: 'mid',
+      minYears: 2,
+      maxYears: 6,
+      typicalTitles: ['Sales Executive', 'Key Account Manager', 'Account Manager', 'Territory Manager', 'Business Development Executive']
+    },
+    {
+      level: 'senior',
+      minYears: 6,
+      maxYears: 12,
+      typicalTitles: ['Sales Manager', 'Regional Sales Manager', 'Business Development Manager', 'Senior Account Manager']
+    },
+    {
+      level: 'executive',
+      minYears: 12,
+      maxYears: 99,
+      typicalTitles: ['National Sales Manager', 'Head of Sales', 'VP Sales', 'Chief Revenue Officer', 'Commercial Director']
+    }
+  ],
+  minNQF: 5,
+  preferredNQF: 6,
+  acceptedQualifications: [
+    'Matric', 'National Diploma Sales', 'National Diploma Marketing',
+    'BCom Marketing', 'BCom Business Management', 'BCom Sales Management',
+    'National Certificate Sales', 'BTech Marketing', 'MBA'
+  ],
+  professionalRegistrations: [],
+  coreSkills: {
+    technical: [
+      'Sales Pipeline Management', 'Lead Generation', 'Prospecting', 'Cold Calling',
+      'Negotiation', 'Closing', 'Account Management', 'Key Account Management',
+      'CRM', 'Sales Forecasting', 'Territory Management', 'Tender Management',
+      'Proposal Writing', 'Presentations', 'Target Achievement', 'Revenue Growth',
+      'B2B Sales', 'B2C Sales', 'Solution Selling', 'Consultative Selling'
+    ],
+    soft: [
+      'Persuasion', 'Resilience', 'Self-Motivation', 'Communication',
+      'Relationship Building', 'Networking', 'Time Management', 'Target Driven'
+    ],
+    tools: [
+      'Salesforce', 'HubSpot', 'Microsoft Dynamics', 'Pipedrive',
+      'Excel', 'PowerPoint', 'SAP CRM', 'Zoho CRM'
+    ]
+  },
+  industryKeywords: [
+    'sales', 'revenue', 'targets', 'pipeline', 'leads', 'prospects',
+    'cold calling', 'closing', 'negotiation', 'account management',
+    'crm', 'salesforce', 'hubspot', 'b2b', 'b2c', 'solution selling',
+    'quota', 'commission', 'incentive', 'territory', 'key account',
+    'business development', 'new business', 'retention', 'upsell', 'cross-sell'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: true,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: true,
+    bilingualAdvantage: true,
+    notes: [
+      'Driver\'s licence and own vehicle are almost universally required for external sales roles',
+      'Bilingual ability (Afrikaans, Zulu, Sotho) is a strong advantage for territory-based roles',
+      'Commission structures vary widely — OTE (on-target earnings) is the standard SA metric',
+      'B-BBEE supplier status knowledge is increasingly required for corporate B2B sales',
+      'Medical sales requires product knowledge and often HPCSA-adjacent compliance awareness'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'CRM', weight: 0.7, message: 'CRM experience (Salesforce, HubSpot, or equivalent) is expected for most sales roles' },
+    { skill: 'Target Achievement', weight: 0.8, message: 'Demonstrated track record of meeting or exceeding sales targets is critical' },
+    { skill: 'Driver\'s Licence', weight: 0.8, message: 'Valid driver\'s licence is required for virtually all external sales roles in SA' },
+    { skill: 'Negotiation', weight: 0.7, message: 'Negotiation skills are a core requirement for mid-senior sales roles' }
+  ],
+  detectionKeywords: [
+    'sales', 'sales representative', 'sales manager', 'account manager',
+    'business development', 'key account', 'territory manager',
+    'salesforce', 'hubspot', 'crm', 'pipeline', 'leads', 'prospecting',
+    'cold calling', 'closing', 'negotiation', 'revenue', 'targets',
+    'b2b', 'b2c', 'solution selling', 'consultative', 'quota', 'commission'
+  ]
+}
+
+// ─────────────────────────────────────────────
+// 8. MARKETING
+// ─────────────────────────────────────────────
+const marketingProfile: SAJobProfile = {
+  id: 'marketing',
+  family: 'Marketing',
+  sector: 'Marketing & Communications',
+  description: 'Covers brand management, digital marketing, content, PR, and marketing management across SA corporate and agency environments.',
+  typicalTitles: [
+    'Marketing Manager', 'Marketing Coordinator', 'Marketing Assistant',
+    'Digital Marketing Manager', 'Digital Marketing Specialist', 'SEO Specialist',
+    'Social Media Manager', 'Social Media Specialist', 'Content Manager',
+    'Content Creator', 'Copywriter', 'Brand Manager', 'Brand Strategist',
+    'PR Manager', 'Communications Manager', 'Public Relations Officer',
+    'Marketing Director', 'Head of Marketing', 'CMO', 'Chief Marketing Officer',
+    'Performance Marketing Manager', 'Growth Marketer', 'CRM Manager',
+    'Trade Marketing Manager', 'Shopper Marketing Manager'
+  ],
+  experienceTiers: [
+    {
+      level: 'junior',
+      minYears: 0,
+      maxYears: 2,
+      typicalTitles: ['Marketing Assistant', 'Marketing Coordinator', 'Junior Copywriter', 'Social Media Assistant', 'Graduate Marketer']
+    },
+    {
+      level: 'mid',
+      minYears: 2,
+      maxYears: 6,
+      typicalTitles: ['Marketing Manager', 'Brand Manager', 'Digital Marketing Specialist', 'Content Manager', 'PR Officer', 'Social Media Manager']
+    },
+    {
+      level: 'senior',
+      minYears: 6,
+      maxYears: 12,
+      typicalTitles: ['Senior Marketing Manager', 'Senior Brand Manager', 'Digital Marketing Manager', 'Communications Manager', 'Head of Digital']
+    },
+    {
+      level: 'executive',
+      minYears: 12,
+      maxYears: 99,
+      typicalTitles: ['Marketing Director', 'Head of Marketing', 'CMO', 'Chief Marketing Officer', 'VP Marketing']
+    }
+  ],
+  minNQF: 6,
+  preferredNQF: 7,
+  acceptedQualifications: [
+    'BCom Marketing', 'BCom Marketing Management', 'BA Communications',
+    'BA Journalism', 'National Diploma Marketing', 'BTech Marketing',
+    'BCom Business Management', 'Postgraduate Diploma Marketing',
+    'MBA', 'IMM Graduate School Diploma'
+  ],
+  professionalRegistrations: [
+    {
+      name: 'IMM Membership',
+      body: 'IMM Graduate School',
+      required: false,
+      applicableRoles: ['Marketing Manager', 'Brand Manager', 'Marketing Director']
+    },
+    {
+      name: 'PRISA Membership',
+      body: 'Public Relations Institute of SA',
+      required: false,
+      applicableRoles: ['PR Manager', 'Communications Manager', 'Public Relations Officer']
+    }
+  ],
+  coreSkills: {
+    technical: [
+      'Brand Management', 'Campaign Management', 'Digital Marketing',
+      'SEO', 'SEM', 'Google Ads', 'Meta Ads', 'Social Media Marketing',
+      'Content Strategy', 'Copywriting', 'Email Marketing', 'Marketing Automation',
+      'Market Research', 'Consumer Insights', 'Competitor Analysis',
+      'Budget Management', 'ROI Measurement', 'Analytics', 'Reporting',
+      'Trade Marketing', 'ATL', 'BTL', 'TTL', 'PR', 'Media Relations'
+    ],
+    soft: [
+      'Creativity', 'Strategic Thinking', 'Communication', 'Collaboration',
+      'Attention to Detail', 'Project Management', 'Adaptability', 'Curiosity'
+    ],
+    tools: [
+      'Google Analytics', 'Google Ads', 'Meta Business Suite', 'HubSpot',
+      'Mailchimp', 'Hootsuite', 'Canva', 'Adobe Creative Suite',
+      'Salesforce Marketing Cloud', 'SEMrush', 'Ahrefs', 'Power BI'
+    ]
+  },
+  industryKeywords: [
+    'marketing', 'brand', 'campaign', 'digital', 'social media', 'content',
+    'seo', 'sem', 'google ads', 'meta ads', 'email marketing', 'crm',
+    'analytics', 'roi', 'atl', 'btl', 'pr', 'communications', 'media',
+    'consumer insights', 'market research', 'brand strategy', 'copywriting',
+    'b-bbee marketing', 'transformation', 'imm', 'prisa'
+  ],
+  saSpecificFlags: {
+    eePreferred: true,
+    driversLicenceRequired: false,
+    citizenshipRequired: false,
+    securityClearance: false,
+    ownVehicleRequired: false,
+    bilingualAdvantage: true,
+    notes: [
+      'B-BBEE marketing compliance and transformation messaging is increasingly required in SA corporate marketing',
+      'IMM Graduate School is the leading SA marketing qualification body',
+      'PRISA membership is valued for PR and communications roles',
+      'Multilingual content creation (Zulu, Xhosa, Afrikaans) is a growing differentiator',
+      'SA market requires understanding of township economy and informal sector dynamics for FMCG brands',
+      'POPIA compliance knowledge is required for email marketing and data-driven roles'
+    ]
+  },
+  gapPenalties: [
+    { skill: 'Google Analytics', weight: 0.7, message: 'Google Analytics is a baseline requirement for digital marketing roles' },
+    { skill: 'Campaign Management', weight: 0.7, message: 'End-to-end campaign management experience is expected at mid-senior level' },
+    { skill: 'Budget Management', weight: 0.6, message: 'Marketing budget management is expected for manager-level roles' },
+    { skill: 'Digital Marketing', weight: 0.7, message: 'Digital marketing skills are now a baseline requirement across all marketing roles in SA' }
+  ],
+  detectionKeywords: [
+    'marketing', 'brand manager', 'digital marketing', 'social media',
+    'content', 'seo', 'sem', 'google ads', 'meta ads', 'email marketing',
+    'campaign', 'copywriter', 'pr manager', 'communications', 'media',
+    'analytics', 'hubspot', 'mailchimp', 'hootsuite', 'canva',
+    'adobe', 'market research', 'consumer insights', 'imm', 'prisa',
+    'atl', 'btl', 'brand strategy', 'marketing manager', 'cmo'
+  ]
+}
+
+// ─────────────────────────────────────────────
 // EXPORTS
 // ─────────────────────────────────────────────
 export const SA_JOB_PROFILES: SAJobProfile[] = [
@@ -599,6 +1108,10 @@ export const SA_JOB_PROFILES: SAJobProfile[] = [
   techProfile,
   engineeringProfile,
   healthcareProfile,
+  miningProfile,
+  retailProfile,
+  salesProfile,
+  marketingProfile,
 ]
 
 export const getProfileById = (id: string): SAJobProfile | undefined =>
