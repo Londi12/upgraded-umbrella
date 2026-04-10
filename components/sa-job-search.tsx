@@ -89,8 +89,6 @@ export default function SAJobSearch() {
   }, []);
 
   const handleSearch = async () => {
-    if (!locationFilter) return;
-
     setLoading(true);
     setError("");
     setResults([]);
@@ -417,9 +415,10 @@ export default function SAJobSearch() {
                   className="flex-1"
                 />
                 <select
+                  id="location-filter"
+                  name="location-filter"
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  required
                   className="px-3 py-2 border rounded-md min-w-[150px]"
                 >
                   <option value="">Select Location</option>
@@ -432,13 +431,15 @@ export default function SAJobSearch() {
                 <Button
                   type="button"
                   onClick={() => handleSearch()}
-                  disabled={loading || !locationFilter}
+                  disabled={loading}
                 >
                   {loading ? "Searching..." : "Search"}
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
                 <select
+                  id="job-type"
+                  name="job-type"
                   value={jobType}
                   onChange={(e) => setJobType(e.target.value)}
                   className="px-3 py-2 border rounded-md"
@@ -450,6 +451,8 @@ export default function SAJobSearch() {
                   <option value="internship">Internship</option>
                 </select>
                 <select
+                  id="experience"
+                  name="experience"
                   value={experience}
                   onChange={(e) => setExperience(e.target.value)}
                   className="px-3 py-2 border rounded-md"
@@ -461,6 +464,8 @@ export default function SAJobSearch() {
                   <option value="executive">Executive</option>
                 </select>
                 <select
+                  id="salary"
+                  name="salary"
                   value={salary}
                   onChange={(e) => setSalary(e.target.value)}
                   className="px-3 py-2 border rounded-md"
@@ -473,6 +478,8 @@ export default function SAJobSearch() {
                 </select>
 
                 <select
+                  id="date-posted"
+                  name="date-posted"
                   value={datePosted}
                   onChange={(e) => setDatePosted(e.target.value)}
                   className="px-3 py-2 border rounded-md"
@@ -1052,10 +1059,12 @@ export default function SAJobSearch() {
                     </Button>
 
                     <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <label className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                      <label htmlFor="cv-select-mobile" className="text-sm font-medium text-gray-700 whitespace-nowrap">
                         CV:
                       </label>
                       <select
+                        id="cv-select-mobile"
+                        name="cv-select-mobile"
                         value={selectedCVId}
                         onChange={(e) => setSelectedCVId(e.target.value)}
                         className="flex-1 min-w-0 border rounded-md px-2 py-1 text-sm"
