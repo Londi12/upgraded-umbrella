@@ -108,10 +108,13 @@ export class JobScraperService {
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
 
-    for (const company of SA_COMPANIES) {
+    // Single broad query instead of 12 sequential ones to avoid timeout
+    const queries = ['jobs South Africa', 'careers South Africa']
+
+    for (const query of queries) {
       try {
-        const jobs = await fetchJSearchJobs(company)
-        console.log(`${company}: fetched ${jobs.length} jobs`)
+        const jobs = await fetchJSearchJobs(query)
+        console.log(`"${query}": fetched ${jobs.length} jobs`)
         for (const job of jobs) {
           if (!seen.has(job.url)) {
             seen.add(job.url)
@@ -119,7 +122,7 @@ export class JobScraperService {
           }
         }
       } catch (err: any) {
-        const msg = `${company}: ${err.message}`
+        const msg = `Query "${query}": ${err.message}`
         console.error(msg)
         errors.push(msg)
       }
