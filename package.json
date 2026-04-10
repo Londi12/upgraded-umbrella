@@ -51,6 +51,7 @@
     "embla-carousel-react": "8.5.1",
     "file-type": "^21.0.0",
     "framer-motion": "^12.18.1",
+    "fuse.js": "^7.0.0",
     "input-otp": "1.4.1",
     "jspdf": "latest",
     "katex": "^0.16.22",

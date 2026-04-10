@@ -41,6 +41,18 @@ export interface Education {
 export interface Skill {
   name: string
   category?: string
+  level?: 'beginner' | 'intermediate' | 'expert'
+  yearsOfExperience?: number
+}
+
+export interface SAFlags {
+  eeStatus?: boolean
+  driversLicence?: boolean
+  ownVehicle?: boolean
+  citizenship?: string
+  willingToRelocate?: string[]
+  securityClearance?: boolean
+  workPermit?: string
 }
 
 export interface CVData {
@@ -50,6 +62,12 @@ export interface CVData {
   education: Education[]
   skills: string | Skill[]
   customSections?: CustomSection[]
+  // Extended fields for SA knowledgebase matching
+  registrations?: string[]        // ['SAICA', 'ECSA', 'HPCSA', etc.]
+  certifications?: string[]       // ['AWS Certified', 'PMP', 'CISSP', etc.]
+  saFlags?: SAFlags
+  detectedJobFamily?: string      // Set by classifier after parsing
+  familyConfidence?: number       // 0-1 confidence score
 }
 
 export interface RecipientInfo {
