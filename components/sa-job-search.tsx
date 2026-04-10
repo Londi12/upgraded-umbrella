@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Save, ArrowLeft, Send, X } from "lucide-react";
+import { Search, Save, ArrowLeft, Send, X, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 import { ApplicationTracker } from "@/lib/application-tracker";
 import { getSavedCVs, saveJob } from "@/lib/user-data-service";
@@ -288,6 +288,7 @@ export default function SAJobSearch() {
   })
   const [trackSaving, setTrackSaving] = useState(false)
   const [trackSuccess, setTrackSuccess] = useState(false)
+  const [applyToast, setApplyToast] = useState(false)
 
   const openTrackDialog = (job: SAJobResult) => {
     setTrackForm({
@@ -825,14 +826,12 @@ export default function SAJobSearch() {
                       className="w-full" 
                       size="lg"
                       onClick={async () => {
-                        // Track application
                         try {
-                          console.log('Tracking application for:', selectedJob.title)
                           await fetch('/api/track-application', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              cv_id: selectedCVId || 'default-cv',
+                              cv_id: selectedCVId || null,
                               job_title: selectedJob.title,
                               company_name: selectedJob.company || selectedJob.source,
                               job_board: 'SA Job Search',
@@ -843,11 +842,11 @@ export default function SAJobSearch() {
                               notes: `Applied via SA Job Search: ${selectedJob.url}`
                             })
                           })
-                          console.log('Application tracked successfully')
+                          setApplyToast(true)
+                          setTimeout(() => setApplyToast(false), 5000)
                         } catch (error) {
                           console.error('Error tracking application:', error)
                         }
-                        // Open job URL
                         window.open(selectedJob.url, '_blank')
                       }}
                     >
@@ -856,6 +855,14 @@ export default function SAJobSearch() {
                     </Button>
                   </div>
                 </div>
+
+                {applyToast && (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="flex-1 text-sm text-green-800">Application tracked!</span>
+                    <a href="/dashboard" className="text-sm font-medium text-green-700 underline whitespace-nowrap">View Tracker →</a>
+                  </div>
+                )}
 
                 {/* AI Match Results */}
                 {aiMatchResults.length > 0 && (
@@ -1155,14 +1162,12 @@ export default function SAJobSearch() {
                       className="w-full" 
                       size="lg"
                       onClick={async () => {
-                        // Track application
                         try {
-                          console.log('Tracking application for:', selectedJob.title)
                           await fetch('/api/track-application', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
-                              cv_id: selectedCVId || 'default-cv',
+                              cv_id: selectedCVId || null,
                               job_title: selectedJob.title,
                               company_name: selectedJob.company || selectedJob.source,
                               job_board: 'SA Job Search',
@@ -1173,11 +1178,11 @@ export default function SAJobSearch() {
                               notes: `Applied via SA Job Search: ${selectedJob.url}`
                             })
                           })
-                          console.log('Application tracked successfully')
+                          setApplyToast(true)
+                          setTimeout(() => setApplyToast(false), 5000)
                         } catch (error) {
                           console.error('Error tracking application:', error)
                         }
-                        // Open job URL
                         window.open(selectedJob.url, '_blank')
                       }}
                     >
@@ -1186,6 +1191,14 @@ export default function SAJobSearch() {
                     </Button>
                   </div>
                 </div>
+
+                {applyToast && (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    <span className="flex-1 text-sm text-green-800">Application tracked!</span>
+                    <a href="/dashboard" className="text-sm font-medium text-green-700 underline whitespace-nowrap">View Tracker →</a>
+                  </div>
+                )}
 
                 {aiMatchResults.length > 0 && (
                   <div className="mt-6">
@@ -1229,8 +1242,10 @@ export default function SAJobSearch() {
             <div className="py-6 text-center">
               <div className="text-green-600 text-4xl mb-2">✓</div>
               <p className="font-medium text-gray-900">Saved to your Application Tracker</p>
-              <p className="text-sm text-gray-500 mt-1">View it under Dashboard → Applications</p>
-              <Button className="mt-4" onClick={() => setTrackDialogOpen(false)}>Done</Button>
+              <div className="flex gap-2 justify-center mt-4">
+                <Button variant="outline" onClick={() => setTrackDialogOpen(false)}>Done</Button>
+                <a href="/dashboard"><Button className="bg-blue-600 hover:bg-blue-700">View Tracker →</Button></a>
+              </div>
             </div>
           ) : (
             <div className="space-y-3 py-2">

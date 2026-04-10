@@ -28,20 +28,27 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadUserData = async () => {
       if (!isConfigured || !user) return
-
       setIsLoading(true)
       const [cvsResult, applicationsResult] = await Promise.all([
         getSavedCVs(),
         getUserApplications()
       ])
-
       if (cvsResult.data) setSavedCVs(cvsResult.data)
       if (applicationsResult.data) setApplications(applicationsResult.data)
       setIsLoading(false)
     }
-
     loadUserData()
   }, [user, isConfigured])
+
+  const refreshApplications = () =>
+    getUserApplications().then(result => { if (result.data) setApplications(result.data) })
+
+  const stats = {
+    total: applications.length,
+    interviews: applications.filter(a => a.status === 'interview').length,
+    offers: applications.filter(a => a.status === 'offered' || a.status === 'hired').length,
+    pending: applications.filter(a => a.status === 'applied' || a.status === 'viewed').length,
+  }
 
   if (loading) {
     return (
@@ -51,9 +58,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (isConfigured && !user) {
-    return null
-  }
+  if (isConfigured && !user) return null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -78,19 +83,32 @@ export default function DashboardPage() {
       </PageHeader>
 
       <div className="container mx-auto px-4 py-8">
+        {applications.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+              <div className="text-sm text-gray-500 mt-1">Total Applied</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+              <div className="text-sm text-gray-500 mt-1">Awaiting Response</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-2xl font-bold text-purple-600">{stats.interviews}</div>
+              <div className="text-sm text-gray-500 mt-1">Interviews</div>
+            </div>
+            <div className="bg-white rounded-lg border p-4 text-center">
+              <div className="text-2xl font-bold text-green-600">{stats.offers}</div>
+              <div className="text-sm text-gray-500 mt-1">Offers</div>
+            </div>
+          </div>
+        )}
+
         <ApplicationTracker
           applications={applications}
           savedCVs={savedCVs}
-          onApplicationAdded={() => {
-            getUserApplications().then(result => {
-              if (result.data) setApplications(result.data)
-            })
-          }}
-          onApplicationUpdated={() => {
-            getUserApplications().then(result => {
-              if (result.data) setApplications(result.data)
-            })
-          }}
+          onApplicationAdded={refreshApplications}
+          onApplicationUpdated={refreshApplications}
         />
       </div>
     </div>
