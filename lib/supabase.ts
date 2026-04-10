@@ -94,14 +94,20 @@ export const getCurrentUser = async () => {
 
 // Check if user is admin by querying admin_users table
 export const checkIsAdmin = async (userId: string) => {
-  if (!hasValidCredentials) return false
+  if (!hasValidCredentials) {
+    console.log('checkIsAdmin: no valid credentials')
+    return false
+  }
 
   try {
+    console.log('checkIsAdmin: checking userId', userId)
     const { data, error } = await supabase
       .from('admin_users')
       .select('user_id')
       .eq('user_id', userId)
       .single()
+
+    console.log('checkIsAdmin result:', { data, error })
 
     if (error && error.code !== 'PGRST116') {
       console.error('Error checking admin status:', error)
@@ -121,7 +127,7 @@ export const getUserStats = async () => {
 
   try {
     const { count: totalUsers } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*', { count: 'exact', head: true })
 
     const { count: totalCVs } = await supabase
@@ -131,7 +137,7 @@ export const getUserStats = async () => {
     const today = new Date()
     today.setHours(0, 0, 0, 0)
     const { count: todaySignups } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('*', { count: 'exact', head: true })
       .gte('created_at', today.toISOString())
 
@@ -154,7 +160,7 @@ export const getRecentUsers = async () => {
 
   try {
     const { data: users, error } = await supabase
-      .from('profiles')
+      .from('user_profiles')
       .select('id, email, full_name, created_at')
       .order('created_at', { ascending: false })
       .limit(10)

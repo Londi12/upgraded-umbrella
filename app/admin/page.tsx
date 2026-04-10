@@ -32,18 +32,19 @@ export default function AdminDashboard() {
   const [recentUsers, setRecentUsers] = useState<{id: string, name: string, email: string, plan: string, joined: string, cvsCreated: number, lastActive: string, status: string}[]>([])
   const [liveActivity, setLiveActivity] = useState<{type: string, user: string, time: string, details: string}[]>([])
 
-  useEffect(() => { checkAdminPermissions() }, [user, loading])
-
-  const checkAdminPermissions = async () => {
+  useEffect(() => {
     if (loading) return
-    if (!user) { router.push('/login?redirect=admin'); return }
-    try {
-      const isUserAdmin = await checkIsAdmin(user.id)
-      if (isUserAdmin) { setIsAdmin(true); loadData() }
-      else router.push('/')
-    } catch { router.push('/') }
-    finally { setCheckingPermissions(false) }
-  }
+    if (!user) { router.push('/login?redirect=admin'); setCheckingPermissions(false); return }
+    checkIsAdmin(user.id)
+      .then(isUserAdmin => {
+        if (isUserAdmin) { setIsAdmin(true); loadData() }
+        else router.push('/')
+      })
+      .catch(() => router.push('/'))
+      .finally(() => setCheckingPermissions(false))
+  }, [user, loading])
+
+
 
   useEffect(() => {
     if (!isAdmin) return
