@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import * as cvParser from '../../../lib/cv-parser';
-import { parseSimpleCV } from '../../../lib/simple-cv-parser';
 import { CVFileType } from '../../../lib/cv-parser';
 
 export async function POST(req: Request) {
