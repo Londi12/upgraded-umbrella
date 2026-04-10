@@ -41,6 +41,9 @@ export function UserChatbot() {
   const getBotResponse = (userMessage: string): string => {
     const msg = userMessage.toLowerCase()
     
+    if (msg.includes('save') || msg.includes('saving')) {
+      return "To save your CV, click the 'Save CV' button at the top of the builder. You need to be signed in — if you're not, you'll be prompted to log in first."
+    }
     if (msg.includes('pdf') || msg.includes('download')) {
       return "To download your CV as PDF: 1) Complete your CV form 2) Click 'Download PDF' button 3) If it fails, try refreshing the page. Need more help?"
     }
@@ -204,10 +207,10 @@ export function UserChatbot() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setNewMessage("How does job matching work?")}
+            onClick={() => setNewMessage("How do I save my CV?")}
             className="text-xs"
           >
-            Job Match
+            Save CV
           </Button>
         </div>
       </div>
