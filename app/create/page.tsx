@@ -46,6 +46,8 @@ import { trackCVInteraction } from '@/lib/analytics-service'
 import { parseCV } from "@/lib/cv-parser"
 import { CVUploadLoader, CVParsingLoader, SuccessAnimation, ErrorAnimation } from "@/components/loading-animations"
 
+import { ErrorBoundary } from "@/components/error-boundary"
+
 export default function CreateCVPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -475,6 +477,7 @@ export default function CreateCVPage() {
   }
 
   return (
+    <ErrorBoundary>
     <>
       <div className="flex flex-col min-h-screen bg-slate-50">
         <div className="page-container flex flex-col min-h-screen">
@@ -601,7 +604,7 @@ export default function CreateCVPage() {
 
                 <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                   <h2 className="text-lg font-semibold text-slate-900 mb-2">Upload Existing CV</h2>
-                  <p className="text-sm text-slate-600 mb-4">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
+                  <p className="text-sm text-slate-600 mb-4">Upload your existing CV to auto-fill the fields. Works best with DOCX files. PDF support is limited.</p>
                   
                   {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
                   {parseStep === 'parsing' && <CVParsingLoader />}
@@ -1118,5 +1121,6 @@ export default function CreateCVPage() {
   
 
     </>
+    </ErrorBoundary>
   )
 }

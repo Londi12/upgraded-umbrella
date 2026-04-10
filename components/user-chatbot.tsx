@@ -50,8 +50,8 @@ export function UserChatbot() {
     if (msg.includes('job') || msg.includes('match')) {
       return "Our job matching finds opportunities based on your CV. Create a CV first, then visit the Jobs page for personalized recommendations!"
     }
-    if (msg.includes('plan') || msg.includes('price') || msg.includes('upgrade')) {
-      return "We have 3 plans: Base (R199), Premium (R299), Pro (R399). All include 7-day free trial. Check our Pricing page for details!"
+    if (msg.includes('plan') || msg.includes('price') || msg.includes('upgrade') || msg.includes('cost') || msg.includes('free')) {
+      return "CVKonnekt is completely free! No plans, no subscriptions, no hidden fees. If it helped you, a small donation keeps the lights on — check the footer for details."
     }
     if (msg.includes('ats') || msg.includes('score')) {
       return "ATS scoring checks how well your CV works with applicant tracking systems. Click 'ATS Score' in the CV builder for analysis and tips!"
@@ -204,10 +204,10 @@ export function UserChatbot() {
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => setNewMessage("Pricing plans?")}
+            onClick={() => setNewMessage("How does job matching work?")}
             className="text-xs"
           >
-            Pricing
+            Job Match
           </Button>
         </div>
       </div>
