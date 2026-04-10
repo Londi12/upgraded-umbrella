@@ -5,9 +5,15 @@
       "maxDuration": 30
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/scrape-jobs",
+      "schedule": "0 3 * * *"
+    }
+  ],
   "git": {
     "deploymentEnabled": {
       "main": true
     }
   }
-} 
+}
