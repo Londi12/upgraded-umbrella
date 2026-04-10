@@ -25,6 +25,8 @@ const SA_PROVINCES = [
   'mpumalanga', 'north west', 'northern cape', 'free state'
 ]
 
+const PURGE_DAYS = 21
+
 function isSALocation(city: string, state: string, country: string): boolean {
   const all = [city, state, country].map(s => s?.toLowerCase() || '')
   if (all.some(s => s.includes('south africa') || s === 'za')) return true
@@ -38,13 +40,6 @@ function formatLocation(city: string, state: string): string {
   return parts.length ? `${parts.join(', ')}, South Africa` : 'South Africa'
 }
 
-  'Standard Bank', 'Absa', 'Discovery', 'Nedbank',
-  'Capitec', 'Vodacom', 'MTN', 'Shoprite',
-  'Pick n Pay', 'Woolworths', 'Sasol', 'FirstRand'
-]
-
-const PURGE_DAYS = 21
-
 async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   const apiKey = process.env.JSEARCH_API_KEY
   if (!apiKey) {
@@ -53,7 +48,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   }
 
   const res = await fetch(
-    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query + ' South Africa')}&page=1&num_pages=2&country=za`,
+    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=2&country=za`,
     {
       headers: {
         'X-RapidAPI-Key': apiKey,
@@ -70,7 +65,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   const data = await res.json()
   console.log(`JSearch "${query}": ${data.data?.length || 0} jobs`)
 
-  const mapped: ScrapedJob[] = (data.data || []).map((j: any) => ({
+  const mapped = (data.data || []).map((j: any) => ({
     title: j.job_title,
     snippet: j.job_description?.substring(0, 300) || '',
     url: j.job_apply_link || j.job_google_link || '',
@@ -81,11 +76,11 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
     _city: j.job_city || '',
     _state: j.job_state || '',
     _country: j.job_country || '',
-  } as any))
+  }))
 
   return mapped
     .filter((j: any) => j.url && isSALocation(j._city, j._state, j._country))
-    .map(({ _city, _state, _country, ...j }: any) => j)
+    .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
 }
 
 export class JobScraperService {
@@ -108,7 +103,6 @@ export class JobScraperService {
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
 
-    // Single broad query instead of 12 sequential ones to avoid timeout
     const queries = ['jobs South Africa', 'careers South Africa']
 
     for (const query of queries) {
