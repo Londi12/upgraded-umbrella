@@ -32,6 +32,16 @@ export const signUp = async (email: string, password: string) => {
   return { data, error }
 }
 
+export const signInWithGoogle = async () => {
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || (typeof window !== 'undefined' ? window.location.origin : '')}/auth/callback`,
+    },
+  })
+  return { data, error }
+}
+
 export const signIn = async (email: string, password: string) => {
   if (!hasValidCredentials) {
     // Demo mode - simulate successful login
