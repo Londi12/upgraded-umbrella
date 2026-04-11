@@ -83,6 +83,53 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
     .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
 }
 
+async function fetchLinkedInJobs(): Promise<ScrapedJob[]> {
+  const apiKey = process.env.LINKEDIN_RAPIDAPI_KEY
+  if (!apiKey) {
+    console.error('LINKEDIN_RAPIDAPI_KEY not set')
+    return []
+  }
+
+  try {
+    const res = await fetch(
+      'https://linkedin-job-search-api.p.rapidapi.com/active-jb-1h?limit=100&offset=0&description_type=text',
+      {
+        headers: {
+          'X-RapidAPI-Key': apiKey,
+          'X-RapidAPI-Host': 'linkedin-job-search-api.p.rapidapi.com',
+          'Content-Type': 'application/json'
+        },
+      }
+    )
+
+    if (!res.ok) {
+      console.error(`LinkedIn job search failed: ${res.status}`)
+      return []
+    }
+
+    const data = await res.json()
+    console.log(`LinkedIn Job Search: ${data.data?.length || 0} jobs found`)
+
+    // Defensive mapping against common field names
+    const mapped = (data.data || []).map((j: any) => ({
+      title: j.job_title || j.title || 'Untitled',
+      snippet: (j.job_description || j.description || j.snippet || '').substring(0, 1500),
+      url: j.job_url || j.linkedin_job_url_cleaned || j.url || '',
+      source: j.employer_name || j.company_name || j.company || 'LinkedIn',
+      company: j.employer_name || j.company_name || j.company || 'LinkedIn',
+      location: j.job_location || j.location || 'South Africa',
+      posted_date: j.job_posted_at_datetime_utc || j.posted_date || j.posted_time || new Date().toISOString(),
+    }))
+
+    return mapped
+      .filter((j: any) => j.url)
+      .map((j: any) => j as ScrapedJob)
+  } catch (err) {
+    console.error('Error fetching LinkedIn jobs:', err)
+    return []
+  }
+}
+
 export class JobScraperService {
   shouldScrape(): boolean {
     return true
@@ -166,6 +213,44 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
       )
       if (error) {
         console.error('DB upsert error:', error)
+        errors.push(`DB insert: ${error.message}`)
+      }
+    }
+
+    return { inserted: allJobs.length, errors }
+  }
+
+  async scrapeLinkedInSites(): Promise<{ inserted: number; errors: string[] }> {
+    const errors: string[] = []
+    const allJobs: ScrapedJob[] = []
+    const seen = new Set<string>()
+
+    try {
+      console.log(`Starting LinkedIn hourly scrape...`)
+      const jobs = await fetchLinkedInJobs()
+      console.log(`LinkedIn: fetched ${jobs.length} valid jobs`)
+      
+      for (const job of jobs) {
+        if (!seen.has(job.url)) {
+          seen.add(job.url)
+          allJobs.push(job)
+        }
+      }
+    } catch (err: any) {
+      const msg = `LinkedIn Scrape error: ${err.message}`
+      console.error(msg)
+      errors.push(msg)
+    }
+
+    console.log(`Total unique LinkedIn jobs collected: ${allJobs.length}`)
+
+    if (allJobs.length > 0) {
+      const { error } = await supabase.from('scraped_jobs').upsert(
+        allJobs.map(j => ({ ...j, created_at: new Date().toISOString() })),
+        { onConflict: 'url' }
+      )
+      if (error) {
+        console.error('DB upsert error (LinkedIn):', error)
         errors.push(`DB insert: ${error.message}`)
       }
     }
