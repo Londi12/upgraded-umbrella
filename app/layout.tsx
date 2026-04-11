@@ -11,6 +11,7 @@ import {
   generateOrganizationStructuredData,
   generateWebsiteStructuredData
 } from "@/lib/utils"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 import "./globals.css"
 
 export const metadata = generateSEOMetadata(seoConfigs.home)
@@ -55,6 +56,7 @@ export default function RootLayout({
             </AuthProvider>
           </ErrorBoundary>
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   )
