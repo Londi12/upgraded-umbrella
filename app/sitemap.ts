@@ -59,12 +59,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     },
-    {
-      url: `${baseUrl}/blog`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.7,
-    },
   ]
 
   // CV Template pages
@@ -101,27 +95,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }))
 
-  // Blog posts (placeholder for future implementation)
-  const blogPosts = [
-    {
-      url: `${baseUrl}/blog/how-to-write-cv-south-africa`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/blog/ats-optimization-tips`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/blog/cover-letter-writing-guide`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.7,
-    },
-  ]
-
-  return [...staticPages, ...templatePages, ...coverLetterPages, ...blogPosts]
+  return [...staticPages, ...templatePages, ...coverLetterPages]
 }

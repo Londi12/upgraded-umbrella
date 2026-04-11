@@ -11,9 +11,6 @@ import {
   generateOrganizationStructuredData,
   generateWebsiteStructuredData
 } from "@/lib/utils"
-import Script from "next/script"
-import "@/lib/message-handler"
-
 import "./globals.css"
 
 export const metadata = generateSEOMetadata(seoConfigs.home)

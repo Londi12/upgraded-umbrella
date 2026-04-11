@@ -44,30 +44,17 @@ export const signInWithGoogle = async () => {
 
 export const signIn = async (email: string, password: string) => {
   if (!hasValidCredentials) {
-    // Demo mode - simulate successful login
     return {
-      data: {
-        user: {
-          id: 'demo-user',
-          email: email,
-          user_metadata: { role: 'user' }
-        }
-      },
-      error: null,
+      data: null,
+      error: { message: "Authentication is not configured. Please set up Supabase credentials." },
     }
   }
 
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     return { data, error }
   } catch (err) {
-    return {
-      data: null,
-      error: { message: "Network error. Please check your connection." }
-    }
+    return { data: null, error: { message: "Network error. Please check your connection." } }
   }
 }
 

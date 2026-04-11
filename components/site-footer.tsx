@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { Heart } from "lucide-react"
 
 export function SiteFooter() {
   return (
@@ -9,9 +8,8 @@ export function SiteFooter() {
           <div className="space-y-2">
             <h3 className="text-lg font-medium text-white">CVKonnekt</h3>
             <p className="text-sm text-blue-200">
-              Professional CV builder for South African job seekers.
+              Professional CV builder for South African job seekers. Free, always.
             </p>
-
           </div>
           <div className="flex flex-col sm:flex-row justify-between items-center">
             <p className="text-sm text-blue-200">© {new Date().getFullYear()} CVKonnekt. All rights reserved.</p>
@@ -23,22 +21,6 @@ export function SiteFooter() {
                 Privacy
               </Link>
             </div>
-          </div>
-        </div>
-
-        {/* Donation banner */}
-        <div className="mt-6 pt-6 border-t border-slate-700">
-          <div className="bg-slate-800/60 rounded-xl p-5 flex flex-col sm:flex-row items-center gap-4">
-            <Heart className="h-6 w-6 text-pink-400 flex-shrink-0" />
-            <div className="flex-1 text-center sm:text-left">
-
-            </div>
-            <Link
-              href="/donate"
-              className="flex-shrink-0 bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-            >
-              Donate via SnapScan
-            </Link>
           </div>
         </div>
       </div>
