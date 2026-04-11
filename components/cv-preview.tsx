@@ -1460,5 +1460,9 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
     }
   }
 
-  return getTemplateContent()
+  return (
+    <div id="cv-preview-container" className="relative h-full w-full bg-white">
+      {getTemplateContent()}
+    </div>
+  )
 }

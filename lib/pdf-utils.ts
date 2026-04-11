@@ -3,25 +3,61 @@ import { generateTemplateMarker, generateTemplateMetadata } from "@/lib/template
 
 export async function generateCVPDF(template: TemplateType, userData: CVData, templateName: string, isAuthenticated = false): Promise<Blob> {
   try {
-    const response = await fetch("/api/generate-cv-pdf", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        template,
-        userData,
-        templateName,
-        isAuthenticated,
-      }),
-    })
+    // Dynamically import html2pdf for client-side only
+    const html2pdf = (await import("html2pdf.js")).default
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+    const element = document.getElementById("cv-preview-container")
+    if (!element) {
+      throw new Error("CV preview container not found. Cannot generate PDF.")
     }
 
-    return response.blob()
+    let watermarkElement: HTMLDivElement | null = null;
+    
+    // Watermark for unauthenticated users
+    if (!isAuthenticated) {
+      watermarkElement = document.createElement('div');
+      watermarkElement.style.position = 'absolute';
+      watermarkElement.style.top = '0';
+      watermarkElement.style.left = '0';
+      watermarkElement.style.width = '100%';
+      watermarkElement.style.height = '100%';
+      watermarkElement.style.display = 'flex';
+      watermarkElement.style.justifyContent = 'center';
+      watermarkElement.style.alignItems = 'center';
+      watermarkElement.style.pointerEvents = 'none';
+      watermarkElement.style.zIndex = '9999';
+      watermarkElement.style.overflow = 'hidden';
+      
+      const watermarkText = document.createElement('div');
+      watermarkText.innerText = 'Created with CVKonnekt – Sign in to remove watermark';
+      watermarkText.style.color = 'rgba(200, 200, 200, 0.4)';
+      watermarkText.style.fontSize = '32px';
+      watermarkText.style.transform = 'rotate(-30deg)';
+      watermarkText.style.whiteSpace = 'nowrap';
+      
+      watermarkElement.appendChild(watermarkText);
+      element.appendChild(watermarkElement);
+    }
+
+    const fileName = `${userData?.personalInfo?.fullName?.replace(/[^a-zA-Z0-9]/g, "_") || "CV"}_${templateName?.replace(/[^a-zA-Z0-9]/g, "_") || "Professional"}.pdf`
+
+    const opt = {
+      margin:       0,
+      filename:     fileName,
+      image:        { type: 'jpeg', quality: 1.0 },
+      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }
+
+    // Generate blob
+    const pdfBlob = await html2pdf().set(opt).from(element).output('blob')
+
+    // Cleanup watermark
+    if (watermarkElement && watermarkElement.parentNode) {
+      watermarkElement.parentNode.removeChild(watermarkElement);
+    }
+
+    return pdfBlob
   } catch (error) {
     console.error("Error in generateCVPDF:", error)
     throw error
