@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from 'react'
-import { BarChart, Check, AlertCircle, ChevronDown, ChevronUp, Lightbulb, TrendingUp, Star, Wrench } from 'lucide-react'
+import { BarChart, Check, AlertCircle, ChevronDown, ChevronUp, Lightbulb, TrendingUp, Star, BookOpen, Briefcase, Wrench } from 'lucide-react'
 import type { CVData } from '@/types/cv-types'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -291,53 +291,43 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
   const jobMatch = useMemo(() => jobDescription.trim() ? calculateJobMatch(cvData, jobDescription) : null, [cvData, jobDescription])
   const currentScore = useMemo(() => scores.sections[getSectionKey(currentSection)] || { score: 0, feedback: [], suggestions: [] }, [scores, currentSection])
 
-  const scoreTone = (s: number) => (s >= 55 ? "text-gray-900" : "text-gray-600")
-  const barFill = (s: number) => (s >= 55 ? "bg-gray-700" : "bg-gray-400")
-  const verdictStyle = (v: string) =>
-    v === "Strong Match" || v === "Good Match"
-      ? "border-gray-300 bg-gray-50 text-gray-800"
-      : "border-gray-200 bg-white text-gray-700"
+  const color = (s: number) => s >= 75 ? 'text-green-600' : s >= 55 ? 'text-emerald-600' : s >= 35 ? 'text-amber-600' : 'text-red-600'
+  const bar = (s: number) => s >= 75 ? 'bg-green-500' : s >= 55 ? 'bg-emerald-500' : s >= 35 ? 'bg-amber-500' : 'bg-red-500'
+  const verdictColor = (v: string) => v === 'Strong Match' ? 'bg-green-100 text-green-800' : v === 'Good Match' ? 'bg-emerald-100 text-emerald-800' : v === 'Partial Match' ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
 
   const ScoreBar = ({ score, label }: { score: number; label: string }) => (
     <div className="mb-2">
       <div className="flex justify-between text-xs mb-0.5">
         <span className="text-gray-600">{label}</span>
-        <span className={`font-medium tabular-nums ${scoreTone(score)}`}>{score}%</span>
+        <span className={`font-medium ${color(score)}`}>{score}%</span>
       </div>
       <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
-        <div className={`h-full ${barFill(score)} transition-all`} style={{ width: `${score}%` }} />
+        <div className={`h-full ${bar(score)} transition-all`} style={{ width: `${score}%` }} />
       </div>
     </div>
   )
 
   if (collapsed) return (
-    <div className="mt-4 bg-white rounded-lg border border-gray-200 p-3 flex justify-between items-center cursor-pointer" onClick={() => setCollapsed(false)}>
-      <span className="text-sm font-medium flex items-center gap-2 flex-wrap">
-        <BarChart className="h-4 w-4 text-gray-500" />
-        <span className="text-gray-700">CV analysis</span>
-        <span className={`tabular-nums ${scoreTone(scores.overallScore)}`}>{scores.overallScore}%</span>
-        {jobMatch && (
-          <span className={`text-xs px-2 py-0.5 rounded-md border ${verdictStyle(jobMatch.verdict)}`}>{jobMatch.verdict}</span>
-        )}
+    <div className="mt-4 bg-white rounded-lg border p-3 flex justify-between items-center cursor-pointer" onClick={() => setCollapsed(false)}>
+      <span className="text-sm font-medium flex items-center gap-1">
+        <BarChart className="h-4 w-4 text-emerald-600" />
+        ATS Score: <span className={color(scores.overallScore)}>{scores.overallScore}%</span>
+        {jobMatch && <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${verdictColor(jobMatch.verdict)}`}>{jobMatch.verdict}</span>}
       </span>
-      <ChevronUp className="h-4 w-4 text-gray-400" />
+      <ChevronUp className="h-4 w-4" />
     </div>
   )
 
   return (
     <div className="mt-4">
-      <Card className="border border-gray-200 rounded-lg overflow-hidden shadow-none">
-        <div className="bg-white p-3 flex justify-between items-center cursor-pointer border-b border-gray-100" onClick={() => setCollapsed(true)}>
-          <span className="text-sm font-medium flex items-center gap-2 flex-wrap">
-            <BarChart className="h-4 w-4 text-gray-500" />
-            <span className="text-gray-800">CV analysis</span>
-            {jobMatch && (
-              <span className={`text-xs px-2 py-0.5 rounded-md border ${verdictStyle(jobMatch.verdict)}`}>
-                {jobMatch.verdict} · <span className="tabular-nums">{jobMatch.overallScore}%</span>
-              </span>
-            )}
+      <Card className="border rounded-lg overflow-hidden">
+        <div className="bg-white p-3 flex justify-between items-center cursor-pointer border-b" onClick={() => setCollapsed(true)}>
+          <span className="text-sm font-medium flex items-center gap-1">
+            <BarChart className="h-4 w-4 text-emerald-600" />
+            CV Analysis
+            {jobMatch && <span className={`ml-2 text-xs px-2 py-0.5 rounded-full ${verdictColor(jobMatch.verdict)}`}>{jobMatch.verdict} — {jobMatch.overallScore}%</span>}
           </span>
-          <ChevronDown className="h-4 w-4 text-gray-400" />
+          <ChevronDown className="h-4 w-4" />
         </div>
 
         <div className="p-4 space-y-4">
@@ -346,13 +336,13 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
           {jobMatch ? (
             <div className="space-y-3">
               {externalJobDescription && (
-                <p className="text-xs text-gray-500 flex items-center gap-1.5">
-                  <Star className="h-3 w-3 text-gray-400 shrink-0" /> Matched to this job description
+                <p className="text-xs text-blue-600 flex items-center gap-1">
+                  <Star className="h-3 w-3" /> Auto-matched against selected job
                 </p>
               )}
 
               {/* Dimension scores */}
-              <div className="bg-gray-50/80 rounded-lg border border-gray-100 p-3 space-y-1">
+              <div className="bg-gray-50 rounded-lg p-3 space-y-1">
                 <ScoreBar score={jobMatch.skillsScore} label="Skills Match" />
                 <ScoreBar score={jobMatch.experienceScore} label="Experience Match" />
                 <ScoreBar score={jobMatch.educationScore} label="Education Match" />
@@ -361,23 +351,21 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
 
               {/* Years */}
               {jobMatch.yearsRequired !== null && (
-                <div className="text-xs text-gray-700 bg-white rounded-md border border-gray-200 p-2.5">
-                  <span className="font-medium text-gray-900">Experience: </span>
+                <div className="text-xs text-gray-600 bg-blue-50 rounded p-2">
+                  <span className="font-medium">Experience: </span>
                   Job requires {jobMatch.yearsRequired} years — you have ~{jobMatch.yearsCandidate} years
-                  <span className="text-gray-500 ml-1">
-                    ({jobMatch.yearsCandidate >= jobMatch.yearsRequired ? "meets requirement" : "below stated requirement"})
-                  </span>
+                  {jobMatch.yearsCandidate >= jobMatch.yearsRequired
+                    ? <span className="text-green-600 ml-1">✓ Meets requirement</span>
+                    : <span className="text-amber-600 ml-1">⚠ Below requirement</span>}
                 </div>
               )}
 
               {/* Matched skills */}
               {jobMatch.matchedSkills.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1"><Wrench className="h-3 w-3 text-gray-400" /> Matched skills</p>
+                  <p className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"><Wrench className="h-3 w-3 text-green-600" /> Matched Skills</p>
                   <div className="flex flex-wrap gap-1">
-                    {jobMatch.matchedSkills.map((s, i) => (
-                      <span key={i} className="text-xs bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md border border-gray-200">{s}</span>
-                    ))}
+                    {jobMatch.matchedSkills.map((s, i) => <span key={i} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{s}</span>)}
                   </div>
                 </div>
               )}
@@ -385,11 +373,9 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
               {/* Missing skills */}
               {jobMatch.missingSkills.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1"><AlertCircle className="h-3 w-3 text-gray-400" /> Skills to add</p>
+                  <p className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1"><AlertCircle className="h-3 w-3 text-amber-500" /> Skills to Add</p>
                   <div className="flex flex-wrap gap-1">
-                    {jobMatch.missingSkills.map((s, i) => (
-                      <span key={i} className="text-xs bg-white text-gray-700 px-2 py-0.5 rounded-md border border-dashed border-gray-300">{s}</span>
-                    ))}
+                    {jobMatch.missingSkills.map((s, i) => <span key={i} className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full">{s}</span>)}
                   </div>
                 </div>
               )}
@@ -397,21 +383,19 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
               {/* Missing keywords */}
               {jobMatch.missingKeywords.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-700 mb-1.5">Keywords to consider</p>
+                  <p className="text-xs font-medium text-gray-700 mb-1">Missing Keywords</p>
                   <div className="flex flex-wrap gap-1">
-                    {jobMatch.missingKeywords.map((k, i) => (
-                      <span key={i} className="text-xs bg-gray-50 text-gray-600 px-2 py-0.5 rounded-md border border-gray-200">{k}</span>
-                    ))}
+                    {jobMatch.missingKeywords.map((k, i) => <span key={i} className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{k}</span>)}
                   </div>
                 </div>
               )}
 
               {/* Tips */}
               {jobMatch.tips.length > 0 && (
-                <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                  <p className="text-xs font-medium text-gray-800 mb-1.5 flex items-center gap-1"><Lightbulb className="h-3 w-3 text-gray-500" /> How to improve your match</p>
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-xs font-medium text-blue-800 mb-1 flex items-center gap-1"><Lightbulb className="h-3 w-3" /> How to improve your match</p>
                   <ul className="space-y-1">
-                    {jobMatch.tips.map((t, i) => <li key={i} className="text-xs text-gray-600 leading-relaxed pl-0.5">· {t}</li>)}
+                    {jobMatch.tips.map((t, i) => <li key={i} className="text-xs text-blue-700">• {t}</li>)}
                   </ul>
                 </div>
               )}
@@ -421,7 +405,7 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
             !externalJobDescription && (
               <div>
                 <p className="text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-gray-400" /> Paste a job description to match
+                  <TrendingUp className="h-3 w-3 text-blue-500" /> Paste a job description to match
                 </p>
                 <Textarea
                   placeholder="Paste job description here..."
@@ -434,20 +418,20 @@ export function ATSScoringPanel({ cvData, currentSection, jobDescription: extern
           )}
 
           {/* CV ATS score */}
-          <div className="border-t border-gray-100 pt-3">
+          <div className="border-t pt-3">
             <p className="text-xs font-medium text-gray-700 mb-2 flex items-center gap-1">
-              <BarChart className="h-3 w-3 text-gray-400" /> CV quality: <span className={`tabular-nums ${scoreTone(scores.overallScore)}`}>{scores.overallScore}%</span>
+              <BarChart className="h-3 w-3 text-emerald-600" /> CV Quality Score: <span className={color(scores.overallScore)}>{scores.overallScore}%</span>
             </p>
             {currentScore.feedback.length > 0 ? (
               <ul className="space-y-1">
                 {currentScore.feedback.map((f, i) => (
-                  <li key={i} className="text-xs flex items-start gap-1 text-gray-700">
-                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0 text-gray-400" />{f}
+                  <li key={i} className="text-xs flex items-start gap-1 text-amber-700">
+                    <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />{f}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-xs text-gray-600 flex items-center gap-1"><Check className="h-3 w-3 text-gray-500" /> This section looks good.</p>
+              <p className="text-xs text-green-600 flex items-center gap-1"><Check className="h-3 w-3" /> This section looks good!</p>
             )}
           </div>
 

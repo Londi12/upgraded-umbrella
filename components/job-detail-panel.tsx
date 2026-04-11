@@ -174,15 +174,15 @@ export function JobDetailPanel({
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1">
           {(["details", "analysis"] as Tab[]).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`px-3 py-1.5 text-xs font-medium rounded-md border transition-colors capitalize ${
+              className={`px-3 py-1.5 text-xs font-medium rounded transition-colors capitalize ${
                 tab === t
-                  ? "border-gray-900 bg-gray-900 text-white"
-                  : "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50"
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
               }`}
             >
               {t === "analysis" && (aiMatchResults.length > 0 || selectedCVId)
@@ -234,14 +234,14 @@ export function JobDetailPanel({
 
             {/* Disambiguation */}
             {disambiguationOptions.length > 0 && (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <p className="text-sm font-medium text-gray-900 mb-3">Which best describes your role?</p>
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-3">Which best describes your role?</p>
                 <div className="space-y-2">
                   {disambiguationOptions.map(opt => (
                     <button
                       key={opt.id}
                       onClick={() => onAIMatch(opt.id)}
-                      className="w-full text-left px-3 py-2 bg-white border border-gray-200 rounded-lg hover:border-gray-400 transition-colors"
+                      className="w-full text-left px-3 py-2 bg-white border border-blue-200 rounded-lg hover:border-blue-500 transition-colors"
                     >
                       <span className="text-sm font-medium text-gray-900">{opt.family}</span>
                       <span className="text-xs text-gray-500 ml-2">{opt.tier} level</span>
@@ -253,13 +253,15 @@ export function JobDetailPanel({
 
             {/* CV Classification */}
             {cvClassification && aiMatchResults.length > 0 && (
-              <div className="flex items-center gap-2 text-xs text-gray-600 bg-white border border-gray-200 rounded-lg px-3 py-2">
-                <span>CV: <span className="font-medium text-gray-900">{cvClassification.detectedFamily}</span></span>
-                <span className="text-gray-300">·</span>
+              <div className="flex items-center gap-2 text-xs text-gray-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                <span>CV: <span className="font-medium text-slate-700">{cvClassification.detectedFamily}</span></span>
+                <span>·</span>
                 <span>{cvClassification.tier}</span>
-                <span className="ml-auto px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 text-gray-700 capitalize">
-                  {cvClassification.confidence}
-                </span>
+                <span className={`ml-auto px-2 py-0.5 rounded-full ${
+                  cvClassification.confidence === 'high' ? 'bg-green-100 text-green-700' :
+                  cvClassification.confidence === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                  'bg-red-100 text-red-700'
+                }`}>{cvClassification.confidence}</span>
               </div>
             )}
 
@@ -267,37 +269,30 @@ export function JobDetailPanel({
             {aiMatchResults.length > 0 && (
               <div className="space-y-3">
                 {aiMatchResults.slice(0, 5).map(match => (
-                  <div
-                    key={match.jobId}
-                    className={`rounded-lg border bg-white p-3 ${
-                      match.dealBreakers.length > 0
-                        ? "border-gray-300 border-l-4 border-l-gray-800"
-                        : "border-gray-200 border-l-4 border-l-gray-300"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <Badge variant="outline" className="rounded-md text-xs font-medium border-gray-300 text-gray-800 bg-gray-50">
+                  <div key={match.jobId} className={`rounded-lg border p-3 ${
+                    match.dealBreakers.length > 0 ? 'border-red-200 bg-red-50' :
+                    match.matchScore >= 70 ? 'border-green-200 bg-green-50' :
+                    'border-yellow-200 bg-yellow-50'
+                  }`}>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <Badge className={`text-xs ${
+                        match.dealBreakers.length > 0 ? 'bg-red-100 text-red-800' :
+                        match.matchScore >= 70 ? 'bg-green-100 text-green-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
                         {match.matchScore}% · {match.recommendation}
                       </Badge>
                       <span className="text-xs text-gray-400 capitalize">{match.confidence}</span>
                     </div>
-                    <p className="text-xs text-gray-700 mb-2 leading-relaxed">{match.reasoning}</p>
+                    <p className="text-xs text-gray-700 mb-2">{match.reasoning}</p>
                     {match.dealBreakers.length > 0 && (
-                      <p className="text-xs text-gray-800 bg-gray-100 rounded-md px-2 py-1.5 mb-1 border border-gray-200">
-                        {match.dealBreakers[0]}
-                      </p>
+                      <p className="text-xs text-red-700 bg-red-100 rounded px-2 py-1 mb-1">⚠️ {match.dealBreakers[0]}</p>
                     )}
                     {match.strengths.length > 0 && (
-                      <p className="text-xs text-gray-600">
-                        <span className="font-medium text-gray-800">Strengths: </span>
-                        {match.strengths.slice(0, 2).join(" · ")}
-                      </p>
+                      <p className="text-xs text-gray-600"><span className="text-green-700 font-medium">✓ </span>{match.strengths.slice(0, 2).join(' · ')}</p>
                     )}
                     {match.gaps.length > 0 && (
-                      <p className="text-xs text-gray-600 mt-0.5">
-                        <span className="font-medium text-gray-800">Gaps: </span>
-                        {match.gaps.slice(0, 2).join(" · ")}
-                      </p>
+                      <p className="text-xs text-gray-600 mt-0.5"><span className="text-orange-700 font-medium">△ </span>{match.gaps.slice(0, 2).join(' · ')}</p>
                     )}
                   </div>
                 ))}
@@ -305,13 +300,13 @@ export function JobDetailPanel({
             )}
 
             {aiMatchError && (
-              <p className="text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg p-3">{aiMatchError}</p>
+              <p className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">{aiMatchError}</p>
             )}
 
             {/* ATS Panel */}
             {selectedCVId && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">ATS analysis</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">ATS Analysis</p>
                 <ATSScoringPanel
                   cvData={savedCVs.find(cv => cv.id === selectedCVId)?.cv_data}
                   currentSection="job-matching"

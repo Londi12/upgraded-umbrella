@@ -51,6 +51,7 @@ export default function SAJobSearch() {
   }
 
   const clearJob = () => {
+    setSelectedJob(null)
     setIsMobileSheetOpen(false)
   }
 
@@ -71,10 +72,10 @@ export default function SAJobSearch() {
   } : null
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-64px)] bg-gray-50">
+    <div className="flex flex-col h-[calc(100vh-64px)]">
 
       {/* Search bar */}
-      <div className="border-b border-gray-200 bg-white px-4 py-3 flex-shrink-0">
+      <div className="border-b bg-white px-4 py-3 flex-shrink-0">
         <div className="max-w-7xl mx-auto flex gap-2">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -189,44 +190,46 @@ export default function SAJobSearch() {
         </div>
       )}
 
-      {/* Desktop: details on top (templates-style card), job list below */}
-      <div className="hidden lg:flex flex-col flex-1 min-h-0 max-w-7xl mx-auto w-full px-4 py-6 gap-6 overflow-y-auto">
-        <div className="flex-shrink-0 flex flex-col min-h-[280px] max-h-[min(52vh,520px)] bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          {selectedJob && detailPanelProps ? (
-            <JobDetailPanel {...detailPanelProps} showBackButton={false} />
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-gray-400 p-8">
-              <p className="text-sm text-center">
-                {loading ? "Loading jobs…" : "No jobs match your filters."}
-              </p>
-            </div>
-          )}
-        </div>
+      {/* Desktop: master-detail */}
+      <div className="hidden lg:flex flex-1 min-h-0 max-w-7xl mx-auto w-full">
 
-        <div className="flex-shrink-0 min-h-0">
-          <div className="flex items-baseline justify-between gap-2 mb-3">
-            <h2 className="text-sm font-semibold text-gray-800">Browse jobs</h2>
+        {/* Job list */}
+        <div className="w-80 xl:w-96 flex-shrink-0 border-r flex flex-col min-h-0">
+          <div className="px-4 py-2 border-b bg-gray-50 flex-shrink-0">
             <span className="text-xs text-gray-500">
-              {loading ? "Searching…" : `${filteredResults.length} jobs`}
+              {loading ? "Searching..." : `${filteredResults.length} jobs`}
               {totalCount > filteredResults.length && ` of ${totalCount}`}
             </span>
           </div>
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 max-h-[min(38vh,400px)] overflow-y-auto pr-1">
+          <div className="flex-1 overflow-y-auto">
             {filteredResults.map((job, idx) => (
               <JobCard
-                key={job.url || idx}
+                key={idx}
                 job={job}
                 isSelected={selectedJob?.url === job.url}
                 onClick={() => selectJob(job)}
               />
             ))}
             {filteredResults.length === 0 && !loading && (
-              <div className="col-span-full p-8 text-center text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl bg-white">
+              <div className="p-8 text-center text-sm text-gray-400">
                 <p>No jobs found.</p>
                 <p className="mt-1">Try different keywords or reset filters.</p>
               </div>
             )}
           </div>
+        </div>
+
+        {/* Detail panel */}
+        <div className="flex-1 min-h-0 min-w-0">
+          {selectedJob && detailPanelProps ? (
+            <JobDetailPanel {...detailPanelProps} />
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400">
+              <div className="text-center">
+                <p className="text-sm">Select a job to view details</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
