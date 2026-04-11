@@ -98,7 +98,6 @@ export function useJobSearch() {
     setError("")
     setResults([])
     setFilteredResults([])
-    setSelectedJob(null)
     try {
       const res = await fetch(buildSearchUrl(overrides))
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
@@ -122,6 +121,18 @@ export function useJobSearch() {
   useEffect(() => {
     applyClientFilters(results, filters.quickFilters, filters.sortBy)
   }, [filters.quickFilters, filters.sortBy])
+
+  // Keep a job selected: first result when list changes, or clear when empty; preserve selection if still in list
+  useEffect(() => {
+    if (filteredResults.length === 0) {
+      setSelectedJob(null)
+      return
+    }
+    setSelectedJob(prev => {
+      if (prev && filteredResults.some(j => j.url === prev.url)) return prev
+      return filteredResults[0]
+    })
+  }, [filteredResults])
 
   // Server-side filter changes — single effect, skip on mount (initial search handles that)
   const isFirstRender = useRef(true)
