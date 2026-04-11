@@ -261,19 +261,7 @@ function extractSkills(cvData: any): string[] {
   // Simplified
   return cvData.skills ? (Array.isArray(cvData.skills) ? cvData.skills.map((s: any) => s.name || s) : cvData.skills.split(',')) : [];
 }
-
-"use client"
-
-import { useState, useMemo } from "react"
-import Link from "next/link"
-import { Search, CheckCircle2, ArrowRight } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { CVPreview } from "@/components/cv-preview"
-import type { TemplateType } from "@/types/cv-types"
-
-const CATEGORIES = ["All", "Professional", "Modern", "Creative", "Simple", "Executive", "South African"]
+ = ["All", "Professional", "Modern", "Creative", "Simple", "Executive", "South African"]
 
 const TEMPLATES = [
   { id: 1,  name: "Corporate Professional",    category: "Professional",   template: "professional"    as TemplateType, popular: true  },
