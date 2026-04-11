@@ -4,13 +4,10 @@ import {
  Maximize2,
  ArrowLeft,
  Download,
- Eye,
  Save,
  AlertCircle,
  ChevronLeft,
  ChevronRight,
- Edit3,
- BarChart2,
  Brain
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
@@ -485,134 +482,104 @@ export default function CreateCVPage() {
   return (
     <ErrorBoundary>
     <>
-      <div className="flex flex-col min-h-screen bg-slate-50">
-        <div className="page-container flex flex-col min-h-screen">
-          <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800 border-b border-slate-700 shadow-lg">
-            <div className="container mx-auto px-6 py-6 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-            <Link href="/cv-templates">
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 hover:text-blue-200 transition-all duration-200">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Templates
-              </Button>
-            </Link>
-            <div className="flex flex-col">
-              <h1 className="text-2xl font-bold text-white tracking-tight">
-                CV Builder
-              </h1>
-              <p className="text-blue-200 text-sm font-medium">
-                {editingCVId ? 'Editing' : 'Creating'} with <span className="text-cyan-300 font-semibold">{selectedTemplate.name}</span> template
+      <div className="min-h-screen bg-gray-50">
+
+        {/* ── Step header bar — matches templates page ── */}
+        <div className="bg-white border-b border-gray-200 px-4 py-3">
+          <div className="container mx-auto max-w-7xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Link href="/templates">
+                <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 -ml-2">
+                  <ArrowLeft className="h-4 w-4 mr-1" />
+                  Back
+                </Button>
+              </Link>
+              <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">Step 2</span>
+              <h1 className="text-base font-semibold text-gray-800">Build Your CV</h1>
+              <p className="text-sm text-gray-500 hidden sm:block">
+                {editingCVId ? 'Editing' : 'Using'} <span className="font-medium text-gray-700">{selectedTemplate.name}</span>
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {isConfigured && user ? (
-              <>
-                <div className="text-sm text-blue-200 mr-3 hidden md:block">
-                  <span className="text-white font-medium">{user.email}</span>
-                </div>
-                <Button variant="outline" size="sm" onClick={handleSaveCV} disabled={isSaving || isLoadingProfile} className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
-                  <Save className="h-4 w-4 mr-2" />
+            <div className="flex items-center gap-2">
+              {isConfigured && user ? (
+                <Button variant="outline" size="sm" onClick={handleSaveCV} disabled={isSaving || isLoadingProfile} className="border-gray-200 text-gray-700 hover:bg-gray-50">
+                  <Save className="h-4 w-4 mr-1.5" />
                   {isSaving ? "Saving..." : "Save CV"}
                 </Button>
-              </>
-            ) : (
-              <WorkingSaveButton 
-                cvData={formData as CVData}
-                className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200"
-              />
-            )}
-            <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
-                  <Eye className="h-4 w-4 mr-2" />
-                  Preview
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                <DialogHeader>
-                  <DialogTitle>CV Preview</DialogTitle>
-                </DialogHeader>
-                <div className="mt-4">
-                  <CVPreview template={selectedTemplate.type} userData={formData} />
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="border-blue-400 text-blue-200 hover:bg-blue-800 hover:text-white transition-all duration-200">
-                  <Brain className="h-4 w-4 mr-2" />
-                  ATS Score
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-                <DialogHeader>
-                  <DialogTitle>ATS Compatibility Analysis</DialogTitle>
-                  <DialogDescription>
-                    See how well your CV performs with Applicant Tracking Systems
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="overflow-y-auto flex-1 pr-1">
-                  <WorkingATSScore cvData={formData as CVData} />
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button
-              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
-              size="sm"
-              onClick={handleDownloadPDFWithTracking}
-              disabled={isGeneratingPDF || isLoadingProfile}
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {isGeneratingPDF ? "Generating PDF..." : "Download PDF"}
-            </Button>
+              ) : (
+                <WorkingSaveButton cvData={formData as CVData} className="border-gray-200 text-gray-700 hover:bg-gray-50" />
+              )}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
+                    <Brain className="h-4 w-4 mr-1.5" />
+                    ATS Score
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle>ATS Compatibility Analysis</DialogTitle>
+                    <DialogDescription>See how well your CV performs with Applicant Tracking Systems</DialogDescription>
+                  </DialogHeader>
+                  <div className="overflow-y-auto flex-1 pr-1">
+                    <WorkingATSScore cvData={formData as CVData} />
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                onClick={handleDownloadPDFWithTracking}
+                disabled={isGeneratingPDF || isLoadingProfile}
+              >
+                <Download className="h-4 w-4 mr-1.5" />
+                {isGeneratingPDF ? "Generating..." : "Download PDF"}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="container mx-auto px-6 py-8">
-        {error && (
-          <Alert className="mb-6 border-red-300 bg-red-50 shadow-sm rounded-lg">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <AlertDescription className="text-red-800 font-medium">{error}</AlertDescription>
-          </Alert>
-        )}
-        {parseError && (
-          <Alert className="mb-6 border-red-300 bg-red-50 shadow-sm rounded-lg">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <AlertDescription className="text-red-800 font-medium">{parseError}</AlertDescription>
-          </Alert>
-        )}
-        {success && (
-          <Alert className="mb-6 border-green-300 bg-green-50 shadow-sm rounded-lg">
-            <AlertCircle className="h-5 w-5 text-green-600" />
-            <AlertDescription className="text-green-800 font-medium">{success}</AlertDescription>
-          </Alert>
-        )}
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          {error && (
+            <Alert className="mb-4 border-red-300 bg-red-50">
+              <AlertCircle className="h-4 w-4 text-red-600" />
+              <AlertDescription className="text-red-800">{error}</AlertDescription>
+            </Alert>
+          )}
+          {success && (
+            <Alert className="mb-4 border-green-300 bg-green-50">
+              <AlertCircle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">{success}</AlertDescription>
+            </Alert>
+          )}
 
-        <div className="max-w-4xl mx-auto">
-          {/* Form Section */}
-          <div>
-            {isLoadingProfile && (
-              <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-slate-600">Loading your profile...</p>
-              </div>
-            )}
+          <div className="flex gap-6 items-start">
 
-            {!isLoadingProfile && (
-              <div className="space-y-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold text-slate-900">CV Completion Progress</h2>
-                    <span className="text-sm font-medium text-blue-800 bg-blue-100 px-3 py-1 rounded-full">{Math.round(getProgress())}% Complete</span>
+            {/* ── LEFT COLUMN — form ── */}
+            <div className="flex-1 min-w-0">
+
+          {isLoadingProfile && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="mt-4 text-gray-500">Loading your profile...</p>
+            </div>
+          )}
+
+          {!isLoadingProfile && (
+            <div className="space-y-4">
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-gray-800">CV Completion</h2>
+                    <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">{Math.round(getProgress())}% Complete</span>
                   </div>
-                  <Progress value={getProgress()} className="h-3 bg-slate-200" />
+                  <Progress value={getProgress()} className="h-2 bg-gray-100" />
                 </div>
 
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                  <h2 className="text-lg font-semibold text-slate-900 mb-2">Upload Existing CV</h2>
-                  <p className="text-sm text-slate-600 mb-4">Upload your existing CV to auto-fill the fields. Works best with DOCX files. PDF support is limited.</p>
+                <div className="bg-white p-4 rounded-xl border border-gray-200">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-sm font-semibold text-gray-800">Upload Existing CV</h2>
+                    <span className="text-xs text-gray-400">PDF, DOCX, TXT ≤10MB</span>
+                  </div>
                   
                   {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
                   {parseStep === 'parsing' && <CVParsingLoader />}
@@ -680,17 +647,17 @@ export default function CreateCVPage() {
                   )}
                 </div>
                 <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-                  <TabsList className="mb-6 w-full overflow-x-auto flex bg-slate-100 p-1 rounded-xl shadow-sm">
-                    <TabsTrigger value="personal" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Personal</TabsTrigger>
-                    <TabsTrigger value="summary" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Summary</TabsTrigger>
-                    <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Experience</TabsTrigger>
-                    <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Education</TabsTrigger>
-                    <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">Skills</TabsTrigger>
-                    <TabsTrigger value="extra" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm text-slate-600 font-medium rounded-lg transition-all duration-200 text-sm px-3 py-2">+ Sections</TabsTrigger>
+                  <TabsList className="mb-4 w-full flex bg-gray-100 p-1 rounded-xl">
+                    <TabsTrigger value="personal" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Personal</TabsTrigger>
+                    <TabsTrigger value="summary" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Summary</TabsTrigger>
+                    <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Experience</TabsTrigger>
+                    <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Education</TabsTrigger>
+                    <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Skills</TabsTrigger>
+                    <TabsTrigger value="extra" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">+ More</TabsTrigger>
                   </TabsList>
 
-                  <TabsContent value="personal" className="space-y-6">
-                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                  <TabsContent value="personal" className="space-y-4">
+                    <Card className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                       <div className="space-y-5">
                         <div>
                           <Label htmlFor="fullName" className="text-sm font-semibold text-slate-700 mb-2 block">Full Name</Label>
@@ -810,8 +777,8 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="summary" className="space-y-6">
-                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                  <TabsContent value="summary" className="space-y-4">
+                    <Card className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                       <div className="space-y-5">
                         <div>
                           <Label htmlFor="summary" className="text-sm font-semibold text-slate-700 mb-2 block">Professional Summary</Label>
@@ -828,9 +795,9 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="experience" className="space-y-6">
+                  <TabsContent value="experience" className="space-y-4">
                     {formData.experience.map((exp, index) => (
-                      <Card key={index} className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <Card key={index} className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                         <div className="space-y-4">
                           <div>
                             <Label htmlFor={`title-${index}`}>Job Title</Label>
@@ -954,14 +921,14 @@ export default function CreateCVPage() {
                         </div>
                       </Card>
                     ))}
-                    <Button variant="outline" onClick={addExperience} className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg py-3 font-medium transition-all duration-200">
+                    <Button variant="outline" onClick={addExperience} className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
                       Add Another Experience
                     </Button>
                   </TabsContent>
 
-                  <TabsContent value="education" className="space-y-6">
+                  <TabsContent value="education" className="space-y-4">
                     {formData.education.map((edu, index) => (
-                      <Card key={index} className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                      <Card key={index} className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                         <div className="space-y-4">
                           <div>
                             <Label htmlFor={`degree-${index}`}>Degree</Label>
@@ -1076,13 +1043,13 @@ export default function CreateCVPage() {
                         </div>
                       </Card>
                     ))}
-                    <Button variant="outline" onClick={addEducation} className="w-full border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg py-3 font-medium transition-all duration-200">
+                    <Button variant="outline" onClick={addEducation} className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
                       Add Another Education
                     </Button>
                   </TabsContent>
 
-                  <TabsContent value="skills" className="space-y-6">
-                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                  <TabsContent value="skills" className="space-y-4">
+                    <Card className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                       <div className="space-y-5">
                         <div>
                           <Label htmlFor="skills" className="text-sm font-semibold text-slate-700 mb-2 block">Skills</Label>
@@ -1099,8 +1066,8 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
 
-                  <TabsContent value="extra" className="space-y-6">
-                    <Card className="p-6 rounded-xl shadow-sm border border-slate-200 bg-white">
+                  <TabsContent value="extra" className="space-y-4">
+                    <Card className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                       <div className="flex items-center justify-between mb-4">
                         <div>
                           <h3 className="text-sm font-semibold text-slate-900">Custom Sections</h3>
@@ -1162,36 +1129,64 @@ export default function CreateCVPage() {
                     </Card>
                   </TabsContent>
                 </Tabs>
-                <div className="flex flex-col sm:flex-row justify-between gap-4 mt-8">
-                  <Button 
-                    variant="outline" 
-                    onClick={handlePreviousSection} 
+                <div className="flex justify-between gap-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={handlePreviousSection}
                     disabled={sections.indexOf(activeSection) === 0}
-                    className="flex items-center justify-center border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-slate-400 rounded-lg px-6 py-3 font-medium transition-all duration-200 w-full sm:w-auto"
+                    className="border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg px-5 font-medium"
                   >
-                    <ChevronLeft className="h-4 w-4 mr-2" />
-                    Previous
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Previous
                   </Button>
-                  <Button 
-                    onClick={handleNextSection} 
+                  <Button
+                    onClick={handleNextSection}
                     disabled={sections.indexOf(activeSection) === sections.length - 1}
-                    className="flex items-center justify-center bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white border-0 rounded-lg px-6 py-3 font-medium transition-all duration-200 shadow-sm hover:shadow-md w-full sm:w-auto"
+                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 font-medium"
                   >
-                    Next
-                    <ChevronRight className="h-4 w-4 ml-2" />
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 </div>
+            </div>
+          )}
+        </div>
+
+            {/* ── RIGHT COLUMN — sticky live preview ── */}
+            <div className="w-80 xl:w-96 flex-shrink-0 sticky top-6 self-start">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-4 pt-4 pb-2 border-b border-gray-100 flex items-center justify-between">
+                  <p className="font-semibold text-gray-900 text-sm">Live Preview</p>
+                  <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 h-7 px-2">
+                        <Maximize2 className="h-3.5 w-3.5 mr-1" /> Fullscreen
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+                      <DialogHeader><DialogTitle>CV Preview</DialogTitle></DialogHeader>
+                      <div className="mt-4"><CVPreview template={selectedTemplate.type} userData={formData} /></div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+                <div className="p-3 bg-gray-50 h-[520px] overflow-hidden">
+                  <div className="w-full h-full overflow-hidden rounded scale-[0.9] origin-top">
+                    <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full" />
+                  </div>
+                </div>
+                <div className="px-4 py-3 border-t border-gray-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-700">{selectedTemplate.name}</p>
+                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">{Math.round(getProgress())}% complete</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-1.5">
+                    <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${getProgress()}%` }} />
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+
           </div>
-
-
         </div>
       </div>
-    </div>
-  </div>
-  
-
     </>
     </ErrorBoundary>
   )

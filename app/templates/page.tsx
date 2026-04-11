@@ -6,7 +6,6 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { CVPreview } from "@/components/cv-preview"
-import { PageHeader } from "@/components/ui/page-header"
 import type { TemplateType } from "@/types/cv-types"
 
 interface Template {
@@ -76,10 +75,13 @@ export default function TemplatesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <PageHeader
-        title="Step 1: Choose Your CV Template"
-        description={`Select a professional template that matches your style and industry.\nYou can always change it later.`}
-      />
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="container mx-auto max-w-7xl flex items-center gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">Step 1</span>
+          <h1 className="text-base font-semibold text-gray-800">Choose Your CV Template</h1>
+          <p className="text-sm text-gray-500 hidden sm:block">Select a template — you can change it later.</p>
+        </div>
+      </div>
 
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="flex gap-6 items-start">
@@ -152,7 +154,7 @@ export default function TemplatesPage() {
                       </div>
                     )}
                     {/* Thumbnail */}
-                    <div className="h-44 bg-gray-50 overflow-hidden p-2">
+                    <div className="h-56 bg-gray-50 overflow-hidden p-2">
                       <div className="w-full h-full overflow-hidden rounded scale-[0.85] origin-top">
                         <CVPreview template={template.type} className="w-full h-full" />
                       </div>
@@ -207,14 +209,14 @@ export default function TemplatesPage() {
           </div>
 
           {/* ── RIGHT COLUMN — sticky preview sidebar ── */}
-          <div className="w-72 xl:w-80 flex-shrink-0 sticky top-6 self-start">
+          <div className="w-80 xl:w-96 flex-shrink-0 sticky top-6 self-start">
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-4 pt-4 pb-2 border-b border-gray-100">
                 <p className="font-semibold text-gray-900">Preview</p>
               </div>
 
               {/* Live preview */}
-              <div className="p-3 bg-gray-50 border-b border-gray-100 h-72 overflow-hidden">
+              <div className="p-3 bg-gray-50 border-b border-gray-100 h-96 overflow-hidden">
                 <div className="w-full h-full overflow-hidden rounded scale-[0.9] origin-top">
                   <CVPreview template={selected.type} className="w-full h-full" />
                 </div>
