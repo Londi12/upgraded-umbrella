@@ -1,5 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+// Helper function to handle skills data type
+function getSkillsArray(skills: string | any[]): string[] {
+  if (!skills) return []
+  
+  if (Array.isArray(skills)) {
+    return skills.map(skill => typeof skill === 'string' ? skill : skill.name).filter(Boolean)
+  }
+  
+  if (typeof skills === 'string') {
+    return skills.split(",").map((skill: string) => skill.trim()).filter(Boolean)
+  }
+  
+  return []
+}
+
+// Helper function to handle languages data type
+function getLanguagesArray(languages: string | string[]): string[] {
+  if (!languages) return []
+  
+  if (Array.isArray(languages)) {
+    return languages.filter(Boolean)
+  }
+  
+  if (typeof languages === 'string') {
+    return languages.split(",").map((lang: string) => lang.trim()).filter(Boolean)
+  }
+  
+  return []
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { template, userData, templateName, isAuthenticated: clientAuth } = await request.json()
@@ -251,10 +281,7 @@ function generateProfessionalPDF(doc: any, userData: any, pageWidth: number, pag
     yPosition += 10
 
     // Parse skills and create skill boxes
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
@@ -394,10 +421,7 @@ function generateModernPDF(doc: any, userData: any, pageWidth: number, pageHeigh
     doc.text("SKILLS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     skillsArray.forEach((skill: string) => {
       // Draw emerald dot
@@ -472,10 +496,7 @@ function generateCreativePDF(doc: any, userData: any, pageWidth: number, pageHei
     doc.text("CREATIVE SKILLS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     skillsArray.forEach((skill: string) => {
       // Creative bullet point
@@ -632,10 +653,7 @@ function generateSimpleSection(
   yPosition += 8
 
   if (title === "TECHNICAL SKILLS" && data) {
-    const skillsArray = data
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(data)
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
     doc.setTextColor(60, 60, 60)
@@ -802,10 +820,7 @@ function generateExecutivePDF(doc: any, userData: any, pageWidth: number, pageHe
     doc.text("KEY ACHIEVEMENTS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     skillsArray.forEach((skill: string) => {
       // Executive bullet point
@@ -869,10 +884,7 @@ function generateTechnicalPDF(doc: any, userData: any, pageWidth: number, pageHe
     doc.text("TECHNICAL EXPERTISE", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
     const skillsPerCategory = Math.ceil(skillsArray.length / 4)
 
     const categories = ["Languages", "Frameworks", "Databases", "Cloud"]
@@ -1090,10 +1102,7 @@ function generateGraduatePDF(doc: any, userData: any, pageWidth: number, pageHei
     doc.text("SKILLS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     let xPosition = margin
     let currentY = yPosition
@@ -1262,10 +1271,7 @@ function generateDigitalPDF(doc: any, userData: any, pageWidth: number, pageHeig
     doc.text("DIGITAL SKILLS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     let xPosition = margin
     let currentY = yPosition
@@ -1493,10 +1499,7 @@ function generateSAProfessionalPDF(doc: any, userData: any, pageWidth: number, p
     yPosition += 10
 
     // Parse skills and create skill boxes
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
@@ -1539,10 +1542,7 @@ function generateSAProfessionalPDF(doc: any, userData: any, pageWidth: number, p
     doc.text("LANGUAGES", margin, yPosition)
     yPosition += 10
 
-    const languagesArray = userData.personalInfo.languages
-      .split(",")
-      .map((lang: string) => lang.trim())
-      .filter(Boolean)
+    const languagesArray = getLanguagesArray(userData.personalInfo.languages)
 
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
@@ -1774,10 +1774,7 @@ function generateSAModernPDF(doc: any, userData: any, pageWidth: number, pageHei
     doc.text("SKILLS", margin, yPosition)
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     // Create a grid of skills (2 columns)
     const skillsPerColumn = Math.ceil(skillsArray.length / 2)
@@ -1823,10 +1820,7 @@ function generateSAModernPDF(doc: any, userData: any, pageWidth: number, pageHei
     doc.text("LANGUAGES", margin, yPosition)
     yPosition += 10
 
-    const languagesArray = userData.personalInfo.languages
-      .split(",")
-      .map((lang: string) => lang.trim())
-      .filter(Boolean)
+    const languagesArray = getLanguagesArray(userData.personalInfo.languages)
 
     // Create a grid of languages (2 columns)
     const langsPerColumn = Math.ceil(languagesArray.length / 2)
@@ -2000,10 +1994,7 @@ function generateSAExecutivePDF(doc: any, userData: any, pageWidth: number, page
     
     yPosition += 10
 
-    const skillsArray = userData.skills
-      .split(",")
-      .map((skill: string) => skill.trim())
-      .filter(Boolean)
+    const skillsArray = getSkillsArray(userData.skills)
 
     // Create a grid of skills (2 columns)
     const skillsPerColumn = Math.ceil(skillsArray.length / 2)
@@ -2189,10 +2180,7 @@ function generateSAExecutivePDF(doc: any, userData: any, pageWidth: number, page
     
     yPosition += 10
 
-    const languagesArray = userData.personalInfo.languages
-      .split(",")
-      .map((lang: string) => lang.trim())
-      .filter(Boolean)
+    const languagesArray = getLanguagesArray(userData.personalInfo.languages)
 
     doc.setFontSize(10)
     doc.setFont("helvetica", "normal")
