@@ -943,7 +943,6 @@ export default function SAJobSearch() {
             <Card className="flex-1">
               <CardContent className="pt-6 text-center text-muted-foreground">
                 <div className="py-12">
-                  <div className="text-6xl mb-4">👈</div>
                   <p className="text-lg mb-2">Select a job to view details</p>
                   <p className="text-sm">Click on any job from the list to see full details here</p>
                 </div>
