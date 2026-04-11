@@ -17,64 +17,84 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
           .filter(Boolean)
     : ["Excel", "SQL", "Python", "Tableau", "Financial Modeling", "Data Analysis"]
 
+  // Check if this is for A4 print preview (based on className or style props)
+  const isA4Preview = className.includes('w-full') || className.includes('a4')
+
   const getTemplateContent = () => {
     switch (template) {
       case "professional":
         return (
-          <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
-            <div className="p-6 space-y-4">
-              {/* Header */}
-              <div className="border-b border-gray-200 pb-4">
-                <h1 className="text-xl font-bold text-gray-900">{userData?.personalInfo?.fullName || "John Smith"}</h1>
-                <p className="text-sm text-gray-600">
+          <div className={`bg-white ${isA4Preview ? '' : 'border border-gray-200 rounded-lg shadow-sm'} overflow-hidden ${className}`}>
+            <div className={`${isA4Preview ? 'p-8' : 'p-6'} space-y-4`}>
+              {/* Header - ATS Optimized */}
+              <div className="border-b-2 border-gray-800 pb-4">
+                <h1 className={`${isA4Preview ? 'text-2xl' : 'text-xl'} font-bold text-gray-900 uppercase tracking-wide`}>{userData?.personalInfo?.fullName || "John Smith"}</h1>
+                <p className={`${isA4Preview ? 'text-base' : 'text-sm'} font-semibold text-gray-800 mt-1`}>
                   {userData?.personalInfo?.jobTitle || "Senior Financial Analyst"}
                 </p>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mt-2">
-                  <span>{userData?.personalInfo?.email || "john.smith@email.com"}</span>
-                  <span>{userData?.personalInfo?.phone || "+27 11 123 4567"}</span>
-                  <span>{userData?.personalInfo?.location || "Johannesburg, SA"}</span>
+                <div className={`${isA4Preview ? 'space-y-1' : 'space-y-0.5'} text-sm text-gray-700 mt-3 font-medium`}>
+                  <div>{userData?.personalInfo?.email || "john.smith@email.com"}</div>
+                  <div>{userData?.personalInfo?.phone || "+27 11 123 4567"}</div>
+                  <div>{userData?.personalInfo?.location || "Johannesburg, SA"}</div>
+                  {userData?.personalInfo?.linkedIn && <div>{userData.personalInfo.linkedIn}</div>}
                 </div>
               </div>
 
-              {/* Professional Summary */}
+              {/* Professional Summary - ATS Optimized */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-800 mb-2">PROFESSIONAL SUMMARY</h2>
-                <p className="text-xs text-gray-600">
+                <h2 className={`${isA4Preview ? 'text-base' : 'text-sm'} font-bold text-gray-900 uppercase border-b border-gray-300 pb-1 mb-3`}>PROFESSIONAL SUMMARY</h2>
+                <p className={`${isA4Preview ? 'text-sm' : 'text-xs'} text-gray-800 leading-relaxed`}>
                   {userData?.summary ||
                     "Experienced Financial Analyst with over 8 years of expertise in financial modeling, data analysis, and investment research. Proven track record of delivering actionable insights that drive strategic decision-making."}
                 </p>
               </div>
 
-              {/* Experience */}
+              {/* Experience - ATS Optimized */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-800 mb-2">WORK EXPERIENCE</h2>
-                <div className="space-y-3">
+                <h2 className={`${isA4Preview ? 'text-base' : 'text-sm'} font-bold text-gray-900 uppercase border-b border-gray-300 pb-1 mb-3`}>PROFESSIONAL EXPERIENCE</h2>
+                <div className="space-y-4">
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
-                      <div key={index}>
-                        <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
+                      <div key={index} className="border-l-4 border-gray-400 pl-4">
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{exp.title || "Job Title"}</h3>
+                        <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
+                          {exp.company || "Company"} | {exp.location || "Location"} | {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
                         </p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job description"}</p>
+                        <div className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800 mt-2`}>
+                          {exp.description ? (
+                            <ul className="space-y-1 list-disc ml-4">
+                              {exp.description.split('\n').map((line, i) => (
+                                <li key={i} className="leading-relaxed">{line}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="leading-relaxed">Job description with measurable achievements</p>
+                          )}
+                        </div>
                       </div>
                     ))
                   ) : (
                     <>
-                      <div>
-                        <h3 className="text-xs font-medium text-gray-700">Senior Financial Analyst</h3>
-                        <p className="text-xs text-gray-500">ABC Corporation • 2020 - Present</p>
-                        <ul className="text-xs text-gray-600 mt-1 pl-4 list-disc">
-                          <li>Led financial analysis for key investment projects worth R50M+</li>
-                          <li>Developed forecasting models that improved accuracy by 35%</li>
+                      <div className="border-l-4 border-gray-400 pl-4">
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>Senior Financial Analyst</h3>
+                        <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
+                          ABC Corporation | Johannesburg, SA | 2020 - Present
+                        </p>
+                        <ul className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800 mt-2 space-y-1 list-disc ml-4`}>
+                          <li>Achieved 35% improvement in forecasting accuracy through advanced financial modeling</li>
+                          <li>Managed investment portfolio worth R50M+ with 15% annual returns</li>
+                          <li>Developed automated reporting systems reducing processing time by 40%</li>
                         </ul>
                       </div>
-                      <div>
-                        <h3 className="text-xs font-medium text-gray-700">Financial Analyst</h3>
-                        <p className="text-xs text-gray-500">XYZ Company • 2018 - 2020</p>
-                        <ul className="text-xs text-gray-600 mt-1 pl-4 list-disc">
-                          <li>Conducted market research and competitor analysis</li>
-                          <li>Prepared monthly financial reports for executive team</li>
+                      <div className="border-l-4 border-gray-400 pl-4">
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>Financial Analyst</h3>
+                        <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
+                          XYZ Company | Cape Town, SA | 2018 - 2020
+                        </p>
+                        <ul className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800 mt-2 space-y-1 list-disc ml-4`}>
+                          <li>Conducted comprehensive market research and competitor analysis</li>
+                          <li>Prepared detailed monthly financial reports for executive team</li>
+                          <li>Identified cost-saving opportunities resulting in R2M annual savings</li>
                         </ul>
                       </div>
                     </>
@@ -82,38 +102,42 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                 </div>
               </div>
 
-              {/* Education */}
+              {/* Education - ATS Optimized */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-800 mb-2">EDUCATION</h2>
-                <div className="space-y-2">
+                <h2 className={`${isA4Preview ? 'text-base' : 'text-sm'} font-bold text-gray-900 uppercase border-b border-gray-300 pb-1 mb-3`}>EDUCATION</h2>
+                <div className="space-y-3">
                   {userData?.education && userData.education.length > 0 ? (
                     userData.education.map((edu, index) => (
-                      <div key={index}>
-                        <h3 className="text-xs font-medium text-gray-700">{edu.degree || "Degree"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {edu.institution || "Institution"} • {edu.graduationDate || "Graduation Date"}
+                      <div key={index} className="border-l-4 border-gray-400 pl-4">
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{edu.degree || "Degree"}</h3>
+                        <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
+                          {edu.institution || "Institution"} | {edu.location || "Location"} | {edu.graduationDate || "Graduation Date"}
                         </p>
-                        <p className="text-xs text-gray-600">{edu.location || "Location"}</p>
+                        {edu.nqfLevel && (
+                          <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-600 mt-1`}>NQF Level {edu.nqfLevel}</p>
+                        )}
                       </div>
                     ))
                   ) : (
-                    <div>
-                      <h3 className="text-xs font-medium text-gray-700">Bachelor of Commerce, Finance</h3>
-                      <p className="text-xs text-gray-500">University of Cape Town • 2018</p>
-                      <p className="text-xs text-gray-600">Cape Town, South Africa</p>
+                    <div className="border-l-4 border-gray-400 pl-4">
+                      <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>Bachelor of Commerce, Finance</h3>
+                      <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
+                        University of Cape Town | Cape Town, South Africa | 2018
+                      </p>
+                      <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-600 mt-1`}>NQF Level 7 | Cum Laude</p>
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* Skills */}
+              {/* Skills - ATS Optimized */}
               <div>
-                <h2 className="text-sm font-semibold text-gray-800 mb-2">SKILLS</h2>
-                <div className="flex flex-wrap gap-1">
-                  {skillsArray.map((skill) => (
-                    <span key={skill} className="px-2 py-1 bg-gray-100 text-xs rounded">
-                      {skill}
-                    </span>
+                <h2 className={`${isA4Preview ? 'text-base' : 'text-sm'} font-bold text-gray-900 uppercase border-b border-gray-300 pb-1 mb-3`}>TECHNICAL SKILLS</h2>
+                <div className="grid grid-cols-1 gap-2">
+                  {skillsArray.map((skill, index) => (
+                    <div key={index} className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800`}>
+                      • {skill}
+                    </div>
                   ))}
                 </div>
               </div>
@@ -139,9 +163,9 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
               <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "UX/UI Designer"}</p>
             </div>
             <div className="p-4 space-y-3">
-              <div className="flex gap-4 text-xs text-gray-600">
-                <span>{userData?.personalInfo?.email || "sarah@email.com"}</span>
-                <span>{userData?.personalInfo?.phone || "+27 21 987 6543"}</span>
+              <div className="space-y-1 text-xs text-gray-600">
+                <div>{userData?.personalInfo?.email || "sarah@email.com"}</div>
+                <div>{userData?.personalInfo?.phone || "+27 21 987 6543"}</div>
               </div>
 
               <div>
@@ -215,17 +239,17 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                 <p className="text-sm text-gray-600">{userData?.personalInfo?.jobTitle || "Graphic Designer"}</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                <div>
-                  <div className="h-1.5 bg-purple-300 rounded w-full mb-1"></div>
+              <div className="space-y-2 text-center text-xs">
+                <div className="flex justify-center items-center gap-2">
+                  <div className="h-1.5 bg-purple-300 rounded w-8"></div>
                   <span className="text-gray-600">Portfolio</span>
                 </div>
-                <div>
-                  <div className="h-1.5 bg-pink-300 rounded w-full mb-1"></div>
+                <div className="flex justify-center items-center gap-2">
+                  <div className="h-1.5 bg-pink-300 rounded w-8"></div>
                   <span className="text-gray-600">{userData?.personalInfo?.email || "Email"}</span>
                 </div>
-                <div>
-                  <div className="h-1.5 bg-purple-300 rounded w-full mb-1"></div>
+                <div className="flex justify-center items-center gap-2">
+                  <div className="h-1.5 bg-purple-300 rounded w-8"></div>
                   <span className="text-gray-600">{userData?.personalInfo?.phone || "Phone"}</span>
                 </div>
               </div>
@@ -291,10 +315,10 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                 <p className="text-sm text-gray-600">
                   {userData?.personalInfo?.jobTitle || "Graduate Software Developer"}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">
-                  {userData?.personalInfo?.email || "michael.brown@email.com"} •{" "}
-                  {userData?.personalInfo?.phone || "+27 82 456 7890"}
-                </p>
+                <div className="text-xs text-gray-500 mt-1 space-y-0.5">
+                  <div>{userData?.personalInfo?.email || "michael.brown@email.com"}</div>
+                  <div>{userData?.personalInfo?.phone || "+27 82 456 7890"}</div>
+                </div>
               </div>
 
               {/* Objective */}
@@ -370,7 +394,7 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
               <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "Chief Executive Officer"}</p>
             </div>
             <div className="p-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-xs">
+              <div className="space-y-3 text-xs">
                 <div>
                   <p className="font-medium">Email</p>
                   <p className="text-gray-600">{userData?.personalInfo?.email || "robert@company.com"}</p>
@@ -454,7 +478,7 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                     {userData?.personalInfo?.jobTitle || "Senior Software Engineer"}
                   </p>
                 </div>
-                <div className="text-right text-xs text-gray-500">
+                <div className="text-right text-xs text-gray-500 space-y-0.5">
                   <p>{userData?.personalInfo?.email || "david.eng@email.com"}</p>
                   <p>{userData?.personalInfo?.phone || "+27 21 123 4567"}</p>
                   <p>{userData?.personalInfo?.location || "Cape Town, SA"}</p>
@@ -552,7 +576,7 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
                 <p className="text-sm text-gray-600">
                   {userData?.personalInfo?.jobTitle || "Recent Marketing Graduate"}
                 </p>
-                <div className="flex justify-center gap-4 text-xs text-gray-500 mt-2">
+                <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-2">
                   <span>{userData?.personalInfo?.email || "emma.grad@email.com"}</span>
                   <span>{userData?.personalInfo?.phone || "+27 83 987 6543"}</span>
                 </div>

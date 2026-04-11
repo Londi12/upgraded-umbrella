@@ -1160,9 +1160,13 @@ export default function CreateCVPage() {
                         <Maximize2 className="h-3.5 w-3.5 mr-1" /> Fullscreen
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
-                      <DialogHeader><DialogTitle>CV Preview</DialogTitle></DialogHeader>
-                      <div className="mt-4"><CVPreview template={selectedTemplate.type} userData={formData} /></div>
+                    <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto bg-gray-100 p-8">
+                      <DialogHeader><DialogTitle>CV Preview - A4 Format</DialogTitle></DialogHeader>
+                      <div className="mt-4 flex justify-center">
+                        <div className="bg-white shadow-lg" style={{ width: '210mm', minHeight: '297mm' }}>
+                          <CVPreview template={selectedTemplate.type} userData={formData} className="w-full" style={{ aspectRatio: '210/297' }} />
+                        </div>
+                      </div>
                     </DialogContent>
                   </Dialog>
                 </div>
