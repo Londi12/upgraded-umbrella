@@ -97,7 +97,7 @@ function scoreJobAgainstCV(
   // Detect the job's family from its title + description
   const jobText = `${job.title || ''} ${job.description || ''} ${(job.requirements || []).join(' ')}`
   const jobFamilyMatches = detectJobFamily(jobText)
-  const jobProfile = jobFamilyMatches[0]?.profile
+  const jobProfile = jobFamilyMatches[0]?.profile || null
 
   // Score CV against the job's detected profile
   // If job profile matches CV profile — use full knowledgebase scoring
