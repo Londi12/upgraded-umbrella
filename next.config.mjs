@@ -3,9 +3,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  turbopack: {
-    root: process.cwd(),
-  },
   images: {
     unoptimized: true,
   },
@@ -17,6 +14,9 @@ const nextConfig = {
   // SEO and Performance optimizations
   compress: true,
   poweredByHeader: false,
+  experimental: {
+    turbopack: false,
+  },
   generateEtags: true,
   // Security headers
   async headers() {

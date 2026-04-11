@@ -33,5 +33,15 @@ declare module 'pdf-parse' {
     // other properties
   }
 
-  export default function(dataBuffer: Buffer, options?: PDFOptions): Promise<PDFData>;
+export default function(dataBuffer: Buffer, options?: PDFOptions): Promise<PDFData>;
+
+export type TemplateType = string;
+
+export interface CVTemplate {
+  id: number;
+  name: string;
+  category: string;
+  template: TemplateType;
+  popular: boolean;
+}
 }
