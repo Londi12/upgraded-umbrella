@@ -82,6 +82,7 @@ export function JobDetailPanel({
 
   const company = job.company || job.source || ""
   const tags = [job.job_type, job.experience_level].filter(Boolean) as string[]
+  const selectedCvData = selectedCVId ? savedCVs.find(cv => cv.id === selectedCVId)?.cv_data : undefined
 
   const openTrackDialog = () => {
     setTrackForm(f => ({ ...f, cv_id: selectedCVId || '' }))
@@ -306,9 +307,9 @@ export function JobDetailPanel({
             {/* ATS Panel */}
             {selectedCVId && (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">ATS Analysis</p>
+                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">CV &amp; job match</p>
                 <ATSScoringPanel
-                  cvData={savedCVs.find(cv => cv.id === selectedCVId)?.cv_data}
+                  cvData={selectedCvData}
                   currentSection="job-matching"
                   jobDescription={job.description || job.snippet || ''}
                 />
@@ -316,7 +317,7 @@ export function JobDetailPanel({
             )}
 
             {!selectedCVId && !aiMatchResults.length && (
-              <p className="text-sm text-gray-400 text-center py-8">Select a CV above to run job match and ATS analysis</p>
+              <p className="text-sm text-gray-400 text-center py-8">Select a CV above for AI match and CV &amp; job overlap</p>
             )}
           </div>
         )}
