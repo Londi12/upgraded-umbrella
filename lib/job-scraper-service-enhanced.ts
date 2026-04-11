@@ -48,7 +48,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   }
 
   const res = await fetch(
-`https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=10&country=za`,  // Increased to 10 pages
+    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=10&country=za`,  // Increased to 10 pages
     {
       headers: {
         'X-RapidAPI-Key': apiKey,
@@ -98,7 +98,7 @@ export class JobScraperService {
     return data ? new Date(data.created_at) : null
   }
 
-async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
+  async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
     const errors: string[] = []
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
@@ -198,3 +198,4 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
     return data || []
   }
 }
+
