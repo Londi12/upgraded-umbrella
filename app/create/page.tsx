@@ -39,7 +39,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getUserProfile, createOrUpdateUserProfile, saveCV, getSavedCVs, updateCV } from "@/lib/user-data-service"
 import { useAuth } from "@/contexts/auth-context"
 import { trackCVInteraction } from '@/lib/analytics-service'
-import { parseCV } from "@/lib/cv-parser"
+import { parseTextToCV } from "@/lib/cv-parser-client"
 import { CVUploadLoader, CVParsingLoader, SuccessAnimation, ErrorAnimation } from "@/components/loading-animations"
 
 import { ErrorBoundary } from "@/components/error-boundary"
@@ -50,24 +50,24 @@ export default function CreateCVPage() {
   const templateId = searchParams.get("template") || "1"
   const editId = searchParams.get("edit")
 
-  // Map template IDs to template types
+  // Map template IDs to template types — must stay in sync with app/templates/page.tsx
   const templateMap: Record<string, any> = {
-    "1": { type: "professional", name: "Corporate Professional" },
-    "2": { type: "modern", name: "Modern Minimalist" },
-    "3": { type: "creative", name: "Creative Design" },
-    "4": { type: "simple", name: "Simple Clean" },
-    "5": { type: "executive", name: "Executive Elite" },
-    "6": { type: "technical", name: "Technical Expert" },
-    "7": { type: "graduate", name: "Graduate Entry" },
-    "8": { type: "digital", name: "Digital Portfolio" },
-    "9": { type: "sa-professional", name: "SA Professional" },
-    "10": { type: "sa-modern", name: "SA Modern" },
-    "11": { type: "sa-executive", name: "SA Executive" },
-    "12": { type: "compact", name: "Compact One-Page" },
-    "13": { type: "chronological", name: "Chronological" },
-    "14": { type: "functional", name: "Functional / Skills-First" },
-    "15": { type: "sidebar", name: "Sidebar" },
-    "16": { type: "matric", name: "Matric / School Leaver" },
+    "1":  { type: "simple",          name: "Simple Clean" },
+    "2":  { type: "modern",          name: "Modern Minimalist" },
+    "3":  { type: "creative",        name: "Creative Design" },
+    "4":  { type: "professional",    name: "Corporate Professional" },
+    "5":  { type: "technical",       name: "Technical Expert" },
+    "6":  { type: "graduate",        name: "Graduate Entry" },
+    "7":  { type: "executive",       name: "Executive Elite" },
+    "8":  { type: "digital",         name: "Digital Portfolio" },
+    "9":  { type: "sa-modern",       name: "SA Modern" },
+    "10": { type: "sa-professional", name: "SA Professional" },
+    "11": { type: "sa-executive",    name: "SA Executive" },
+    "12": { type: "compact",         name: "Compact One-Page" },
+    "13": { type: "chronological",   name: "Chronological" },
+    "14": { type: "functional",      name: "Functional / Skills-First" },
+    "15": { type: "sidebar",         name: "Sidebar" },
+    "16": { type: "matric",          name: "Matric / School Leaver" },
   }
 
   const [selectedTemplate, setSelectedTemplate] = useState(templateMap[templateId] || templateMap["1"])
@@ -401,42 +401,55 @@ export default function CreateCVPage() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    const ext = file.name.toLowerCase().split('.').pop();
+    if (ext !== 'docx' && ext !== 'txt') {
+      setParseError('Only DOCX and TXT files are supported. Please upload a .docx or .txt file.');
+      setParseStep('error');
+      return;
+    }
+
     setParseStep('uploading');
     setParseError(null);
     setUploadProgress(0);
 
     try {
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
+      setUploadProgress(30);
+      let text = '';
+
+      if (ext === 'txt') {
+        // Plain text: read directly
+        text = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsText(file);
         });
-      }, 200);
-
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-      
-      setParseStep('parsing');
-      setUploadProgress(100);
-      
-      const response = await fetch('/api/parse-cv', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('CV parsing failed:', errorData);
-        throw new Error(errorData.error || `API request failed: ${response.status}`);
+      } else {
+        // DOCX: read as ArrayBuffer then use mammoth
+        const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as ArrayBuffer);
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsArrayBuffer(file);
+        });
+        setUploadProgress(60);
+        const mammoth = await import('mammoth');
+        const result = await mammoth.extractRawText({ arrayBuffer });
+        text = result.value;
       }
 
-      const result = await response.json();
-      
-      if (result.data && result.data.personalInfo) {
+      if (!text.trim()) {
+        throw new Error('No text could be extracted from the file.');
+      }
+
+      setParseStep('parsing');
+      setUploadProgress(80);
+
+      const result = parseTextToCV(text);
+
+      setUploadProgress(100);
+
+      if (result.success && result.data?.personalInfo) {
         setFormData({
           personalInfo: {
             fullName: result.data.personalInfo?.fullName || "",
@@ -450,16 +463,15 @@ export default function CreateCVPage() {
             languages: result.data.personalInfo?.languages || [],
           },
           summary: result.data.summary || "",
-          experience: Array.isArray(result.data.experience) && result.data.experience.length > 0 
-            ? result.data.experience 
+          experience: Array.isArray(result.data.experience) && result.data.experience.length > 0
+            ? result.data.experience
             : formData.experience,
-          education: Array.isArray(result.data.education) && result.data.education.length > 0 
-            ? result.data.education 
+          education: Array.isArray(result.data.education) && result.data.education.length > 0
+            ? result.data.education
             : formData.education,
           skills: normalizeSkillsForForm(result.data.skills),
         });
         setParseStep('complete');
-        setTimeout(() => setParseStep('complete'), 2000);
       } else {
         setParseError(result.error || "Failed to parse CV. Please enter your details manually.");
         setParseStep('error');
@@ -633,7 +645,7 @@ export default function CreateCVPage() {
                         }}
                         type="file" 
                         id="cv-upload"
-                        accept=".pdf,.docx,.txt" 
+                        accept=".docx,.txt" 
                         onChange={handleFileUpload} 
                         className="hidden"
                       />
@@ -668,7 +680,7 @@ export default function CreateCVPage() {
                           const files = Array.from(e.dataTransfer.files);
                           if (files.length > 0) {
                             const file = files[0];
-                            if (file && (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.txt')) && file.size <= 10 * 1024 * 1024) {
+                            if (file && (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.txt')) && file.size <= 10 * 1024 * 1024) {
                               const event = { target: { files: [file] as unknown as FileList } } as React.ChangeEvent<HTMLInputElement>;
                               handleFileUpload(event);
                             }
@@ -676,7 +688,7 @@ export default function CreateCVPage() {
                         }}
                       >
                         <p className="text-slate-600 font-medium">{parseStep === 'uploading' || parseStep === 'parsing' ? 'Uploading...' : 'Drag and drop your CV here'}</p>
-                        <p className="text-xs text-slate-500 mt-1">or click to browse files (PDF, DOCX, TXT ≤10MB)</p>
+                        <p className="text-xs text-slate-500 mt-1">or click to browse files (DOCX or TXT, ≤10MB)</p>
                       </div>
                     </>
                   )}
