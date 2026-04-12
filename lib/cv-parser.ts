@@ -6,8 +6,7 @@ import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';
 // Configure PDF.js worker for server-side usage
 if (typeof window === 'undefined') {
   // For server-side rendering, we need to handle PDF.js differently
-  const pdfjsWorker = require('pdfjs-dist/build/pdf.worker.entry');
-  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
+  (pdfjsLib as any).GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${require('pdfjs-dist/package.json').version}/build/pdf.worker.min.js`;
 
   // Polyfill DOMMatrix for Node.js environment
   class DOMMatrixPolyfill {
