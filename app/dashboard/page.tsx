@@ -74,7 +74,7 @@ export default function DashboardPage() {
             </Button>
           </Link>
           <Link href="/jobs">
-            <Button variant="outline" className="border-white text-white hover:bg-white hover:text-blue-600">
+            <Button variant="outline" className="border-gray-200 text-gray-700 hover:bg-gray-50">
               <Briefcase className="h-4 w-4 mr-2" />
               Find Jobs
             </Button>
@@ -82,34 +82,59 @@ export default function DashboardPage() {
         </div>
       </PageHeader>
 
-      <div className="container mx-auto px-4 py-8">
-        {applications.length > 0 && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
-              <div className="text-sm text-gray-500 mt-1">Total Applied</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
-              <div className="text-sm text-gray-500 mt-1">Awaiting Response</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-purple-600">{stats.interviews}</div>
-              <div className="text-sm text-gray-500 mt-1">Interviews</div>
-            </div>
-            <div className="bg-white rounded-lg border p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">{stats.offers}</div>
-              <div className="text-sm text-gray-500 mt-1">Offers</div>
-            </div>
+      <div className="container mx-auto max-w-7xl px-4 py-8">
+        <div className="lg:flex gap-6 items-start">
+          <div className="flex-1 min-w-0">
+            <ApplicationTracker
+              applications={applications}
+              savedCVs={savedCVs}
+              onApplicationAdded={refreshApplications}
+              onApplicationUpdated={refreshApplications}
+            />
           </div>
-        )}
 
-        <ApplicationTracker
-          applications={applications}
-          savedCVs={savedCVs}
-          onApplicationAdded={refreshApplications}
-          onApplicationUpdated={refreshApplications}
-        />
+          <aside className="w-full lg:w-80 xl:w-96 flex-shrink-0 sticky top-6 self-start mt-6 lg:mt-0 space-y-4">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-2 border-b border-gray-100">
+                <p className="font-semibold text-gray-900 text-sm">Application Stats</p>
+              </div>
+              <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                  <div className="text-xs text-gray-500 mt-1">Total Applied</div>
+                </div>
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                  <div className="text-xs text-gray-500 mt-1">Awaiting</div>
+                </div>
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold text-purple-600">{stats.interviews}</div>
+                  <div className="text-xs text-gray-500 mt-1">Interviews</div>
+                </div>
+                <div className="rounded-lg border bg-white p-3 text-center">
+                  <div className="text-2xl font-bold text-green-600">{stats.offers}</div>
+                  <div className="text-xs text-gray-500 mt-1">Offers</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 space-y-3">
+              <p className="font-semibold text-gray-900 text-sm">Quick Actions</p>
+              <Link href="/templates" className="block">
+                <Button className="w-full bg-blue-600 hover:bg-blue-700">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New CV
+                </Button>
+              </Link>
+              <Link href="/jobs" className="block">
+                <Button variant="outline" className="w-full border-gray-200 text-gray-700 hover:bg-gray-50">
+                  <Briefcase className="h-4 w-4 mr-2" />
+                  Browse Jobs
+                </Button>
+              </Link>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   )

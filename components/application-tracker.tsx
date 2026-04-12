@@ -32,8 +32,6 @@ export function ApplicationTracker({
   onApplicationAdded, 
   onApplicationUpdated 
 }: ApplicationTrackerProps) {
-  console.log('ApplicationTracker rendered with:', { applications: applications.length, savedCVs: savedCVs.length })
-  console.log('Saved CVs structure:', savedCVs)
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
   const [editingApplication, setEditingApplication] = useState<ApplicationTracking | null>(null)
   const [savedJobs, setSavedJobs] = useState<SavedJob[]>([])
@@ -53,11 +51,8 @@ export function ApplicationTracker({
   // Load saved jobs
   React.useEffect(() => {
     const loadSavedJobs = async () => {
-      console.log('Loading saved jobs...')
       const { data, error } = await getUserSavedJobs()
-      console.log('Saved jobs response:', { data, error })
       if (data && !error) {
-        console.log('Setting saved jobs:', data.length, 'items')
         setSavedJobs(data)
       }
     }

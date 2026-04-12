@@ -1,24 +1,62 @@
 import type { CVData, TemplateType } from "@/types/cv-types"
+import type { CSSProperties } from "react"
 
 interface CVPreviewProps {
   template: TemplateType
   className?: string
   userData?: Partial<CVData>
+  style?: CSSProperties
 }
 
-export function CVPreview({ template, className = "", userData }: CVPreviewProps) {
+export function CVPreview({ template, className = "", userData, style }: CVPreviewProps) {
+  const normalizeSkills = (skills: CVData["skills"] | undefined): string[] => {
+    if (!skills) {
+      return []
+    }
+
+    if (Array.isArray(skills)) {
+      return skills
+        .map((skill) => (typeof skill === "string" ? skill : skill.name))
+        .map((skill) => skill.trim())
+        .filter(Boolean)
+    }
+
+    const trimmed = skills.trim()
+    if (!trimmed) {
+      return []
+    }
+
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((skill) => {
+              if (typeof skill === "string") return skill
+              if (skill && typeof skill === "object" && "name" in skill) return String(skill.name)
+              return ""
+            })
+            .map((skill) => skill.trim())
+            .filter(Boolean)
+        }
+      } catch {
+        // Fall back to comma splitting below.
+      }
+    }
+
+    return trimmed
+      .split(",")
+      .map((skill) => skill.trim())
+      .filter(Boolean)
+  }
+
   // Parse skills into an array if provided
   const skillsArray = userData?.skills
-    ? Array.isArray(userData.skills)
-      ? userData.skills.map(skill => typeof skill === 'string' ? skill : skill.name)
-      : userData.skills
-          .split(",")
-          .map((skill) => skill.trim())
-          .filter(Boolean)
+    ? normalizeSkills(userData.skills)
     : ["Excel", "SQL", "Python", "Tableau", "Financial Modeling", "Data Analysis"]
 
-  // Check if this is for A4 print preview (based on className or style props)
-  const isA4Preview = className.includes('w-full') || className.includes('a4')
+  // Use an explicit marker class to avoid accidental A4 mode in non-A4 containers.
+  const isA4Preview = className.includes("a4-preview")
 
   const getTemplateContent = () => {
     switch (template) {
@@ -1461,7 +1499,7 @@ export function CVPreview({ template, className = "", userData }: CVPreviewProps
   }
 
   return (
-    <div id="cv-preview-container" className="relative h-full w-full bg-white">
+    <div id="cv-preview-container" className="relative h-full w-full bg-white" style={style}>
       {getTemplateContent()}
     </div>
   )

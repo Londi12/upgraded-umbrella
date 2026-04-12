@@ -304,6 +304,42 @@ export default function CreateCVPage() {
     })
   }
 
+  const normalizeSkillsForForm = (skills: CVData["skills"] | undefined): string => {
+    if (!skills) return ""
+
+    if (Array.isArray(skills)) {
+      return skills
+        .map((skill) => (typeof skill === "string" ? skill : skill.name))
+        .map((skill) => skill.trim())
+        .filter(Boolean)
+        .join(", ")
+    }
+
+    const trimmed = skills.trim()
+    if (!trimmed) return ""
+
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed)
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((skill) => {
+              if (typeof skill === "string") return skill
+              if (skill && typeof skill === "object" && "name" in skill) return String(skill.name)
+              return ""
+            })
+            .map((skill) => skill.trim())
+            .filter(Boolean)
+            .join(", ")
+        }
+      } catch {
+        // Keep original text if JSON parse fails.
+      }
+    }
+
+    return trimmed
+  }
+
   const handleSaveProfile = async () => {
     if (!isConfigured || !user) {
       // Redirect to login with a return path
@@ -420,7 +456,7 @@ export default function CreateCVPage() {
           education: Array.isArray(result.data.education) && result.data.education.length > 0 
             ? result.data.education 
             : formData.education,
-          skills: result.data.skills || "",
+          skills: normalizeSkillsForForm(result.data.skills),
         });
         setParseStep('complete');
         setTimeout(() => setParseStep('complete'), 2000);
@@ -1164,15 +1200,15 @@ export default function CreateCVPage() {
                       <DialogHeader><DialogTitle>CV Preview - A4 Format</DialogTitle></DialogHeader>
                       <div className="mt-4 flex justify-center">
                         <div className="bg-white shadow-lg" style={{ width: '210mm', minHeight: '297mm' }}>
-                          <CVPreview template={selectedTemplate.type} userData={formData} className="w-full" style={{ aspectRatio: '210/297' }} />
+                          <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full a4-preview" />
                         </div>
                       </div>
                     </DialogContent>
                   </Dialog>
                 </div>
-                <div className="p-3 bg-gray-50 h-[520px] overflow-hidden">
-                  <div className="w-full h-full overflow-hidden rounded scale-[0.9] origin-top">
-                    <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full" />
+                <div className="p-3 bg-gray-50 overflow-hidden">
+                  <div className="mx-auto w-full aspect-[210/297] overflow-hidden rounded bg-white shadow-sm">
+                    <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full a4-preview" />
                   </div>
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 space-y-2">
