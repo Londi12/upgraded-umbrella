@@ -32,10 +32,12 @@ export async function POST(request: NextRequest) {
 
     console.log(`[AI-MATCH] Processing ${jobs.length} jobs for CV with ${cvData?.personalInfo?.fullName || 'Unknown'}`)
 
-    if (!cvData || !cvData.personalInfo) {
-      console.error('[AI-MATCH] Invalid cvData:', cvData)
-      return NextResponse.json({ error: 'Valid CV data required', matches: [] })
+    if (!cvData) {
+      console.error('[AI-MATCH] Missing cvData')
+      return NextResponse.json({ error: 'CV data is required', matches: [] })
     }
+    // Ensure personalInfo exists so downstream scoring doesn't crash on undefined access
+    if (!cvData.personalInfo) cvData.personalInfo = { fullName: '', email: '', phone: '', location: '', jobTitle: '' }
     if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
       console.error('[AI-MATCH] Invalid jobs:', jobs)
       return NextResponse.json({ error: 'Jobs array required', matches: [] })

@@ -20,7 +20,7 @@ export interface JobMatchResult {
     skills: number
     registrations: number
     experience: number
-    saFlags: number
+    location: number
   }
 }
 
