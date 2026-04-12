@@ -11,5 +11,8 @@
 - [ ] 5. Verify cron runs <10s in logs
 - [ ] 6. Complete task
 
-Current: Step 3 - Ready for testing/deploy.
+**Complete:** Timeout fixed (scraper reverted), Cron fixed (hourly → daily).
+
+Run: `git add . ; git commit -m "fix(cron): change scrape-linkedin-jobs to daily for Hobby plan" ; git push origin main`
+
 
