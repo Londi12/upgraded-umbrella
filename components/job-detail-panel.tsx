@@ -95,14 +95,15 @@ export function JobDetailPanel({
   const scoreBorder = (n: number) => n >= 70 ? 'border-green-400' : n >= 50 ? 'border-amber-400' : 'border-slate-300'
   const scoreBarColor = (n: number) => n >= 70 ? 'bg-green-500' : n >= 50 ? 'bg-amber-400' : 'bg-red-400'
 
-  // Find this specific job's match result — no fallback to avoid showing stale results
+  const selectedJobId = useMemo(
+    () => job.url || job.title || (job as any).id || '',
+    [job.url, job.title, job]
+  )
+
+  // Only use the exact match for the currently selected job.
   const currentJobMatch = useMemo(() =>
-    aiMatchResults.find(m =>
-      m.jobId === job.url ||
-      m.jobId === job.title ||
-      m.jobId === (job as any).id
-    ) ?? (aiMatchResults.length === 1 ? aiMatchResults[0] : null),
-    [aiMatchResults, job.url, job.title]
+    aiMatchResults.find(m => m.jobId === selectedJobId) ?? null,
+    [aiMatchResults, selectedJobId]
   )
   // otherMatches unused now (we only score 1 job); kept for SimilarRoles component
   const otherMatches = useMemo(() =>
@@ -117,6 +118,7 @@ export function JobDetailPanel({
     if (
       currentJobMatch.detectedCVFamily &&
       currentJobMatch.detectedJobFamily &&
+      currentJobMatch.detectedJobFamily !== 'unknown' &&
       currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
     ) {
       reasons.push(`Your experience is in ${currentJobMatch.detectedCVFamily}, not ${currentJobMatch.detectedJobFamily}`)
@@ -240,8 +242,8 @@ export function JobDetailPanel({
                   : "text-gray-500 hover:text-gray-700 hover:bg-gray-100"
               }`}
             >
-              {t === "analysis" && (aiMatchResults.length > 0 || selectedCVId)
-                ? `${t} ${aiMatchResults.length > 0 ? `· ${aiMatchResults[0].matchScore}%` : ""}`
+              {t === "analysis" && (currentJobMatch || selectedCVId)
+                ? `${t} ${currentJobMatch ? `· ${currentJobMatch.matchScore}%` : ""}`
                 : t}
             </button>
           ))}

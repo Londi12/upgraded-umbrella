@@ -145,9 +145,9 @@ function guessCVFamily(cvData: CVData): string {
 function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatchResult {
   const jobText = `${job.title || ''} ${job.description || ''} ${(job.requirements || []).join(' ')}`.toLowerCase()
 
-  // Resolve job profile from knowledgebase for accurate keyword + NQF + registration scoring
-  const jobProfile = knowledgebase.getClosestProfile(job.title || '', { threshold: 0.3 })
-    || knowledgebase.getClosestProfile(jobText.slice(0, 200), { threshold: 0.25 })
+  // Use a strict title match first. If a role is outside the knowledgebase, leave it unknown
+  // rather than forcing an unrelated family from loose description keywords.
+  const jobProfile = resolveJobProfile(job)
   const jobFamily = jobProfile?.family || 'unknown'
 
   let score = 0
@@ -243,6 +243,34 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
       location: locationPts
     }
   }
+}
+
+function resolveJobProfile(job: any) {
+  const jobTitle = `${job?.title || ''}`.trim()
+  if (!jobTitle) return null
+
+  const titleMatch = knowledgebase.getClosestProfile(jobTitle, { threshold: 0.55 })
+  if (titleMatch) return titleMatch
+
+  const jobText = `${jobTitle} ${job?.description || ''} ${(job?.requirements || []).join(' ')}`.toLowerCase()
+  let bestProfile: typeof SA_JOB_PROFILES[number] | null = null
+  let bestScore = 0
+
+  for (const profile of SA_JOB_PROFILES || []) {
+    const exactTitleHit = profile.typicalTitles.some(title => jobTitle.toLowerCase().includes(title.toLowerCase()))
+    const keywordHits = profile.industryKeywords.filter(keyword => {
+      const normalized = keyword.toLowerCase()
+      return normalized.length >= 5 && jobText.includes(normalized)
+    }).length
+    const score = (exactTitleHit ? 4 : 0) + keywordHits
+
+    if (score > bestScore) {
+      bestScore = score
+      bestProfile = profile
+    }
+  }
+
+  return bestScore >= 3 ? bestProfile : null
 }
 
 function normalizeSkills(skills: string | any[]): string[] {
