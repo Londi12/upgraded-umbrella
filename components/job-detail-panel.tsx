@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp } from "lucide-react"
+import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp, Briefcase } from "lucide-react"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { calculateJobMatch as calculateHeuristicMatch, calculateATSScores, aggregateAtsFeedback } from "@/lib/cv-ats-heuristics"
 import { formatJobCardDate } from "@/lib/date-formatter"
@@ -272,107 +272,181 @@ export function JobDetailPanel({
               </div>
             )}
 
-            {/* ── AFTER MATCH: unified result ── */}
+            {/* ── AFTER MATCH ── */}
             {currentJobMatch && (
-              <div className="space-y-3">
+              currentJobMatch.matchScore < 50
+                ? (() => {
+                    // Build human-readable mismatch reasons (no jargon)
+                    const reasons: string[] = []
+                    if (
+                      currentJobMatch.detectedCVFamily &&
+                      currentJobMatch.detectedJobFamily &&
+                      currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
+                    ) {
+                      reasons.push(`Your experience is in ${currentJobMatch.detectedCVFamily}, not ${currentJobMatch.detectedJobFamily}`)
+                    }
+                    const toolGaps = currentJobMatch.skillsGap.filter(s => s.length > 1).slice(0, 3)
+                    if (toolGaps.length > 0) {
+                      reasons.push(`No evidence of required tools (${toolGaps.join(', ')})`)
+                    }
+                    const humanGap = currentJobMatch.dealBreakers[0] ||
+                      currentJobMatch.gaps.find(g => !g.toLowerCase().includes('nqf') && !g.toLowerCase().includes('registration'))
+                    if (humanGap) reasons.push(humanGap)
+                    if (reasons.length < 2) reasons.push('Experience level does not match job requirements')
 
-                {/* Score header */}
-                <div className="flex items-center gap-4 px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                  <div className={`flex-shrink-0 w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${scoreBorder(currentJobMatch.matchScore)}`}>
-                    <span className={`text-lg font-bold ${scoreColor(currentJobMatch.matchScore)}`}>{currentJobMatch.matchScore}%</span>
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={`text-sm font-semibold ${scoreColor(currentJobMatch.matchScore)}`}>{currentJobMatch.recommendation}</span>
-                      <span className="text-xs text-slate-400 capitalize">{currentJobMatch.confidence} confidence</span>
-                    </div>
-                    {cvClassification && (
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Detected as: <span className="font-medium text-slate-700">{cvClassification.detectedFamily}</span> · {cvClassification.tier}
-                      </p>
-                    )}
-                    {currentJobMatch.dealBreakers.length > 0 && (
-                      <p className="text-xs text-red-600 mt-1">⚠ {currentJobMatch.dealBreakers[0]}</p>
-                    )}
-                  </div>
-                </div>
+                    // Better alternatives — use other matched families or CV-based suggestions
+                    const betterRoles = otherMatches.length > 0
+                      ? otherMatches.slice(0, 3).map(m => m.detectedJobFamily || 'Similar role')
+                      : currentJobMatch.detectedCVFamily
+                        ? [`${currentJobMatch.detectedCVFamily} roles`, 'Related industry positions']
+                        : []
 
-                {/* What you bring */}
-                {(currentJobMatch.strengths.length > 0 || currentJobMatch.skillsMatch.length > 0) && (
-                  <div className="p-3 bg-green-50 border border-green-100 rounded-xl">
-                    <p className="text-xs font-semibold text-green-800 mb-2 flex items-center gap-1.5">
-                      <Check className="h-3.5 w-3.5" /> What you bring
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentJobMatch.strengths.filter(s => !s.toLowerCase().startsWith('skill:')).slice(0, 3).map((s, i) => (
-                        <span key={i} className="text-xs bg-white border border-green-200 text-green-800 px-2 py-0.5 rounded-full">{s}</span>
-                      ))}
-                      {currentJobMatch.skillsMatch.slice(0, 5).map((s, i) => (
-                        <span key={`sm-${i}`} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                    return (
+                      <div className="space-y-5">
 
-                {/* Gaps */}
-                {(currentJobMatch.gaps.length > 0 || currentJobMatch.skillsGap.length > 0) && (
-                  <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
-                    <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="h-3.5 w-3.5" /> Gaps to address
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {currentJobMatch.gaps.slice(0, 3).map((g, i) => (
-                        <span key={i} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{g}</span>
-                      ))}
-                      {currentJobMatch.skillsGap.slice(0, 3).map((s, i) => (
-                        <span key={`sg-${i}`} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                        {/* Score header — not a fit */}
+                        <div className="flex items-start gap-4 px-4 py-4 bg-white border border-red-100 rounded-xl">
+                          <div className="flex-shrink-0 w-16 h-16 rounded-full border-[3px] border-red-300 flex flex-col items-center justify-center">
+                            <span className="text-lg font-bold text-red-500 leading-none">{currentJobMatch.matchScore}%</span>
+                            <span className="text-[9px] text-red-400 font-semibold uppercase tracking-wide mt-0.5">Match</span>
+                          </div>
+                          <div className="min-w-0 flex-1 pt-1">
+                            <p className="text-base font-bold text-slate-800 leading-snug">This role is not a good fit</p>
+                            <p className="text-sm text-slate-500 mt-0.5">This role is not a match</p>
+                          </div>
+                        </div>
 
-                {/* Keywords to add — from heuristic matcher */}
-                {atsJobMatch && atsJobMatch.missingKeywords.length > 0 && (
-                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                    <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1.5">
-                      <Lightbulb className="h-3.5 w-3.5" /> Add these to your CV
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {atsJobMatch.missingKeywords.slice(0, 8).map((k, i) => (
-                        <span key={i} className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-0.5 rounded-full">{k}</span>
-                      ))}
-                    </div>
-                    {atsJobMatch.tips.length > 0 && (
-                      <p className="text-xs text-blue-600 mt-2">{atsJobMatch.tips[0]}</p>
-                    )}
-                  </div>
-                )}
+                        {/* Why you're not a match */}
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Why you&apos;re not a match</p>
+                          <div className="space-y-2">
+                            {reasons.slice(0, 4).map((r, i) => (
+                              <div key={i} className="flex items-start gap-2.5">
+                                <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                                <span className="text-sm text-slate-700">{r}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-                {/* CV quality — compact bar */}
-                {atsScores && (
-                  <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-medium text-slate-600">CV quality</span>
-                      <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all ${scoreBarColor(atsScores.overallScore)}`} style={{ width: `${atsScores.overallScore}%` }} />
+                        <hr className="border-slate-100" />
+
+                        {/* What you can do instead */}
+                        <div className="space-y-2">
+                          <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">What you can do instead</p>
+                          <div className="space-y-2">
+                            {[
+                              'Apply to roles closer to your background',
+                              'Or update your CV if you have relevant skills not listed',
+                            ].map((tip, i) => (
+                              <div key={i} className="flex items-start gap-2.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 flex-shrink-0" />
+                                <span className="text-sm text-slate-700">{tip}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Better matches for you */}
+                        {betterRoles.length > 0 && (
+                          <>
+                            <hr className="border-slate-100" />
+                            <div className="space-y-2.5">
+                              <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Better matches for you</p>
+                              <div className="space-y-2">
+                                {betterRoles.map((role, i) => (
+                                  <div key={i} className="flex items-center gap-3">
+                                    <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                      <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                                    </div>
+                                    <span className="text-sm font-medium text-slate-700">{role}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
-                      <span className={`text-xs font-semibold flex-shrink-0 ${scoreColor(atsScores.overallScore)}`}>{atsScores.overallScore}%</span>
+                    )
+                  })()
+                : (
+                  <div className="space-y-3">
+
+                    {/* Score header — good fit */}
+                    <div className="flex items-center gap-4 px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm">
+                      <div className={`flex-shrink-0 w-14 h-14 rounded-full border-[3px] flex items-center justify-center ${scoreBorder(currentJobMatch.matchScore)}`}>
+                        <span className={`text-lg font-bold ${scoreColor(currentJobMatch.matchScore)}`}>{currentJobMatch.matchScore}%</span>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <span className={`text-sm font-semibold ${scoreColor(currentJobMatch.matchScore)}`}>{currentJobMatch.recommendation}</span>
+                        {currentJobMatch.dealBreakers.length > 0 && (
+                          <p className="text-xs text-red-600 mt-1">⚠ {currentJobMatch.dealBreakers[0]}</p>
+                        )}
+                      </div>
                     </div>
-                    {atsIssues.length > 0 && (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        {atsIssues.slice(0, 5).map((issue, i) => (
-                          <span key={i} className="text-xs text-slate-500 flex items-center gap-1">
-                            <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />{issue}
-                          </span>
-                        ))}
+
+                    {/* What you bring */}
+                    {(currentJobMatch.strengths.length > 0 || currentJobMatch.skillsMatch.length > 0) && (
+                      <div className="p-3 bg-green-50 border border-green-100 rounded-xl">
+                        <p className="text-xs font-semibold text-green-800 mb-2 flex items-center gap-1.5">
+                          <Check className="h-3.5 w-3.5" /> What you bring
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {currentJobMatch.strengths.filter(s => !s.toLowerCase().startsWith('skill:')).slice(0, 3).map((s, i) => (
+                            <span key={i} className="text-xs bg-white border border-green-200 text-green-800 px-2 py-0.5 rounded-full">{s}</span>
+                          ))}
+                          {currentJobMatch.skillsMatch.slice(0, 5).map((s, i) => (
+                            <span key={`sm-${i}`} className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">{s}</span>
+                          ))}
+                        </div>
                       </div>
                     )}
-                  </div>
-                )}
 
-                {/* Similar roles — collapsible */}
-                {otherMatches.length > 0 && <SimilarRoles matches={otherMatches} />}
-              </div>
+                    {/* Gaps — no NQF jargon */}
+                    {(currentJobMatch.gaps.filter(g => !g.toLowerCase().includes('nqf')).length > 0 || currentJobMatch.skillsGap.length > 0) && (
+                      <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                        <p className="text-xs font-semibold text-amber-800 mb-2 flex items-center gap-1.5">
+                          <AlertCircle className="h-3.5 w-3.5" /> Gaps to address
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {currentJobMatch.gaps.filter(g => !g.toLowerCase().includes('nqf')).slice(0, 3).map((g, i) => (
+                            <span key={i} className="text-xs bg-white border border-amber-200 text-amber-700 px-2 py-0.5 rounded-full">{g}</span>
+                          ))}
+                          {currentJobMatch.skillsGap.slice(0, 3).map((s, i) => (
+                            <span key={`sg-${i}`} className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">{s}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* CV quality — compact bar */}
+                    {atsScores && (
+                      <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-slate-600">CV quality</span>
+                          <div className="flex-1 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${scoreBarColor(atsScores.overallScore)}`} style={{ width: `${atsScores.overallScore}%` }} />
+                          </div>
+                          <span className={`text-xs font-semibold flex-shrink-0 ${scoreColor(atsScores.overallScore)}`}>{atsScores.overallScore}%</span>
+                        </div>
+                        {atsIssues.length > 0 && (
+                          <div className="flex flex-wrap gap-x-4 gap-y-1">
+                            {atsIssues.slice(0, 3).map((issue, i) => (
+                              <span key={i} className="text-xs text-slate-500 flex items-center gap-1">
+                                <span className="w-1 h-1 rounded-full bg-amber-400 flex-shrink-0" />{issue}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Similar roles — only good matches */}
+                    {otherMatches.filter(m => m.matchScore >= 50).length > 0 && (
+                      <SimilarRoles matches={otherMatches.filter(m => m.matchScore >= 50)} />
+                    )}
+                  </div>
+                )
             )}
 
             {aiMatchError && (
