@@ -37,6 +37,7 @@ export default function SAJobSearch() {
     aiMatchError,
     disambiguationOptions,
     cvClassification,
+    recommendedFamilies,
     search,
     updateFilter,
     toggleQuickFilter,
