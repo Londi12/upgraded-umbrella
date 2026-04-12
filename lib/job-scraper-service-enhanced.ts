@@ -139,21 +139,28 @@ export class JobScraperService {
 
     console.log(`Starting scrape with ${queries.length} queries...`)
 
-    for (const [index, query] of queries.entries()) {
-      try {
-        console.log(`Processing query ${index + 1}/${queries.length}: "${query}"`)
-        const jobs = await fetchJSearchJobs(query)
-        console.log(`"${query}": fetched ${jobs.length} jobs`)
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < queries.length; i += BATCH_SIZE) {
+      const batch = queries.slice(i, i + BATCH_SIZE);
+      
+      const results = await Promise.all(
+        batch.map(async (query) => {
+          try {
+            return await fetchJSearchJobs(query);
+          } catch (err: any) {
+            errors.push(`Query "${query}": ${err.message}`);
+            return [];
+          }
+        })
+      );
+
+      for (const jobs of results) {
         for (const job of jobs) {
           if (!seen.has(job.url)) {
-            seen.add(job.url)
-            allJobs.push(job)
+            seen.add(job.url);
+            allJobs.push(job);
           }
         }
-      } catch (err: any) {
-        const msg = `Query "${query}": ${err.message}`
-        console.error(msg)
-        errors.push(msg)
       }
     }
 
@@ -198,4 +205,3 @@ export class JobScraperService {
     return data || []
   }
 }
-

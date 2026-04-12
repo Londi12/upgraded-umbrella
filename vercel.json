@@ -2,13 +2,13 @@
   "version": 2,
   "functions": {
     "app/**/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     },
     "app/api/cron/scrape-jobs/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     },
     "app/api/cron/scrape-linkedin-jobs/route.ts": {
-      "maxDuration": 300
+      "maxDuration": 60
     }
   },
   "crons": [
