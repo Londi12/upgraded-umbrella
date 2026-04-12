@@ -73,14 +73,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
             <div className={`${isA4Preview ? 'p-8' : 'p-6'} space-y-4`}>
               {/* Header - ATS Optimized */}
               <div className="border-b-2 border-gray-800 pb-4">
-                <h1 className={`${isA4Preview ? 'text-2xl' : 'text-xl'} font-bold text-gray-900 uppercase tracking-wide`}>{userData?.personalInfo?.fullName || "John Smith"}</h1>
-                <p className={`${isA4Preview ? 'text-base' : 'text-sm'} font-semibold text-gray-800 mt-1`}>
-                  {userData?.personalInfo?.jobTitle || "Senior Financial Analyst"}
-                </p>
+                <h1 className={`${isA4Preview ? 'text-2xl' : 'text-xl'} font-bold text-gray-900 uppercase tracking-wide`}>{userData?.personalInfo?.fullName}</h1>
+                {userData?.personalInfo?.jobTitle && (
+                  <p className={`${isA4Preview ? 'text-base' : 'text-sm'} font-semibold text-gray-800 mt-1`}>
+                    {userData.personalInfo.jobTitle}
+                  </p>
+                )}
                 <div className={`${isA4Preview ? 'space-y-1' : 'space-y-0.5'} text-sm text-gray-700 mt-3 font-medium`}>
-                  <div>{userData?.personalInfo?.email || "john.smith@email.com"}</div>
-                  <div>{userData?.personalInfo?.phone || "+27 11 123 4567"}</div>
-                  <div>{userData?.personalInfo?.location || "Johannesburg, SA"}</div>
+                  {userData?.personalInfo?.email && <div>{userData.personalInfo.email}</div>}
+                  {userData?.personalInfo?.phone && <div>{userData.personalInfo.phone}</div>}
+                  {userData?.personalInfo?.location && <div>{userData.personalInfo.location}</div>}
                   {userData?.personalInfo?.linkedIn && <div>{userData.personalInfo.linkedIn}</div>}
                 </div>
               </div>
@@ -89,8 +91,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className={`${isA4Preview ? 'text-base' : 'text-sm'} font-bold text-gray-900 uppercase border-b border-gray-300 pb-1 mb-3`}>PROFESSIONAL SUMMARY</h2>
                 <p className={`${isA4Preview ? 'text-sm' : 'text-xs'} text-gray-800 leading-relaxed`}>
-                  {userData?.summary ||
-                    "Experienced Financial Analyst with over 8 years of expertise in financial modeling, data analysis, and investment research. Proven track record of delivering actionable insights that drive strategic decision-making."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -202,20 +203,19 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
         return (
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="bg-blue-600 text-white p-4">
-              <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName || "Sarah Johnson"}</h1>
-              <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "UX/UI Designer"}</p>
+              <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName}</h1>
+              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>}
             </div>
             <div className="p-4 space-y-3">
               <div className="space-y-1 text-xs text-gray-600">
-                <div>{userData?.personalInfo?.email || "sarah@email.com"}</div>
-                <div>{userData?.personalInfo?.phone || "+27 21 987 6543"}</div>
+                {userData?.personalInfo?.email && <div>{userData.personalInfo.email}</div>}
+                {userData?.personalInfo?.phone && <div>{userData.personalInfo.phone}</div>}
               </div>
 
               <div>
                 <h2 className="text-sm font-semibold text-blue-600 mb-2">About</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Creative UX/UI Designer with 5+ years of experience creating user-centered digital experiences for various platforms. Passionate about combining aesthetics with functionality."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -277,7 +277,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   </div>
                 )}
                 <h1 className="text-lg font-bold text-gray-900">
-                  {userData?.personalInfo?.fullName || "Alex Creative"}
+                  {userData?.personalInfo?.fullName}
                 </h1>
                 {userData?.personalInfo?.jobTitle && <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>}
               </div>
@@ -289,11 +289,11 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 </div>
                 <div className="flex justify-center items-center gap-2">
                   <div className="h-1.5 bg-pink-300 rounded w-8"></div>
-                  <span className="text-gray-600">{userData?.personalInfo?.email || "Email"}</span>
+                  <span className="text-gray-600">{userData?.personalInfo?.email}</span>
                 </div>
                 <div className="flex justify-center items-center gap-2">
                   <div className="h-1.5 bg-purple-300 rounded w-8"></div>
-                  <span className="text-gray-600">{userData?.personalInfo?.phone || "Phone"}</span>
+                  <span className="text-gray-600">{userData?.personalInfo?.phone}</span>
                 </div>
               </div>
 
@@ -355,14 +355,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               {/* Header */}
               <div className="text-center border-b border-gray-200 pb-3">
                 <h1 className="text-lg font-bold text-gray-900">
-                  {userData?.personalInfo?.fullName || "Michael Brown"}
+                  {userData?.personalInfo?.fullName}
                 </h1>
-                <p className="text-sm text-gray-600">
-                  {userData?.personalInfo?.jobTitle || "Graduate Software Developer"}
-                </p>
+                {userData?.personalInfo?.jobTitle && (
+                  <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>
+                )}
                 <div className="text-xs text-gray-500 mt-1 space-y-0.5">
-                  <div>{userData?.personalInfo?.email || "michael.brown@email.com"}</div>
-                  <div>{userData?.personalInfo?.phone || "+27 82 456 7890"}</div>
+                  {userData?.personalInfo?.email && <div>{userData.personalInfo.email}</div>}
+                  {userData?.personalInfo?.phone && <div>{userData.personalInfo.phone}</div>}
                 </div>
               </div>
 
@@ -370,8 +370,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className="text-sm font-semibold text-gray-800 mb-2">OBJECTIVE</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Recent Computer Science graduate seeking an entry-level software development position to apply my programming skills and contribute to innovative projects."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -431,26 +430,25 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
         return (
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="bg-gray-900 text-white p-4">
-              <h1 className="text-xl font-bold">{userData?.personalInfo?.fullName || "Robert Executive"}</h1>
-              <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "Chief Executive Officer"}</p>
+              <h1 className="text-xl font-bold">{userData?.personalInfo?.fullName}</h1>
+              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>}
             </div>
             <div className="p-4 space-y-4">
               <div className="space-y-3 text-xs">
                 <div>
                   <p className="font-medium">Email</p>
-                  <p className="text-gray-600">{userData?.personalInfo?.email || "robert@company.com"}</p>
+                  <p className="text-gray-600">{userData?.personalInfo?.email}</p>
                 </div>
                 <div>
                   <p className="font-medium">Phone</p>
-                  <p className="text-gray-600">{userData?.personalInfo?.phone || "+27 11 555 0123"}</p>
+                  <p className="text-gray-600">{userData?.personalInfo?.phone}</p>
                 </div>
               </div>
 
               <div>
                 <h2 className="text-sm font-semibold text-gray-800 mb-2">EXECUTIVE SUMMARY</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Visionary executive with 15+ years of leadership experience driving organizational growth and transformation. Proven track record of increasing revenue, optimizing operations, and building high-performing teams across multiple industries."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -496,16 +494,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div className="flex justify-between items-start border-b border-gray-200 pb-3">
                 <div>
                   <h1 className="text-lg font-bold text-gray-900">
-                    {userData?.personalInfo?.fullName || "David Engineer"}
+                    {userData?.personalInfo?.fullName}
                   </h1>
-                  <p className="text-sm text-gray-600">
-                    {userData?.personalInfo?.jobTitle || "Senior Software Engineer"}
-                  </p>
+                  {userData?.personalInfo?.jobTitle && (
+                    <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>
+                  )}
                 </div>
                 <div className="text-right text-xs text-gray-500 space-y-0.5">
-                  <p>{userData?.personalInfo?.email || "david.eng@email.com"}</p>
-                  <p>{userData?.personalInfo?.phone || "+27 21 123 4567"}</p>
-                  <p>{userData?.personalInfo?.location || "Cape Town, SA"}</p>
+                  {userData?.personalInfo?.email && <p>{userData.personalInfo.email}</p>}
+                  {userData?.personalInfo?.phone && <p>{userData.personalInfo.phone}</p>}
+                  {userData?.personalInfo?.location && <p>{userData.personalInfo.location}</p>}
                 </div>
               </div>
 
@@ -516,27 +514,25 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   <div>
                     <p className="font-medium text-gray-700">Languages</p>
                     <p className="text-gray-600">
-                      {skillsArray.slice(0, skillsArray.length / 4).join(", ") || "Python, Java, C++, Go, JavaScript"}
+                      {skillsArray.slice(0, skillsArray.length / 4).join(", ")}
                     </p>
                   </div>
                   <div>
                     <p className="font-medium text-gray-700">Frameworks</p>
                     <p className="text-gray-600">
-                      {skillsArray.slice(skillsArray.length / 4, skillsArray.length / 2).join(", ") ||
-                        "Django, Spring, React, Angular"}
+                      {skillsArray.slice(skillsArray.length / 4, skillsArray.length / 2).join(", ")}
                     </p>
                   </div>
                   <div>
                     <p className="font-medium text-gray-700">Databases</p>
                     <p className="text-gray-600">
-                      {skillsArray.slice(skillsArray.length / 2, (skillsArray.length / 4) * 3).join(", ") ||
-                        "PostgreSQL, MongoDB, Redis"}
+                      {skillsArray.slice(skillsArray.length / 2, (skillsArray.length / 4) * 3).join(", ")}
                     </p>
                   </div>
                   <div>
                     <p className="font-medium text-gray-700">Cloud</p>
                     <p className="text-gray-600">
-                      {skillsArray.slice((skillsArray.length / 4) * 3).join(", ") || "AWS, Docker, Kubernetes, CI/CD"}
+                      {skillsArray.slice((skillsArray.length / 4) * 3).join(", ")}
                     </p>
                   </div>
                 </div>
@@ -595,14 +591,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               {/* Header */}
               <div className="text-center pb-3 border-b border-gray-200">
                 <h1 className="text-lg font-bold text-gray-900">
-                  {userData?.personalInfo?.fullName || "Emma Graduate"}
+                  {userData?.personalInfo?.fullName}
                 </h1>
-                <p className="text-sm text-gray-600">
-                  {userData?.personalInfo?.jobTitle || "Recent Marketing Graduate"}
-                </p>
+                {userData?.personalInfo?.jobTitle && (
+                  <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>
+                )}
                 <div className="flex flex-col items-center gap-1 text-xs text-gray-500 mt-2">
-                  <span>{userData?.personalInfo?.email || "emma.grad@email.com"}</span>
-                  <span>{userData?.personalInfo?.phone || "+27 83 987 6543"}</span>
+                  {userData?.personalInfo?.email && <span>{userData.personalInfo.email}</span>}
+                  {userData?.personalInfo?.phone && <span>{userData.personalInfo.phone}</span>}
                 </div>
               </div>
 
@@ -610,8 +606,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className="text-sm font-semibold text-teal-600 mb-2">PROFILE</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Motivated marketing graduate with strong digital marketing skills and internship experience. Seeking to leverage academic knowledge and creativity in an entry-level marketing position."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -699,13 +694,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 </div>
                 <div>
                   <h1 className="text-lg font-bold text-gray-900">
-                    {userData?.personalInfo?.fullName || "Jordan Digital"}
+                    {userData?.personalInfo?.fullName}
                   </h1>
-                  <p className="text-sm text-gray-600">
-                    {userData?.personalInfo?.jobTitle || "Digital Portfolio Designer"}
-                  </p>
+                  {userData?.personalInfo?.jobTitle && (
+                    <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>
+                  )}
                   <div className="flex gap-2 text-xs text-gray-500 mt-1">
-                    <span>📧 {userData?.personalInfo?.email || "jordan@email.com"}</span>
+                    {userData?.personalInfo?.email && <span>📧 {userData.personalInfo.email}</span>}
                     {userData?.personalInfo?.phone && <span>📱 {userData.personalInfo.phone}</span>}
                   </div>
                 </div>
@@ -715,8 +710,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className="text-sm font-semibold text-indigo-600 mb-2">ABOUT</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Digital designer specializing in creating stunning portfolios and interactive experiences. Combining visual design with technical expertise to build memorable digital presences."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -780,10 +774,10 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div className="border-l-4 border-l-green-600 pl-4 pb-4">
                 <div className="flex justify-between">
                   <div>
-                    <h1 className="text-xl font-bold text-gray-900">{userData?.personalInfo?.fullName || "Thabo Molefe"}</h1>
-                    <p className="text-sm text-gray-600">
-                      {userData?.personalInfo?.jobTitle || "Business Development Manager"}
-                    </p>
+                    <h1 className="text-xl font-bold text-gray-900">{userData?.personalInfo?.fullName}</h1>
+                    {userData?.personalInfo?.jobTitle && (
+                      <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end">
                     <div className="h-1 w-16 bg-red-600 mb-0.5"></div>
@@ -795,9 +789,9 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   </div>
                 </div>
                 <div className="flex gap-4 text-xs text-gray-500 mt-2">
-                  <span>{userData?.personalInfo?.email || "thabo.molefe@email.co.za"}</span>
-                  <span>{userData?.personalInfo?.phone || "072 123 4567"}</span>
-                  <span>{userData?.personalInfo?.location || "Johannesburg, Gauteng"}</span>
+                  {userData?.personalInfo?.email && <span>{userData.personalInfo.email}</span>}
+                  {userData?.personalInfo?.phone && <span>{userData.personalInfo.phone}</span>}
+                  {userData?.personalInfo?.location && <span>{userData.personalInfo.location}</span>}
                 </div>
                 {userData?.personalInfo?.idNumber && (
                   <p className="text-xs text-gray-500 mt-1">ID: {userData.personalInfo.idNumber}</p>
@@ -811,8 +805,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className="text-sm font-semibold text-gray-800 mb-2">PROFESSIONAL SUMMARY</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Results-driven Business Development Manager with 7+ years of experience in the South African market. Proven track record of expanding business opportunities and building strategic partnerships across multiple industries. Strong negotiation skills and deep understanding of local business landscape."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -933,14 +926,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
         return (
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4">
-              <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName || "Nomsa Dlamini"}</h1>
+              <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName}</h1>
               {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>}
             </div>
             <div className="p-4 space-y-3">
               <div className="flex gap-4 text-xs text-gray-600">
-                <span>{userData?.personalInfo?.email || "nomsa.dlamini@email.co.za"}</span>
-                <span>{userData?.personalInfo?.phone || "083 765 4321"}</span>
-                <span>{userData?.personalInfo?.location || "Pretoria, Gauteng"}</span>
+                {userData?.personalInfo?.email && <span>{userData.personalInfo.email}</span>}
+                {userData?.personalInfo?.phone && <span>{userData.personalInfo.phone}</span>}
+                {userData?.personalInfo?.location && <span>{userData.personalInfo.location}</span>}
               </div>
 
               {userData?.personalInfo?.idNumber && (
@@ -953,8 +946,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div>
                 <h2 className="text-sm font-semibold text-green-600 mb-2">About</h2>
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Dynamic Marketing Specialist with expertise in digital marketing and brand development for the South African market. Skilled in creating culturally relevant campaigns that resonate with diverse South African audiences. Passionate about leveraging local insights to drive marketing success."}
+                  {userData?.summary}
                 </p>
               </div>
 
@@ -1071,22 +1063,22 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 <div className="w-full h-1 bg-black"></div>
                 <div className="w-full h-1 bg-white"></div>
               </div>
-              <h1 className="text-xl font-bold">{userData?.personalInfo?.fullName || "Sipho Nkosi"}</h1>
-              <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "Chief Operations Officer"}</p>
+              <h1 className="text-xl font-bold">{userData?.personalInfo?.fullName}</h1>
+              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>
             </div>
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="font-medium">Email</p>
-                  <p className="text-gray-600">{userData?.personalInfo?.email || "sipho.nkosi@company.co.za"}</p>
+                  <p className="text-gray-600">{userData?.personalInfo?.email}</p>
                 </div>
                 <div>
                   <p className="font-medium">Phone</p>
-                  <p className="text-gray-600">{userData?.personalInfo?.phone || "061 234 5678"}</p>
+                  <p className="text-gray-600">{userData?.personalInfo?.phone}</p>
                 </div>
                 <div>
                   <p className="font-medium">Location</p>
-                  <p className="text-gray-600">{userData?.personalInfo?.location || "Sandton, Johannesburg"}</p>
+                  <p className="text-gray-600">{userData?.personalInfo?.location}</p>
                 </div>
                 {userData?.personalInfo?.linkedIn && (
                   <div>
@@ -1192,13 +1184,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
             <div className="p-4">
               <div className="flex justify-between items-start border-b border-gray-300 pb-3 mb-3">
                 <div>
-                  <h1 className="text-base font-bold text-gray-900">{userData?.personalInfo?.fullName || "Lerato Mokoena"}</h1>
+                  <h1 className="text-base font-bold text-gray-900">{userData?.personalInfo?.fullName}</h1>
                   {userData?.personalInfo?.jobTitle && <p className="text-xs text-gray-600">{userData.personalInfo.jobTitle}</p>}
                 </div>
                 <div className="text-right text-xs text-gray-500 space-y-0.5">
-                  <p>{userData?.personalInfo?.email || "lerato@email.co.za"}</p>
-                  <p>{userData?.personalInfo?.phone || "082 345 6789"}</p>
-                  <p>{userData?.personalInfo?.location || "Johannesburg"}</p>
+                  {userData?.personalInfo?.email && <p>{userData.personalInfo.email}</p>}
+                  {userData?.personalInfo?.phone && <p>{userData.personalInfo.phone}</p>}
+                  {userData?.personalInfo?.location && <p>{userData.personalInfo.location}</p>}
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
@@ -1244,9 +1236,9 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="p-5 space-y-3">
               <div className="text-center pb-3 border-b-2 border-gray-800">
-                <h1 className="text-lg font-bold text-gray-900 uppercase tracking-wide">{userData?.personalInfo?.fullName || "Siphamandla Zulu"}</h1>
+                <h1 className="text-lg font-bold text-gray-900 uppercase tracking-wide">{userData?.personalInfo?.fullName}</h1>
                 <p className="text-xs text-gray-600 mt-1">
-                  {[userData?.personalInfo?.email, userData?.personalInfo?.phone, userData?.personalInfo?.location].filter(Boolean).join(' | ') || "siphamandla@email.co.za | 071 234 5678 | Durban"}
+                  {[userData?.personalInfo?.email, userData?.personalInfo?.phone, userData?.personalInfo?.location].filter(Boolean).join(' | ')}
                 </p>
               </div>
               {userData?.summary && (
@@ -1293,9 +1285,11 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="p-5 space-y-3">
               <div className="pb-3 border-b border-gray-200">
-                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName || "Ayanda Khumalo"}</h1>
-                <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "Career Changer | Project Coordinator"}</p>
-                <p className="text-xs text-gray-500 mt-1">{userData?.personalInfo?.email || "ayanda@email.co.za"} · {userData?.personalInfo?.phone || "064 567 8901"}</p>
+                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName}</h1>
+                {userData?.personalInfo?.jobTitle && <p className="text-xs text-gray-600">{userData.personalInfo.jobTitle}</p>}
+                {[userData?.personalInfo?.email, userData?.personalInfo?.phone].filter(Boolean).join(' · ') && (
+                  <p className="text-xs text-gray-500 mt-1">{[userData?.personalInfo?.email, userData?.personalInfo?.phone].filter(Boolean).join(' · ')}</p>
+                )}
               </div>
               {userData?.summary && (
                 <div>
@@ -1339,14 +1333,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
             <div className="flex h-full">
               <div className="w-1/3 bg-gray-800 text-white p-3 space-y-3">
                 <div>
-                  <h1 className="text-xs font-bold leading-tight">{userData?.personalInfo?.fullName || "Precious Ndlovu"}</h1>
+                  <h1 className="text-xs font-bold leading-tight">{userData?.personalInfo?.fullName}</h1>
                   {userData?.personalInfo?.jobTitle && <p className="text-xs opacity-75 mt-0.5">{userData.personalInfo.jobTitle}</p>}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs opacity-60 uppercase font-bold">Contact</p>
-                  <p className="text-xs opacity-80 break-all">{userData?.personalInfo?.email || "precious@email.co.za"}</p>
-                  <p className="text-xs opacity-80">{userData?.personalInfo?.phone || "079 123 4567"}</p>
-                  <p className="text-xs opacity-80">{userData?.personalInfo?.location || "Cape Town"}</p>
+                  {userData?.personalInfo?.email && <p className="text-xs opacity-80 break-all">{userData.personalInfo.email}</p>}
+                  {userData?.personalInfo?.phone && <p className="text-xs opacity-80">{userData.personalInfo.phone}</p>}
+                  {userData?.personalInfo?.location && <p className="text-xs opacity-80">{userData.personalInfo.location}</p>}
                 </div>
                 <div>
                   <p className="text-xs opacity-60 uppercase font-bold mb-1">Skills</p>
@@ -1393,15 +1387,15 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="p-5 space-y-3">
               <div className="text-center pb-3 border-b border-gray-200">
-                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName || "Thandeka Mthembu"}</h1>
-                <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "School Leaver | Seeking Learnership"}</p>
+                <h1 className="text-lg font-bold text-gray-900">{userData?.personalInfo?.fullName}</h1>
+                {userData?.personalInfo?.jobTitle && <p className="text-xs text-gray-600">{userData.personalInfo.jobTitle}</p>}
                 <p className="text-xs text-gray-500 mt-1">
-                  {userData?.personalInfo?.email || "thandeka@gmail.com"} · {userData?.personalInfo?.phone || "073 456 7890"} · {userData?.personalInfo?.location || "Soweto, Gauteng"}
+                  {[userData?.personalInfo?.email, userData?.personalInfo?.phone, userData?.personalInfo?.location].filter(Boolean).join(' · ')}
                 </p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-gray-700 mb-1">Objective</p>
-                <p className="text-xs text-gray-600">{userData?.summary || "Motivated Grade 12 graduate seeking a learnership or entry-level opportunity to develop practical skills and grow within a professional environment."}</p>
+                <p className="text-xs text-gray-600">{userData?.summary}</p>
               </div>
               <div>
                 <p className="text-xs font-bold uppercase text-gray-700 mb-2">Education</p>
@@ -1448,14 +1442,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
             <div className="p-6 space-y-4">
               <div className="border-b border-gray-200 pb-4">
                 <h1 className="text-xl font-bold text-gray-900">
-                  {userData?.personalInfo?.fullName || "Professional Name"}
+                  {userData?.personalInfo?.fullName}
                 </h1>
                 {userData?.personalInfo?.jobTitle && <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>}
               </div>
               <div className="space-y-3">
                 <p className="text-xs text-gray-600">
-                  {userData?.summary ||
-                    "Professional summary highlighting key qualifications and career objectives. Brief overview of skills and expertise relevant to the target position."}
+                  {userData?.summary}
                 </p>
               </div>
             </div>
