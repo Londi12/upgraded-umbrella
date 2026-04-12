@@ -16,7 +16,7 @@ export default function ApplicationTrackerPage() {
   useEffect(() => {
     if (isConfigured && user) {
       getUserApplications().then(({ data }) => { if (data) setApplications(data) })
-      getSavedCVs().then(({ data }) => { if (data) setSavedCVs(data) })
+      getSavedCVs(user.id).then(({ data }) => { if (data) setSavedCVs(data) })
     }
   }, [isConfigured, user])
 

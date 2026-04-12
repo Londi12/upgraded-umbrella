@@ -75,7 +75,7 @@ export function useJobSearch() {
 
   useEffect(() => {
     if (user) {
-      getSavedCVs().then(({ data, error }) => {
+      getSavedCVs(user.id).then(({ data, error }) => {
         if (!error) setSavedCVs(data)
       })
     }

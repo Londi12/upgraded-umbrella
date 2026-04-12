@@ -108,12 +108,18 @@ export const createOrUpdateUserProfile = async (profileData: Partial<UserProfile
 }
 
 // CV Management
-export const getSavedCVs = async () => {
+export const getSavedCVs = async (userId?: string) => {
   if (!hasValidCredentials) {
     return { data: [], error: null }
   }
 
-  const { data, error } = await supabase.from("saved_cvs").select("*").order("updated_at", { ascending: false })
+  let query = supabase.from("saved_cvs").select("*")
+
+  if (userId) {
+    query = query.eq("user_id", userId)
+  }
+
+  const { data, error } = await query.order("updated_at", { ascending: false })
 
   return { data: data || [], error }
 }

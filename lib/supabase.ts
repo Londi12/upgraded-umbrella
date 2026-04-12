@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { createClient, processLock } from "@supabase/supabase-js"
 
 // Fallback values for development/preview
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://demo.supabase.co"
@@ -11,7 +11,11 @@ const hasValidCredentials =
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("demo") &&
   !process.env.NEXT_PUBLIC_SUPABASE_URL.includes("placeholder")
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    lock: processLock,
+  },
+})
 
 // Auth helpers with error handling
 export const signUp = async (email: string, password: string) => {

@@ -131,7 +131,7 @@ export default function CreateCVPage() {
 
       // If editing an existing CV, load it from Supabase
       if (editId) {
-        const { data: cvs } = await getSavedCVs()
+        const { data: cvs } = await getSavedCVs(user.id)
         const cv = cvs?.find((c: any) => c.id === editId)
         if (cv) {
           setFormData(cv.cv_data)

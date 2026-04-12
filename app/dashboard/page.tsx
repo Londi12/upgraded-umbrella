@@ -30,7 +30,7 @@ export default function DashboardPage() {
       if (!isConfigured || !user) return
       setIsLoading(true)
       const [cvsResult, applicationsResult] = await Promise.all([
-        getSavedCVs(),
+        getSavedCVs(user.id),
         getUserApplications()
       ])
       if (cvsResult.data) setSavedCVs(cvsResult.data)

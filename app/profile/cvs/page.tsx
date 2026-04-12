@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/contexts/auth-context"
 import { getSavedCVs, deleteCV, saveCV, type SavedCV } from "@/lib/user-data-service"
 import { PageHeader } from "@/components/ui/page-header"
 import { Button } from "@/components/ui/button"
@@ -12,6 +13,7 @@ import Link from "next/link"
 
 export default function MyCVsPage() {
   const router = useRouter()
+  const { user } = useAuth()
   const [cvs, setCvs] = useState<SavedCV[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -19,12 +21,12 @@ export default function MyCVsPage() {
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   useEffect(() => {
-    getSavedCVs().then(({ data, error }) => {
+    getSavedCVs(user?.id).then(({ data, error }) => {
       if (error) setError(error.message)
       else setCvs(data || [])
       setLoading(false)
     })
-  }, [])
+  }, [user?.id])
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this CV? This cannot be undone.")) return
