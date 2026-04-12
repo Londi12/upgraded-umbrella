@@ -48,7 +48,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   }
 
   const res = await fetch(
-`https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=10&country=za`,  // Increased to 10 pages
+    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=1&country=za`,
     {
       headers: {
         'X-RapidAPI-Key': apiKey,
@@ -150,62 +150,30 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
 
-    // EXPANDED: 25 targeted queries for 10x+ volume
+// Original queries before 10x volume expansion
     const queries = [
       'jobs South Africa',
       'engineer developer analyst South Africa',
-      'manager accountant nurse teacher South Africa',
-      // Tech/Engineering
-      'software engineer developer Johannesburg Gauteng',
-      'data analyst scientist Cape Town Western Cape',
-      'IT support network admin Pretoria Gauteng',
-      'full stack developer Durban KwaZulu-Natal',
-      'devops cloud engineer Sandton Gauteng',
-      'cybersecurity specialist Midrand Gauteng',
-      // Finance/Business
-      'accountant finance manager Johannesburg Gauteng',
-      'banking financial services Cape Town',
-      'sales marketing manager Pretoria',
-      'HR recruiter talent acquisition South Africa',
-      'business analyst project manager Gauteng',
-      // Healthcare
-      'nurse doctor medical practitioner South Africa',
-      'pharmacist healthcare Durban',
-      'dentist therapist Cape Town',
-      // Professional/Services
-      'lawyer attorney Johannesburg',
-      'architect surveyor Pretoria',
-      'teacher educator lecturer South Africa',
-      'consultant advisor Cape Town',
-      // Admin/Operations
-      'administrative assistant PA Johannesburg',
-      'logistics supply chain Durban',
-      'customer service support South Africa',
-      'warehouse operations manager Gauteng'
+      'manager accountant nurse teacher South Africa'
     ]
 
     console.log(`Starting scrape with ${queries.length} queries...`)
 
-    // Process queries in parallel batches to stay within Vercel's execution time limits
-    // and respect API rate limits.
-    const BATCH_SIZE = 5;
-    for (let i = 0; i < queries.length; i += BATCH_SIZE) {
-      const batch = queries.slice(i, i + BATCH_SIZE);
-      console.log(`Processing batch ${Math.floor(i / BATCH_SIZE) + 1} of ${Math.ceil(queries.length / BATCH_SIZE)}...`);
-      
-      const results = await Promise.all(
-        batch.map(async (query) => {
-          try {
-            return await fetchJSearchJobs(query);
-          } catch (err: any) {
-            errors.push(`Query "${query}": ${err.message}`);
-            return [];
-          }
-        })
-      );
+    // Simple parallel execution for original small query set
+    const results = await Promise.allSettled(
+      queries.map(async (query) => {
+        try {
+          return await fetchJSearchJobs(query);
+        } catch (err: any) {
+          errors.push(`Query "${query}": ${err.message}`);
+          return [];
+        }
+      })
+    );
 
-      for (const jobs of results) {
-        for (const job of jobs) {
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        for (const job of result.value) {
           if (!seen.has(job.url)) {
             seen.add(job.url);
             allJobs.push(job);

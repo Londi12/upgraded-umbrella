@@ -1,18 +1,15 @@
-# PDF Accuracy Fix: Puppeteer Migration
-Status: [In Progress] ✅
+# Fix Vercel Deployment Timeout - Revert Scraper Changes
 
-## Overview
-Migrate jsPDF → Puppeteer for exact preview-to-PDF match.
+## Steps:
+- [x] 1. Understand issue and plan (done)
+- [x] 2. Revert lib/job-scraper-service.ts: Reduce queries to 3 generic, num_pages=1 (fixed syntax)
+- [ ] 3. Test locally if possible
+- [ ] 4. Commit & deploy to Vercel
+- [ ] 5. Verify cron runs <10s in logs
+- [ ] 6. Complete task
+- [ ] 4. Commit & deploy to Vercel
+- [ ] 5. Verify cron runs <10s in logs
+- [ ] 6. Complete task
 
-## Steps
-- [x] 1. Create this TODO.md
-- [x] 2. Install deps: puppeteer-core @sparticuz/chromium (package.json updated; npm skip due to JSON issue)
-- [x] 3. Setup HTML renderer + Puppeteer ✅
-- [x] 4. Refactor app/api/generate-cover-letter-pdf/route.ts
-- [x] 5. Update lib/pdf-utils.ts (pass HTML)
-- [ ] 6. Test CV/cover letter generation (run npm run dev, POST to APIs)
-- [ ] 7. Vercel deploy/test (install vercel CLI: npm i -g vercel)
-- [ ] 8. Complete & cleanup jsPDF code
+Current: Step 3 - Ready for testing/deploy.
 
-## Testing
-Use sample data from components previews.
