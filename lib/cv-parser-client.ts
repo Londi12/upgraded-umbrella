@@ -73,6 +73,20 @@ function extractPersonalInfo(text: string): PersonalInfo {
 
   // Job title
   let jobTitle = ''
+
+  // Handle "Name | Job Title" single-line format (common in generated/template CVs)
+  if (firstLine.includes('|') && fullName) {
+    const flParts = firstLine.split('|').map(p => p.trim()).filter(Boolean)
+    if (flParts.length >= 2 && flParts[0] === fullName) {
+      const candidate = flParts.slice(1).join(' | ').trim()
+      if (candidate.length > 3 && candidate.length < 100 && !candidate.includes('@') &&
+          !candidate.match(/\d{4}|\d{9,}/) &&
+          !candidate.match(/Profile|Summary|Experience|Education|Skills|Contact/i)) {
+        jobTitle = candidate
+      }
+    }
+  }
+
   const summaryMatch = cleanText.match(/(?:professional\s+summary|profile|summary)[\s:]*\n+([^\n]+)/i)
   if (summaryMatch && summaryMatch[1].length < 100) jobTitle = summaryMatch[1].trim()
 
@@ -314,11 +328,18 @@ function extractEducation(text: string): Education[] {
 
   if (!educationText) return []
 
-  // Validate a pipe segment looks like an education qualification or institution
-  const looksLikeEdu = (s: string) =>
-    /bachelor|master|doctor|ph\.?d|diploma|certificate|matric|nsc|n\d|b\.?com|b\.?sc|m\.?com|m\.?sc|honours|hons|degree|qualification|nqf|higher cert|national cert|advanced cert|further ed/i.test(s) ||
-    /university|college|school|institute|academy|technikol|tvet|varsity|high school|secondary/i.test(s) ||
-    /\d{4}/.test(s)  // has a year
+  // A part must contain a qualification word (degree/cert/diploma) to count as edu
+  const hasQualification = (s: string) =>
+    /bachelor|master|doctor|ph\.?d|diploma|certificate|matric|nsc|n\d|b\.?com|b\.?sc|m\.?com|m\.?sc|honours|hons|degree|qualification|nqf|higher cert|national cert|advanced cert|further ed|b\.?a\b|b\.?eng|b\.?tech|m\.?tech|nd\b|fet\b/i.test(s)
+
+  // A part must contain an institution-type word
+  const hasInstitution = (s: string) =>
+    /university|college|school|technikol|tvet|varsity|high school|secondary|academy/i.test(s)
+
+  // Reject anything that looks like a professional body membership
+  const isProfBody = (s: string) =>
+    /\(member\)|\(fellow\)|\(associate\)|\(hon\.|registered professional|pr\.eng|pr\.tech|pr\.sci|pr\.arch|pr\.pln/i.test(s) ||
+    /^(saica|ecsa|saimm|hpcsa|sacap|saipa|saiee|saice|sacpcmp|psira|sahra|safcert)\b/i.test(s.trim())
 
   // Format 1: pipe-separated lines
   for (const line of educationText.split('\n')) {
@@ -326,8 +347,11 @@ function extractEducation(text: string): Education[] {
     if (!t || !t.includes('|')) continue
     const parts = t.split('|').map(p => p.trim()).filter(p => p.length > 0)
     if (parts.length >= 2) {
-      // Require at least one part to look like an education entry; skip professional body listings
-      if (!looksLikeEdu(parts[0]) && !looksLikeEdu(parts[1])) continue
+      // Reject if any part looks like a professional body membership
+      if (parts.some(p => isProfBody(p))) continue
+      // Require at least one part to have a qualification word, OR one has institution + one has qualification
+      const qualOk = parts.some(p => hasQualification(p)) || (hasInstitution(parts[0]) && hasQualification(parts[1])) || (hasInstitution(parts[1]) && hasQualification(parts[0]))
+      if (!qualOk) continue
 
       const datePattern = /(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2}(?:XX|\d{2})|\d{4})/i
       let location = '', graduationDate = ''
@@ -359,12 +383,14 @@ function extractEducation(text: string): Education[] {
       if (currentEdu?.degree && currentEdu.institution) education.push(currentEdu as Education)
       currentEdu = { degree: degreeM[1].trim(), institution: '', location: '', graduationDate: '' }
     } else if (instM && currentEdu) {
-      currentEdu.institution = instM[1].trim()
-      if (instM[2]) currentEdu.location = instM[2].trim()
+      if (!isProfBody(l)) {
+        currentEdu.institution = instM[1].trim()
+        if (instM[2]) currentEdu.location = instM[2].trim()
+      }
     } else if (dateM && currentEdu) {
       currentEdu.graduationDate = dateM[0].trim()
     } else if (currentEdu?.degree && !currentEdu.institution) {
-      currentEdu.institution = l
+      if (!isProfBody(l)) currentEdu.institution = l
     }
   }
   if (currentEdu?.degree && currentEdu.institution) education.push(currentEdu as Education)

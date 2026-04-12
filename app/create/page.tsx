@@ -1,5 +1,5 @@
 "use client"
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useMemo } from "react"
 import {
  Maximize2,
  ArrowLeft,
@@ -197,7 +197,13 @@ export default function CreateCVPage() {
     if (formData.skills) completed++;
     return (completed / 5) * 100;
   }
-  
+  // Filtered data for preview — omits empty experience/education entries so template placeholders don't show
+  const previewData = useMemo(() => ({
+    ...formData,
+    experience: formData.experience.filter(e => e.title || e.company || e.description),
+    education: formData.education.filter(e => e.degree || e.institution),
+  }), [formData])
+
   const handleNextSection = () => {
     const currentIndex = sections.indexOf(activeSection);
     if (currentIndex < sections.length - 1) {
@@ -1212,7 +1218,7 @@ export default function CreateCVPage() {
                       <DialogHeader><DialogTitle>CV Preview - A4 Format</DialogTitle></DialogHeader>
                       <div className="mt-4 flex justify-center">
                         <div className="bg-white shadow-lg" style={{ width: '210mm', minHeight: '297mm' }}>
-                          <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full a4-preview" />
+                          <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full h-full a4-preview" />
                         </div>
                       </div>
                     </DialogContent>
@@ -1220,7 +1226,7 @@ export default function CreateCVPage() {
                 </div>
                 <div className="p-3 bg-gray-50 overflow-hidden">
                   <div className="mx-auto w-full aspect-[210/297] overflow-hidden rounded bg-white shadow-sm">
-                    <CVPreview template={selectedTemplate.type} userData={formData} className="w-full h-full a4-preview" />
+                    <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full h-full a4-preview" />
                   </div>
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 space-y-2">
