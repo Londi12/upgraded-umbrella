@@ -95,33 +95,7 @@ export function JobDetailPanel({
   const scoreBorder = (n: number) => n >= 70 ? 'border-green-400' : n >= 50 ? 'border-amber-400' : 'border-slate-300'
   const scoreBarColor = (n: number) => n >= 70 ? 'bg-green-500' : n >= 50 ? 'bg-amber-400' : 'bg-red-400'
 
-  // Pre-compute low-match content (avoids IIFE-in-JSX scope issues under minification)
-  const lowMatchReasons = useMemo(() => {
-    if (!currentJobMatch || currentJobMatch.matchScore >= 50) return []
-    const reasons: string[] = []
-    if (
-      currentJobMatch.detectedCVFamily &&
-      currentJobMatch.detectedJobFamily &&
-      currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
-    ) {
-      reasons.push(`Your experience is in ${currentJobMatch.detectedCVFamily}, not ${currentJobMatch.detectedJobFamily}`)
-    }
-    const toolGaps = currentJobMatch.skillsGap.filter(s => s.length > 1).slice(0, 3)
-    if (toolGaps.length > 0) reasons.push(`No evidence of required tools (${toolGaps.join(', ')})`)
-    const humanGap = currentJobMatch.dealBreakers[0] ||
-      currentJobMatch.gaps.find(g => !g.toLowerCase().includes('nqf') && !g.toLowerCase().includes('registration'))
-    if (humanGap) reasons.push(humanGap)
-    if (reasons.length < 2) reasons.push('Experience level does not match job requirements')
-    return reasons
-  }, [currentJobMatch])
-
-  const betterRoles = useMemo(() => {
-    if (recommendedFamilies.length > 0) return recommendedFamilies
-    if (currentJobMatch?.detectedCVFamily) {
-      return [`${currentJobMatch.detectedCVFamily} roles`, 'Related industry positions']
-    }
-    return []
-  }, [recommendedFamilies, currentJobMatch])
+  // Find this specific job's match result — no fallback to avoid showing stale results
   const currentJobMatch = useMemo(() =>
     aiMatchResults.find(m =>
       m.jobId === job.url ||
@@ -135,6 +109,9 @@ export function JobDetailPanel({
     currentJobMatch ? aiMatchResults.filter(m => m.jobId !== currentJobMatch.jobId).slice(0, 4) : [],
     [aiMatchResults, currentJobMatch]
   )
+
+  // Pre-compute low-match content (avoids IIFE-in-JSX scope issues under minification)
+  const lowMatchReasons = useMemo(() => {
 
   const openTrackDialog = () => {
     setTrackForm(f => ({ ...f, cv_id: selectedCVId || '' }))
@@ -373,6 +350,7 @@ export function JobDetailPanel({
 
             {/* ── AFTER MATCH: good fit ── */}
             {currentJobMatch && currentJobMatch.matchScore >= 50 && (
+              <div className="space-y-5">
 
                     {/* Score header — good fit */}
                     <div className="flex items-center gap-4 px-4 py-3 bg-white border border-slate-200 rounded-xl shadow-sm">
