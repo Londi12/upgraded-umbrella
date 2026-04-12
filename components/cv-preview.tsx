@@ -6,9 +6,10 @@ interface CVPreviewProps {
   className?: string
   userData?: Partial<CVData>
   style?: CSSProperties
+  noId?: boolean
 }
 
-export function CVPreview({ template, className = "", userData, style }: CVPreviewProps) {
+export function CVPreview({ template, className = "", userData, style, noId }: CVPreviewProps) {
   const normalizeSkills = (skills: CVData["skills"] | undefined): string[] => {
     if (!skills) {
       return []
@@ -1499,7 +1500,7 @@ export function CVPreview({ template, className = "", userData, style }: CVPrevi
   }
 
   return (
-    <div id="cv-preview-container" className="relative h-full w-full bg-white" style={style}>
+    <div id={noId ? undefined : "cv-preview-container"} className="relative h-full w-full bg-white" style={style}>
       {getTemplateContent()}
     </div>
   )

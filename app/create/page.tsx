@@ -1218,15 +1218,24 @@ export default function CreateCVPage() {
                       <DialogHeader><DialogTitle>CV Preview - A4 Format</DialogTitle></DialogHeader>
                       <div className="mt-4 flex justify-center">
                         <div className="bg-white shadow-lg" style={{ width: '210mm', minHeight: '297mm' }}>
-                          <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full h-full a4-preview" />
+                          <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full h-full a4-preview" noId />
                         </div>
                       </div>
                     </DialogContent>
                   </Dialog>
                 </div>
+                {/* Sidebar thumbnail — scales A4 content to fit panel width */}
                 <div className="p-3 bg-gray-50 overflow-hidden">
-                  <div className="mx-auto w-full aspect-[210/297] overflow-hidden rounded bg-white shadow-sm">
-                    <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full h-full a4-preview" />
+                  <div className="relative mx-auto overflow-hidden rounded bg-white shadow-sm" style={{ paddingBottom: 'calc(100% * 297 / 210)' }}>
+                    <div className="absolute inset-0 origin-top-left" style={{ width: '794px', transform: `scale(${1})`, transformOrigin: 'top left' }}
+                      ref={(el) => {
+                        if (el) {
+                          const parentWidth = el.parentElement?.offsetWidth ?? 794
+                          el.style.transform = `scale(${parentWidth / 794})`
+                        }
+                      }}>
+                      <CVPreview template={selectedTemplate.type} userData={previewData} className="w-full a4-preview" style={{ width: '794px' }} />
+                    </div>
                   </div>
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 space-y-2">

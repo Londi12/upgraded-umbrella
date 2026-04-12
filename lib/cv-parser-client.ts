@@ -152,7 +152,7 @@ function extractPersonalInfo(text: string): PersonalInfo {
     /(\d+\s+[^|\n\r]+?(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr))/im,
     /([A-Z][a-z]+,\s*[A-Z]{2}\s*\d{5})/,
     /([A-Z][a-z]+,\s*[A-Z]{2})/,
-    /(?:address|location)[\s:]*([^\n]+)/i,
+    /(?:address|location):[ \t]*([^\n|]+)/i,
   ]
   // Reject location candidates that look like qualifications (e.g. "2022 Higher Certificate in Logist")
   const isQualificationText = (s: string) =>
@@ -225,80 +225,153 @@ function extractExperience(text: string): Experience[] {
   const sectionStart = sectionMatch.index! + sectionMatch[0].length
   const rest = text.slice(sectionStart)
 
-  // Stop at next recognised section heading (all-caps or known keyword at line start)
-  const nextSectionRe = /\n[ \t]*(?:education|academic|qualifications|skills|competencies|references|languages|interests|hobbies|activities|volunteer|membership|certifications?|awards?|achievements?|personal\s+details?|additional\s+info|professional\s+development|profile|summary)\s*\n/i
+  // Stop at next recognised section heading
+  const nextSectionRe = /\n[ \t]*(education|academic|qualifications|skills|competencies|references|languages|interests|hobbies|activities|volunteer|membership|certifications?|awards?|achievements?|personal\s+details?|additional\s+info|professional\s+development|profile|summary)\s*\n/i
   const nextMatch = rest.match(nextSectionRe)
   const experienceText = (nextMatch ? rest.slice(0, nextMatch.index) : rest).trim()
 
   if (!experienceText) return []
 
-  // ── Step 2: parse entries ─────────────────────────────────────────────────
+  // ── Step 2: split into entry-blocks and parse each ──────────────────────
+  // An entry is separated by a blank line OR by encountering a new heading line
+  // A heading line is any line that:
+  //   a) is not a bullet, b) is not a pure date range, c) is not a continuation description
+
   const experiences: Experience[] = []
-  const lines = experienceText.split('\n').map(l => l.trim()).filter(l => l)
+  const rawLines = experienceText.split('\n').map(l => l.trim())
 
-  let currentJob: Partial<Experience> = {}
-  let descLines: string[] = []
+  // Group into entry blocks: start a new block when we see a non-bullet,
+  // non-date, non-description line that FOLLOWS a blank line OR bullets/date.
+  const blocks: string[][] = []
+  let current: string[] = []
+  let lastWasBullet = false
 
-  const commitJob = () => {
-    if (currentJob.title && currentJob.company) {
-      if (descLines.length > 0) currentJob.description = descLines.join('\n')
-      experiences.push(currentJob as Experience)
+  for (const line of rawLines) {
+    if (!line) {
+      if (current.length > 0) { blocks.push(current); current = [] }
+      lastWasBullet = false
+      continue
     }
-    currentJob = {}
-    descLines = []
+
+    const isBullet = /^[•\-–*►▪◦]/.test(line) ||
+      /^(responsible|managed|developed|led|created|implemented|maintained|coordinated|supported|assisted|performed|provided|ensured|handled|worked|prepared|processed|monitored|reported|trained|operated|achieved)/i.test(line)
+    const isDate = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{4}\b|\b20\d{2}\s*(?:–|—|-|to)\s*(?:20\d{2}|Present|Current)/i.test(line)
+    const isPipeMeta = line.includes('|') && (isDate || line.match(/Location/i) || line.length < 120)
+
+    // Start a new block if this non-bullet line appears after bullets
+    if (!isBullet && !isDate && !isPipeMeta && lastWasBullet && current.length > 0) {
+      blocks.push(current)
+      current = [line]
+      lastWasBullet = false
+      continue
+    }
+
+    current.push(line)
+    lastWasBullet = isBullet
   }
+  if (current.length > 0) blocks.push(current)
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (const block of blocks) {
+    if (block.length === 0) continue
 
-    // Skip bare section header if it leaked in
-    if (/^(?:work\s+)?(?:experience|employment|career|professional\s+experience)$/i.test(line)) continue
+    let title = ''
+    let company = ''
+    let startDate = ''
+    let endDate = ''
+    let location = ''
+    const descParts: string[] = []
 
-    // Date range line — attach to current entry
-    const dateRange = parseDateRange(line)
-    if (dateRange) {
-      if (currentJob.title) { currentJob.startDate = dateRange.start; currentJob.endDate = dateRange.end }
-      continue
-    }
+    for (let i = 0; i < block.length; i++) {
+      const line = block[i]
 
-    // "Title at/@ Company" or "Title – Company" on one line
-    const titleAtCo = line.match(/^(.+?)\s+(?:at|@|–|—|-)\s+(.+)$/)
-    if (titleAtCo && isJobTitle(titleAtCo[1]) && !titleAtCo[1].match(/\d{4}/)) {
-      commitJob()
-      currentJob = { title: titleAtCo[1].trim(), company: titleAtCo[2].trim() }
-      continue
-    }
+      // Skip bare section headers
+      if (/^(?:work\s+)?(?:experience|employment|career|professional\s+experience)$/i.test(line)) continue
+      // Skip known noise inside experience (education certifications bullet)
+      if (/^education\s*&\s*certifications?$/i.test(line)) continue
 
-    // Bullet / description line
-    if (/^[•\-–*►▪◦]/.test(line) || /^(responsible|managed|developed|led|created|implemented|maintained|coordinated|supported|assisted|performed|provided|ensured|handled|worked|prepared|processed|monitored|reported|trained|operated|achieved)/i.test(line)) {
-      descLines.push(line.replace(/^[•\-–*►▪◦]\s*/, ''))
-      continue
-    }
-
-    // Looks like a job title
-    if (isJobTitle(line)) {
-      // If we already have a title and no company yet, current line might be the company
-      if (currentJob.title && !currentJob.company &&
-          !isJobTitle(line) && !line.match(/\d{4}/)) {
-        currentJob.company = line
+      // Pipe-metadata line: "Description | Location | Date" or "Company | Location | Date"
+      if (line.includes('|')) {
+        const parts = line.split('|').map(p => p.trim())
+        // Extract dates and location from pipe parts
+        for (const part of parts) {
+          const dr = parseDateRange(part)
+          if (dr && !startDate) { startDate = dr.start; endDate = dr.end; continue }
+          if (/^(Location|City|Town)$/i.test(part)) continue  // skip placeholder
+          if (/^(Start Date|End Date|From|To)$/i.test(part)) continue  // skip placeholder
+          if (!location && part.length > 1 && part.length < 40 && !part.match(/\d{4}/)) {
+            location = part
+          }
+        }
+        // First pipe-part may be a description sentence
+        if (parts[0] && parts[0].length > 10 && !isJobTitle(parts[0]) && !parseDateRange(parts[0])) {
+          descParts.push(parts[0])
+        }
         continue
       }
-      commitJob()
-      currentJob = { title: line }
-      continue
+
+      // Bullet / description line
+      if (/^[•\-–*►▪◦]/.test(line)) {
+        descParts.push(line.replace(/^[•\-–*►▪◦]\s*/, ''))
+        continue
+      }
+      if (/^(responsible|managed|developed|led|created|implemented|maintained|coordinated|supported|assisted|performed|provided|ensured|handled|worked|prepared|processed|monitored|reported|trained|operated|achieved)/i.test(line)) {
+        descParts.push(line)
+        continue
+      }
+
+      // Pure date range
+      const dr = parseDateRange(line)
+      if (dr) { startDate = dr.start; endDate = dr.end; continue }
+
+      // "Title at/@ Company" inline
+      const titleAtCo = line.match(/^(.+?)\s+(?:at|@|with)\s+(.+)$/i)
+      if (titleAtCo && titleAtCo[1].length < 80) {
+        if (!title) { title = titleAtCo[1].trim(); company = titleAtCo[2].trim() }
+        continue
+      }
+
+      // First non-bullet, non-date line in the block = heading (title/company)
+      if (!title) {
+        title = line
+        continue
+      }
+      if (!company && !title.includes('(') && line.length < 80) {
+        company = line
+        continue
+      }
+
+      // Otherwise it's description text
+      descParts.push(line)
     }
 
-    // If we have a title but no company yet, this line is probably the company
-    if (currentJob.title && !currentJob.company && !line.match(/\d{4}/) && line.length > 1) {
-      currentJob.company = line
-      continue
+    // If company still empty, split title if it has company info
+    if (title && !company) {
+      const parenMatch = title.match(/^(.+?)\s*\((.+)\)\s*$/)
+      if (parenMatch && parenMatch[2].length < 50) {
+        // Keep full title as company, try to infer functional title from description context
+        company = title
+        // Don't create a fake title — use the full heading as company
+      } else {
+        company = title
+      }
+      // title stays as the heading text
     }
 
-    // Otherwise it's part of the description
-    if (currentJob.title) descLines.push(line)
+    if (title || company) {
+      const entry: Experience = {
+        title: title || company,
+        company: company || title,
+        location: location || '',
+        startDate: startDate || '',
+        endDate: endDate || (startDate ? 'Present' : ''),
+        description: descParts.filter(Boolean).join('\n'),
+        isLearnership: /learnership/i.test(title + ' ' + company),
+        isInternship: /internship|intern\b/i.test(title + ' ' + company),
+      }
+      if (entry.title || entry.company) experiences.push(entry)
+    }
   }
 
-  commitJob()
   return experiences
 }
 
@@ -399,7 +472,7 @@ function extractEducation(text: string): Education[] {
   for (const line of lines2) {
     const l = line.trim()
     if (!l) continue
-    const degreeM = l.match(/^((?:Bachelor|Master|Doctor|Ph\.?D|B\.?S|M\.?S|B\.?A|M\.?A|M\.?B\.?A|Associate|Diploma|Certificate|Matric|National Senior Certificate)[^,]*)/i)
+    const degreeM = l.match(/^((?:Higher|National|Further|Advanced|General|Bachelor|Master|Doctor|Ph\.?D|B\.?S|M\.?S|B\.?A|M\.?A|M\.?B\.?A|Associate|Diploma|Certificate|Matric|Grade\s*1[012]|NSC|NQF|N[1-6]\b|B\.?Tech|M\.?Tech|B\.?Eng|B\.?Com|M\.?Com|Honours|Hons)[^,]*)/i)
     const dateM = l.match(dateRe)
     const instM = l.match(/^(?:at|from)?\s*([A-Z][A-Za-z0-9\s&.,]+)(?:\s*[-–—]\s*|\s*,\s*|\s+in\s+)([A-Za-z\s,]+)?$/)
 
@@ -419,7 +492,12 @@ function extractEducation(text: string): Education[] {
   }
   if (currentEdu?.degree && currentEdu.institution) education.push(currentEdu as Education)
 
-  return education
+  // Final safety filter: remove any entry that slipped through with a pro-body heading
+  return education.filter(e =>
+    !isProfBody(e.degree || '') &&
+    !isProfBody(e.institution || '') &&
+    ((e.degree && e.degree.length > 2) || (e.institution && e.institution.length > 2))
+  )
 }
 
 // ─── Skills ───────────────────────────────────────────────────────────────────
