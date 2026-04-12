@@ -629,12 +629,8 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                       )}
                       {edu.location && <p className="text-xs text-gray-600">{edu.location}</p>}
                     </div>
-                    <p className="text-xs text-gray-600 mt-1">Cum Laude • GPA: 3.8/4.0</p>
-                    <p className="text-xs text-gray-600">
-                      Relevant coursework: Digital Marketing, Consumer Behavior, Marketing Research
-                    </p>
-                  </div>
-                )}
+                  ))
+                ) : null}
               </div>
 
               {/* Experience */}
