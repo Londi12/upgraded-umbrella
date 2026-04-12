@@ -21,6 +21,9 @@ type Theme = {
   sidebarText?: string
 }
 
+const HARVARD_TEMPLATES: TemplateType[] = ["professional", "simple", "chronological", "functional"]
+const SA_CLEAN_TEMPLATES: TemplateType[] = ["sa-modern", "sa-executive", "sa-professional"]
+
 const DEFAULT_EXPERIENCE = [
   {
     title: "Senior Role",
@@ -62,22 +65,22 @@ const TEMPLATE_THEME: Record<TemplateType, Theme> = {
     tagText: "text-slate-700",
   },
   modern: {
-    accent: "border-blue-600",
-    accentSoft: "bg-blue-50",
-    headerBg: "bg-gradient-to-r from-blue-700 to-blue-500",
-    headerText: "text-white",
-    sectionTitle: "text-blue-700",
-    tagBg: "bg-blue-50",
-    tagText: "text-blue-700",
+    accent: "border-slate-400",
+    accentSoft: "bg-slate-50",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
+    sectionTitle: "text-slate-900",
+    tagBg: "bg-slate-100",
+    tagText: "text-slate-700",
   },
   creative: {
-    accent: "border-rose-500",
-    accentSoft: "bg-rose-50",
-    headerBg: "bg-gradient-to-r from-rose-500 via-fuchsia-500 to-orange-400",
-    headerText: "text-white",
-    sectionTitle: "text-rose-700",
-    tagBg: "bg-rose-50",
-    tagText: "text-rose-700",
+    accent: "border-zinc-400",
+    accentSoft: "bg-zinc-50",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
+    sectionTitle: "text-slate-900",
+    tagBg: "bg-zinc-100",
+    tagText: "text-zinc-700",
   },
   simple: {
     accent: "border-zinc-500",
@@ -107,13 +110,13 @@ const TEMPLATE_THEME: Record<TemplateType, Theme> = {
     tagText: "text-cyan-800",
   },
   graduate: {
-    accent: "border-emerald-600",
-    accentSoft: "bg-emerald-50",
-    headerBg: "bg-gradient-to-r from-emerald-600 to-teal-500",
-    headerText: "text-white",
-    sectionTitle: "text-emerald-700",
-    tagBg: "bg-emerald-50",
-    tagText: "text-emerald-700",
+    accent: "border-slate-400",
+    accentSoft: "bg-slate-50",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
+    sectionTitle: "text-slate-900",
+    tagBg: "bg-slate-100",
+    tagText: "text-slate-700",
   },
   digital: {
     accent: "border-indigo-600",
@@ -125,28 +128,28 @@ const TEMPLATE_THEME: Record<TemplateType, Theme> = {
     tagText: "text-indigo-700",
   },
   "sa-professional": {
-    accent: "border-emerald-700",
-    accentSoft: "bg-emerald-50",
+    accent: "border-slate-500",
+    accentSoft: "bg-slate-50",
     headerBg: "bg-white",
     headerText: "text-slate-900",
     sectionTitle: "text-slate-900",
-    tagBg: "bg-emerald-50",
-    tagText: "text-emerald-800",
+    tagBg: "bg-slate-100",
+    tagText: "text-slate-700",
   },
   "sa-modern": {
-    accent: "border-green-600",
-    accentSoft: "bg-green-50",
-    headerBg: "bg-gradient-to-r from-green-700 to-blue-600",
-    headerText: "text-white",
-    sectionTitle: "text-green-700",
-    tagBg: "bg-green-50",
-    tagText: "text-green-800",
+    accent: "border-slate-500",
+    accentSoft: "bg-slate-50",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
+    sectionTitle: "text-slate-900",
+    tagBg: "bg-slate-100",
+    tagText: "text-slate-700",
   },
   "sa-executive": {
-    accent: "border-slate-900",
+    accent: "border-slate-500",
     accentSoft: "bg-slate-100",
-    headerBg: "bg-slate-900",
-    headerText: "text-white",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
     sectionTitle: "text-slate-900",
     tagBg: "bg-slate-100",
     tagText: "text-slate-700",
@@ -190,13 +193,13 @@ const TEMPLATE_THEME: Record<TemplateType, Theme> = {
     sidebarText: "text-slate-100",
   },
   matric: {
-    accent: "border-sky-700",
-    accentSoft: "bg-sky-50",
+    accent: "border-slate-500",
+    accentSoft: "bg-slate-50",
     headerBg: "bg-white",
     headerText: "text-slate-900",
-    sectionTitle: "text-sky-700",
-    tagBg: "bg-sky-50",
-    tagText: "text-sky-700",
+    sectionTitle: "text-slate-900",
+    tagBg: "bg-slate-100",
+    tagText: "text-slate-700",
   },
 }
 
@@ -240,6 +243,8 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
 
   const isA4Preview = className.includes("a4-preview")
   const theme = TEMPLATE_THEME[template]
+  const isHarvardStyle = HARVARD_TEMPLATES.includes(template)
+  const isSAClean = SA_CLEAN_TEMPLATES.includes(template)
 
   const typeScale = {
     name: isA4Preview ? "text-[29px]" : "text-lg",
@@ -273,7 +278,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
   }
 
   const sectionHeading = (title: string) => (
-    <h2 className={`${typeScale.section} font-bold uppercase tracking-[0.13em] ${theme.sectionTitle} border-b border-slate-200 pb-1`}>
+    <h2 className={`${typeScale.section} font-bold uppercase ${isHarvardStyle || isSAClean ? "tracking-[0.08em]" : "tracking-[0.13em]"} ${theme.sectionTitle} border-b border-slate-200 pb-1`}>
       {title}
     </h2>
   )
@@ -354,13 +359,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
   const renderClassic = () => (
     <div className={`${theme.headerBg} ${isA4Preview ? "min-h-full" : "h-full"}`}>
       <div className={`${typeScale.pad} ${typeScale.gap}`}>
-        <header className={`border-l-4 ${theme.accent} pl-4 space-y-2`}>
+        <header className={`${isHarvardStyle || isSAClean ? "border-b border-slate-300 pb-3 space-y-2" : `border-l-4 ${theme.accent} pl-4 space-y-2`}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h1 className={`${typeScale.name} font-bold tracking-tight ${theme.headerText}`}>{fullName}</h1>
               <p className={`${typeScale.title} font-medium ${theme.headerText === "text-white" ? "text-white/90" : "text-slate-700"}`}>{jobTitle}</p>
             </div>
-            {flagStripe}
+            {isSAClean ? flagStripe : null}
           </div>
           <div className={`flex flex-wrap gap-x-4 gap-y-1 ${typeScale.fine} ${theme.headerText === "text-white" ? "text-white/90" : "text-slate-600"}`}>
             <span>{email}</span>
@@ -504,8 +509,130 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
     </div>
   )
 
+  const renderModernMinimal = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-7" : "p-3"} space-y-4`}>
+        <header className="border-b border-slate-300 pb-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className={`${isA4Preview ? "text-[26px]" : "text-base"} font-semibold text-slate-900`}>{fullName}</h1>
+              <p className={`${typeScale.body} text-slate-700 mt-0.5`}>{jobTitle}</p>
+            </div>
+            <div className={`${typeScale.fine} text-right text-slate-600`}>
+              <p>{email}</p>
+              <p>{phone}</p>
+              <p>{location}</p>
+            </div>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-3 gap-5">
+          <section className="col-span-2 space-y-4">
+            <div className="space-y-1.5">
+              {sectionHeading("Profile")}
+              <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+            </div>
+            <div className="space-y-2">
+              {sectionHeading("Experience")}
+              {renderExperience(3)}
+            </div>
+            <div className="space-y-2">
+              {sectionHeading("Education")}
+              {renderEducation(2)}
+            </div>
+          </section>
+          <aside className="space-y-2">
+            {sectionHeading("Core Skills")}
+            <div className="space-y-1">
+              {skills.slice(0, 10).map((skill) => (
+                <p key={skill} className={`${typeScale.fine} text-slate-700`}>{skill}</p>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderCreativeClean = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="pb-3 border-b border-slate-300">
+          <h1 className={`${isA4Preview ? "text-[27px]" : "text-base"} font-semibold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-slate-700 mt-1`}>{jobTitle}</p>
+          <p className={`${typeScale.fine} text-slate-600 mt-1`}>{email} | {phone} | {location}</p>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Profile")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <div className="grid grid-cols-2 gap-5">
+          <section className="space-y-2">
+            {sectionHeading("Experience")}
+            {renderExperience(2)}
+          </section>
+          <section className="space-y-2">
+            {sectionHeading("Skills")}
+            {renderSkillsGrid(12)}
+          </section>
+        </div>
+
+        <section className="space-y-2">
+          {sectionHeading("Education")}
+          {renderEducation(2)}
+        </section>
+      </div>
+    </div>
+  )
+
+  const renderEntryLevel = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="text-center border-b border-slate-300 pb-3">
+          <h1 className={`${isA4Preview ? "text-[25px]" : "text-base"} font-semibold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-slate-700`}>{jobTitle}</p>
+          <p className={`${typeScale.fine} text-slate-600 mt-1`}>{email} | {phone} | {location}</p>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading(template === "matric" ? "Objective" : "Profile")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Education")}
+          {renderEducation(template === "matric" ? 1 : 2)}
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Experience")}
+          {renderExperience(2)}
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Skills")}
+          <div className="flex flex-wrap gap-1.5">
+            {skills.slice(0, 10).map((skill) => (
+              <span key={skill} className={`${typeScale.fine} bg-slate-100 text-slate-700 px-2 py-0.5 rounded`}>
+                {skill}
+              </span>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  )
+
   const content =
-    template === "sidebar"
+    template === "modern"
+      ? renderModernMinimal()
+      : template === "creative"
+      ? renderCreativeClean()
+      : template === "graduate" || template === "matric"
+      ? renderEntryLevel()
+      : template === "sidebar"
       ? renderSidebar()
       : template === "compact"
       ? renderCompact()
