@@ -389,8 +389,8 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                       )}
                       {edu.location && <p className="text-xs text-gray-600">{edu.location}</p>}
                     </div>
-                  </div>
-                )}
+                  ))
+                ) : null}
               </div>
 
               {/* Skills */}
