@@ -987,6 +987,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                         {dateRange(exp.startDate, exp.endDate) && (
                           <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">{dateRange(exp.startDate, exp.endDate)}</span>
                         )}
+                      </div>
                     ))
                   ) : (
                     <>
