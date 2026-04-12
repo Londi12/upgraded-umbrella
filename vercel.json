@@ -1,9 +1,6 @@
 {
   "version": 2,
   "functions": {
-    "app/**/*.ts": {
-      "maxDuration": 60
-    },
     "app/api/cron/scrape-jobs/route.ts": {
       "maxDuration": 60
     },

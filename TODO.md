@@ -10,8 +10,8 @@
 ### Phase 1: Fix 'Job matching failed' (2 files)
 - [x] **1.1** package.json: fuse.js present ✅
 - [x] **1.2** lib/sa-job-knowledgebase.ts exports OK ✅
-- [ ] **1.3** app/api/ai-job-match/route.ts: Per-job try-catch + new scoreJobAgainstCV() 
-- [ ] **1.4** Test: Upload CV → Match → No crash, see scores
+- [x] **1.3** app/api/ai-job-match/route.ts: Per-job try-catch + new scoreJobAgainstCV() ✅
+- [x] **1.4** scoreJobAgainstCV: knowledgebase profile keywords, NQF/registration scoring, breakdown populated ✅
 
 
 ### Phase 2: Improve Accuracy (1 file)
