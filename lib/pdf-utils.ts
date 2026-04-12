@@ -18,20 +18,20 @@ export async function generateCVPDF(template: TemplateType, userData: CVData, te
       await document.fonts.ready
     }
 
-    const rect = element.getBoundingClientRect()
-    const sourceWidth = Math.max(Math.ceil(rect.width), element.scrollWidth)
-    const sourceHeight = Math.max(Math.ceil(rect.height), element.scrollHeight)
+    // Fixed A4 width at 96dpi (210mm = 794px) for accurate PDF dimensions
+    const A4_WIDTH_PX = 794
+    const sourceHeight = Math.max(Math.ceil(element.scrollHeight), element.offsetHeight)
 
     captureRoot = document.createElement("div")
     captureRoot.style.position = "fixed"
     captureRoot.style.left = "-100000px"
     captureRoot.style.top = "0"
-    captureRoot.style.width = `${sourceWidth}px`
+    captureRoot.style.width = `${A4_WIDTH_PX}px`
     captureRoot.style.background = "#ffffff"
     captureRoot.style.zIndex = "-1"
 
     const clone = element.cloneNode(true) as HTMLElement
-    clone.style.width = `${sourceWidth}px`
+    clone.style.width = `${A4_WIDTH_PX}px`
     clone.style.minHeight = `${sourceHeight}px`
     clone.style.height = "auto"
     clone.style.background = "#ffffff"
@@ -66,9 +66,9 @@ export async function generateCVPDF(template: TemplateType, userData: CVData, te
       useCORS: true,
       backgroundColor: "#ffffff",
       logging: false,
-      width: sourceWidth,
+      width: A4_WIDTH_PX,
       height: captureRoot.scrollHeight,
-      windowWidth: sourceWidth,
+      windowWidth: A4_WIDTH_PX,
       windowHeight: captureRoot.scrollHeight,
     })
 
