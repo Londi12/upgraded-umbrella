@@ -5,10 +5,10 @@
       "maxDuration": 30
     },
     "app/api/cron/scrape-jobs/route.ts": {
-      "maxDuration": 900
+      "maxDuration": 300
     },
     "app/api/cron/scrape-linkedin-jobs/route.ts": {
-      "maxDuration": 900
+      "maxDuration": 300
     }
   },
   "crons": [

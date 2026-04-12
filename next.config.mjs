@@ -14,9 +14,7 @@ const nextConfig = {
   // SEO and Performance optimizations
   compress: true,
   poweredByHeader: false,
-  experimental: {
-    turbopack: false,
-  },
+  experimental: {},
   generateEtags: true,
   // Security headers
   async headers() {
