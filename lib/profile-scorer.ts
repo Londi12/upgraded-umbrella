@@ -6,7 +6,7 @@
 
 import Fuse from 'fuse.js'
 import type { CVData, SAFlags } from '@/types/cv-types'
-import { SA_JOB_PROFILES, type SAJobProfile, type SeniorityTier } from './sa-job-knowledgebase'
+import knowledgebase, { SA_JOB_PROFILES, type SAJobProfile, type SeniorityTier } from './sa-job-knowledgebase'
 
 // ─────────────────────────────────────────────
 // TYPES
@@ -112,13 +112,36 @@ export function extractScoredSkills(cvData: CVData): ScoredSkill[] {
 
   // Common SA market skills to detect from free text
   const detectableSkills = [
+    // Finance & Accounting
     'ifrs', 'gaap', 'sap', 'sage', 'pastel', 'xero', 'excel', 'power bi',
+    'financial modelling', 'tax compliance', 'vat', 'transfer pricing', 'cima',
+    // Tech
     'python', 'javascript', 'typescript', 'react', 'node', 'sql', 'aws', 'azure',
-    'autocad', 'solidworks', 'revit', 'ms project', 'primavera',
-    'agile', 'scrum', 'jira', 'git', 'docker', 'kubernetes',
-    'popia', 'king iv', 'b-bbee', 'nhi', 'ohs act', 'mhsa',
-    'salesforce', 'hubspot', 'google analytics', 'seo',
-    'meditech', 'goodx', 'elixir'
+    'docker', 'kubernetes', 'git', 'ci/cd', 'agile', 'scrum', 'jira',
+    'siem', 'penetration testing', 'cloud security',
+    // Engineering & Design
+    'autocad', 'solidworks', 'revit', 'ms project', 'primavera', 'autocad electrical',
+    // Mining
+    'ventsim', 'deswik', 'arcgis', 'blasting', 'rock mechanics',
+    // Construction
+    'jbcc', 'nec contracts', 'bill of quantities', 'ccs candy',
+    // Healthcare
+    'iv therapy', 'patient care', 'dispensing', 'bls', 'als', 'wound care',
+    // Manufacturing
+    'plc', 'lean manufacturing', 'six sigma', 'iso 9001', 'fmea', 'kaizen', 'welding', 'cnc',
+    // SA-specific compliance & legislation
+    'popia', 'fica', 'fais', 'b-bbee', 'bbbee', 'ohs act', 'mhsa', 'lra', 'bcea',
+    'king iv', 'mfma', 'sans codes', 'incoterms',
+    // Logistics
+    'sap s/4hana', 'cold chain', 'customs clearance',
+    // Agri & Food
+    'haccp', 'soil science', 'crop management', 'irrigation',
+    // Retail & Marketing
+    'visual merchandising', 'seo', 'google ads', 'salesforce', 'hubspot',
+    // Energy
+    'scada', 'power systems', 'solar pv', 'renewable energy',
+    // Other platforms
+    'meditech', 'goodx', 'elixir', 'google analytics'
   ]
 
   const existingNames = new Set(skills.map(s => s.name.toLowerCase()))
@@ -137,21 +160,32 @@ export function extractScoredSkills(cvData: CVData): ScoredSkill[] {
 // ─────────────────────────────────────────────
 
 const KNOWN_REGISTRATIONS = [
-  'saica', 'ca(sa)', 'chartered accountant',
-  'ecsa', 'pr.eng', 'pr eng',
-  'hpcsa',
-  'sanc',
-  'sapc',
-  'sacssp',
-  'sacpcmp',
-  'irba',
-  'cima', 'acca', 'cfa',
-  'pmp', 'prince2',
-  'cissp', 'cisa',
+  // Finance
+  'saica', 'ca(sa)', 'chartered accountant', 'aga(sa)', 'cima', 'acca', 'cfa', 'cfp', 'icb',
+  'sait', 'sars tax practitioner', 'fsca', 'fpi', 'irba', 'assa',
+  // Engineering & Construction
+  'ecsa', 'pr.eng', 'pr eng', 'preng', 'sacpcmp', 'asaqs', 'sacap',
+  // Mining
+  'plato', 'mqa', 'saimm', 'sacnasp',
+  // Healthcare
+  'hpcsa', 'sanc', 'sapc', 'savc', 'sacssp',
+  // Education
+  'sace',
+  // Legal
+  'lssa', 'admitted attorney', 'advocate', 'bar council',
+  // IT & Security
+  'pmp', 'prince2', 'cissp', 'cisa', 'ceh', 'comptia',
   'aws certified', 'azure certified', 'google cloud certified',
-  'lsca', 'admitted attorney', 'advocate',
-  'apics', 'cscp',
-  'iodsa'
+  // HR
+  'sabpp',
+  // Logistics & Trade
+  'saaff', 'fiata', 'ppecb', 'sapics', 'cips', 'sacaa', 'atns',
+  // Energy
+  'ewseta',
+  // Manufacturing
+  'qcto', 'merseta', 'sabs', 'red seal',
+  // General
+  'apics', 'cscp', 'iodsa'
 ]
 
 export function extractRegistrations(cvData: CVData): string[] {
@@ -476,12 +510,12 @@ export function classifyCV(cvData: CVData): ClassificationResult {
     typeof cvData.skills === 'string' ? cvData.skills : (cvData.skills as any[])?.map((s: any) => s.name || s).join(' ') || ''
   ].join(' ')
 
-  // Fuse.js fuzzy match against detection keywords
+  // Fuse.js fuzzy match using industryKeywords + typicalTitles (both exist on JobProfile)
   const fuseData = SA_JOB_PROFILES.map(profile => ({
-    id: profile.id,
+    id: profile.family,
     family: profile.family,
-    keywords: profile.detectionKeywords.join(' '),
-    titles: profile.typicalTitles.join(' ')
+    keywords: (profile.industryKeywords || []).join(' '),
+    titles: (profile.typicalTitles || []).join(' ')
   }))
 
   const fuse = new Fuse(fuseData, {
@@ -492,33 +526,62 @@ export function classifyCV(cvData: CVData): ClassificationResult {
 
   const fuseResults = fuse.search(cvText.toLowerCase())
 
-  // Also do keyword frequency scoring as a secondary signal
+  // Keyword frequency scoring as secondary signal
   const keywordScores = SA_JOB_PROFILES.map(profile => {
     const lower = cvText.toLowerCase()
-    const matches = profile.detectionKeywords.filter(kw => lower.includes(kw)).length
-    return { id: profile.id, keywordScore: matches / profile.detectionKeywords.length }
+    const keywords = profile.industryKeywords || []
+    const matches = keywords.filter(kw => lower.includes(kw.toLowerCase())).length
+    return { id: profile.family, keywordScore: keywords.length > 0 ? matches / keywords.length : 0 }
   })
 
-  // Score each profile fully
-  const allMatches = SA_JOB_PROFILES.map(profile => {
-    const result = scoreAgainstProfile(cvData, profile)
+  // Determine years of experience for seniority tier
+  const cvYears = (() => {
+    if (!cvData.experience?.length) return 0
+    let total = 0
+    for (const exp of cvData.experience) {
+      try {
+        const start = new Date(exp.startDate)
+        const end = (exp.endDate || '').toLowerCase().includes('present') ? new Date() : new Date(exp.endDate)
+        if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
+          total += Math.max(0, end.getFullYear() - start.getFullYear())
+        }
+      } catch { continue }
+    }
+    return total
+  })()
 
-    // Boost score if fuse.js also matched this profile
-    const fuseMatch = fuseResults.find(r => r.item.id === profile.id)
+  // Score each profile using knowledgebase.scoreAgainstProfile (compatible with JobProfile)
+  const allMatches: ProfileMatchResult[] = SA_JOB_PROFILES.map(profile => {
+    const tier = cvYears >= profile.experienceTiers.senior.minYears ? 'senior'
+      : cvYears >= profile.experienceTiers.mid.minYears ? 'mid' : 'junior'
+
+    const { matchScore, gaps, strengths } = knowledgebase.scoreAgainstProfile(cvData, profile, tier)
+
+    const fuseMatch = fuseResults.find(r => r.item.id === profile.family)
     const fuseBoost = fuseMatch ? (1 - (fuseMatch.score || 1)) * 10 : 0
 
-    const kwMatch = keywordScores.find(k => k.id === profile.id)
+    const kwMatch = keywordScores.find(k => k.id === profile.family)
     const kwBoost = (kwMatch?.keywordScore || 0) * 10
 
+    const finalScore = Math.min(100, Math.round(matchScore + fuseBoost + kwBoost))
+
     return {
-      ...result,
-      matchScore: Math.min(100, Math.round(result.matchScore + fuseBoost + kwBoost))
+      profileId: profile.family,
+      profileFamily: profile.family,
+      matchScore: finalScore,
+      confidence: finalScore >= 70 ? 'high' : finalScore >= 45 ? 'medium' : 'low',
+      detectedTier: tier as SeniorityTier,
+      strengths,
+      gaps,
+      dealBreakers: [],
+      recommendation: finalScore >= 75 ? 'Strong match' : finalScore >= 55 ? 'Moderate match' : finalScore >= 35 ? 'Weak match' : 'Not suitable',
+      breakdown: { nqf: 0, skills: 0, registrations: 0, experience: 0, saFlags: 0 }
     }
   }).sort((a, b) => b.matchScore - a.matchScore)
 
   const topMatch = allMatches[0]
   const secondMatch = allMatches[1]
-  const isAmbiguous = Math.abs(topMatch.matchScore - secondMatch.matchScore) <= 10
+  const isAmbiguous = !!secondMatch && Math.abs(topMatch.matchScore - secondMatch.matchScore) <= 10
   const fallbackToGeneralist = topMatch.matchScore < 30
 
   return {
