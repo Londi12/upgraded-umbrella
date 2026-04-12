@@ -217,93 +217,117 @@ function extractSummary(text: string): string {
 // ─── Experience ───────────────────────────────────────────────────────────────
 
 function extractExperience(text: string): Experience[] {
-  const experiences: Experience[] = []
-  const saSectionPatterns = [
-    /EXPERIENCE|WORK|EMPLOYMENT|CAREER|PROFESSIONAL EXP/i,
-    /^.{0,1000}EXPERIENCE/i,
-  ]
+  // ── Step 1: find and extract the experience section text ──────────────────
+  const sectionRe = /\n[ \t]*(?:work\s+experience|professional\s+experience|employment|career\s+history|work\s+history|experience)\s*\n/i
+  const sectionMatch = text.match(sectionRe)
+  if (!sectionMatch) return []
 
-  let experienceText = ''
-  let maxScore = 0
+  const sectionStart = sectionMatch.index! + sectionMatch[0].length
+  const rest = text.slice(sectionStart)
 
-  for (const pattern of saSectionPatterns) {
-    const m = text.match(pattern)
-    if (m) {
-      const score = m[0].toUpperCase().includes('WORK EXPERIENCE') ? 3
-        : m[0].toUpperCase().includes('EXPERIENCE') ? 2 : 1
-      if (score > maxScore) {
-        maxScore = score
-        experienceText = text.slice(m.index ?? 0 + m[0].length).split(/\n{2,}/)[0] || ''
-      }
-    }
-  }
+  // Stop at next recognised section heading (all-caps or known keyword at line start)
+  const nextSectionRe = /\n[ \t]*(?:education|academic|qualifications|skills|competencies|references|languages|interests|hobbies|activities|volunteer|membership|certifications?|awards?|achievements?|personal\s+details?|additional\s+info|professional\s+development|profile|summary)\s*\n/i
+  const nextMatch = rest.match(nextSectionRe)
+  const experienceText = (nextMatch ? rest.slice(0, nextMatch.index) : rest).trim()
 
   if (!experienceText) return []
 
+  // ── Step 2: parse entries ─────────────────────────────────────────────────
+  const experiences: Experience[] = []
   const lines = experienceText.split('\n').map(l => l.trim()).filter(l => l)
-  let state = 'HEADER'
-  let currentJob: Partial<Experience> = {}
-  const dateParser = createSADateParser()
 
-  for (const line of lines) {
-    switch (state) {
-      case 'HEADER':
-        if (isJobTitle(line)) { currentJob.title = line; state = 'JOB_TITLE' }
-        break
-      case 'JOB_TITLE':
-        if (isCompany(line) || isDate(line)) { currentJob.company = line; state = 'DETAILS' }
-        else if (isDescription(line)) { currentJob.description = line; state = 'DESCRIPTION' }
-        break
-      case 'DETAILS': {
-        const dates = dateParser(line)
-        if (dates) { currentJob.startDate = dates.start; currentJob.endDate = dates.end || 'Present'; state = 'DESCRIPTION' }
-        else if (isLocation(line)) currentJob.location = line
-        break
-      }
-      case 'DESCRIPTION':
-        if (isNewJob(line) || line.length < 3) {
-          if (currentJob.title && currentJob.company) experiences.push(currentJob as Experience)
-          currentJob = { title: line }; state = 'JOB_TITLE'
-        } else {
-          currentJob.description = (currentJob.description ? currentJob.description + '\n' : '') + line
-        }
-        break
+  let currentJob: Partial<Experience> = {}
+  let descLines: string[] = []
+
+  const commitJob = () => {
+    if (currentJob.title && currentJob.company) {
+      if (descLines.length > 0) currentJob.description = descLines.join('\n')
+      experiences.push(currentJob as Experience)
     }
+    currentJob = {}
+    descLines = []
   }
 
-  if (currentJob.title && currentJob.company) experiences.push(currentJob as Experience)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+
+    // Skip bare section header if it leaked in
+    if (/^(?:work\s+)?(?:experience|employment|career|professional\s+experience)$/i.test(line)) continue
+
+    // Date range line — attach to current entry
+    const dateRange = parseDateRange(line)
+    if (dateRange) {
+      if (currentJob.title) { currentJob.startDate = dateRange.start; currentJob.endDate = dateRange.end }
+      continue
+    }
+
+    // "Title at/@ Company" or "Title – Company" on one line
+    const titleAtCo = line.match(/^(.+?)\s+(?:at|@|–|—|-)\s+(.+)$/)
+    if (titleAtCo && isJobTitle(titleAtCo[1]) && !titleAtCo[1].match(/\d{4}/)) {
+      commitJob()
+      currentJob = { title: titleAtCo[1].trim(), company: titleAtCo[2].trim() }
+      continue
+    }
+
+    // Bullet / description line
+    if (/^[•\-–*►▪◦]/.test(line) || /^(responsible|managed|developed|led|created|implemented|maintained|coordinated|supported|assisted|performed|provided|ensured|handled|worked|prepared|processed|monitored|reported|trained|operated|achieved)/i.test(line)) {
+      descLines.push(line.replace(/^[•\-–*►▪◦]\s*/, ''))
+      continue
+    }
+
+    // Looks like a job title
+    if (isJobTitle(line)) {
+      // If we already have a title and no company yet, current line might be the company
+      if (currentJob.title && !currentJob.company &&
+          !isJobTitle(line) && !line.match(/\d{4}/)) {
+        currentJob.company = line
+        continue
+      }
+      commitJob()
+      currentJob = { title: line }
+      continue
+    }
+
+    // If we have a title but no company yet, this line is probably the company
+    if (currentJob.title && !currentJob.company && !line.match(/\d{4}/) && line.length > 1) {
+      currentJob.company = line
+      continue
+    }
+
+    // Otherwise it's part of the description
+    if (currentJob.title) descLines.push(line)
+  }
+
+  commitJob()
   return experiences
 }
 
 function isJobTitle(line: string): boolean {
-  return ['Developer','Manager','Analyst','Engineer','Consultant','Specialist'].some(kw => line.includes(kw)) &&
-    !line.match(/\d{4}/) && line.length > 5
+  if (line.length < 3 || line.length > 120) return false
+  if (line.match(/\d{4}/)) return false          // contains year
+  if (/^[•\-–*►▪◦]/.test(line)) return false    // bullet point
+  if (line.includes('@') || line.includes(',')) return false  // contact info
+  if (/^(?:education|skills|experience|qualifications|references|summary|profile|employment|work\s+history)$/i.test(line)) return false
+
+  return /Senior|Junior|Lead|Head|Chief|Director|Manager|Officer|Coordinator|Administrator|Assistant|Executive|Analyst|Engineer|Developer|Developer|Consultant|Specialist|Supervisor|Associate|Representative|Agent|Clerk|Secretary|Receptionist|Driver|Technician|Operator|Controller|Planner|Designer|Architect|Accountant|Auditor|Bookkeeper|Nurse|Teacher|Lecturer|Trainer|Intern|Graduate|Student|Trainee|Learner|Advisor|Strategist|Producer|Editor|Writer|Journalist|Dispatcher|Logistics|Supply|HR|Finance|Marketing|IT\s|Project|Programme|Program|Portfolio|Risk|Compliance|Legal|Operations|Customer|Admin|Procurement|Buyer|Purchaser|Merchandiser|Estimator|Quantity\s+Surveyor|Civil|Mechanical|Chemical|Industrial|Sales|Cashier|Teller|Call\s+Centre|Call\s+Center|Warehouse|Stock|Inventory|Data\s+Captur|Facilitator|Coach|Mentor|Artisan|Electrician|Plumber|Welder|Fitter|Turner|Rigger|Inspector|Quality|Safety|Health|Environment|Security|Guard|Receptionist|Host|Hostess|Waiter|Waitress|Barista|Chef|Cook|Cleaner|Housekeeper|Maintenance|Handyman|Gardener|Forklift|Machine\s+Operator|Packer|Picker|Sorter|General\s+Worker/i.test(line)
+    || /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,5}$/.test(line)  // Title Case with up to 6 words, no digits
 }
-function isCompany(line: string): boolean { return !line.match(/^\d/) && !line.includes('|') && line.length > 3 }
-function isDate(line: string): boolean { return /\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/i.test(line) }
-function isLocation(line: string): boolean {
-  return !!(line.match(/, [A-Z]{2}$/) || line.match(/(Cape|Durban|Joburg|Pretoria|Gauteng)/i))
-}
-function isDescription(line: string): boolean {
-  return line.startsWith('•') || line.startsWith('-') || line.includes('responsible for')
-}
-function isNewJob(line: string): boolean {
-  return isJobTitle(line) || !!line.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\s+(?:at|with)/)
+
+function parseDateRange(line: string): { start: string; end: string } | null {
+  // "Jan 2020 - Dec 2022" or "2020 - 2023" or "Jan 2020 - Present"
+  const m = line.match(/(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(\d{4})\s*(?:–|—|-|to)\s*(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(\d{4}|Present|Current|Now)/i)
+  if (m) {
+    const start = [m[1], m[2]].filter(Boolean).join(' ')
+    const end = [m[3], m[4]].filter(Boolean).join(' ')
+    return { start: start || m[2], end: end || 'Present' }
+  }
+  const yr = line.match(/^(\d{4})\s*(?:–|—|-)\s*(\d{4}|Present|Current|Now)$/i)
+  if (yr) return { start: yr[1], end: yr[2] }
+  return null
 }
 
 function createSADateParser() {
-  const patterns = [
-    /(\w{3,})\s+20(XX|\d{2})\s*(?:–|-|to)\s*(\w{3,})/i,
-    /(\w{3,})\s+20\d{2}/i,
-    /20\d{2}\s*(?:–|-|to)\s*20\d{2}|Present/i,
-  ]
-  return (line: string) => {
-    for (const pattern of patterns) {
-      const m = line.match(pattern)
-      if (m) return { start: m[1] || m[0], end: m[3] || m[2] || 'Present' }
-    }
-    return null
-  }
+  return (line: string) => parseDateRange(line)
 }
 
 // ─── Education ────────────────────────────────────────────────────────────────
