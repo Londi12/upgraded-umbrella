@@ -1,66 +1,138 @@
 import type { CVData, CoverLetterData, TemplateType } from "@/types/cv-types"
-import { generateTemplateMarker, generateTemplateMetadata } from "@/lib/template-markers"
 
 export async function generateCVPDF(template: TemplateType, userData: CVData, templateName: string, isAuthenticated = false): Promise<Blob> {
+  let captureRoot: HTMLDivElement | null = null
+
   try {
-    // Dynamically import html2pdf for client-side only
-    const html2pdf = (await import("html2pdf.js")).default
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ])
 
     const element = document.getElementById("cv-preview-container")
     if (!element) {
       throw new Error("CV preview container not found. Cannot generate PDF.")
     }
 
-    let watermarkElement: HTMLDivElement | null = null;
-    
-    // Watermark for unauthenticated users
+    if (document.fonts?.ready) {
+      await document.fonts.ready
+    }
+
+    const rect = element.getBoundingClientRect()
+    const sourceWidth = Math.max(Math.ceil(rect.width), element.scrollWidth)
+    const sourceHeight = Math.max(Math.ceil(rect.height), element.scrollHeight)
+
+    captureRoot = document.createElement("div")
+    captureRoot.style.position = "fixed"
+    captureRoot.style.left = "-100000px"
+    captureRoot.style.top = "0"
+    captureRoot.style.width = `${sourceWidth}px`
+    captureRoot.style.background = "#ffffff"
+    captureRoot.style.zIndex = "-1"
+
+    const clone = element.cloneNode(true) as HTMLElement
+    clone.style.width = `${sourceWidth}px`
+    clone.style.minHeight = `${sourceHeight}px`
+    clone.style.height = "auto"
+    clone.style.background = "#ffffff"
+    captureRoot.appendChild(clone)
+
     if (!isAuthenticated) {
-      watermarkElement = document.createElement('div');
-      watermarkElement.style.position = 'absolute';
-      watermarkElement.style.top = '0';
-      watermarkElement.style.left = '0';
-      watermarkElement.style.width = '100%';
-      watermarkElement.style.height = '100%';
-      watermarkElement.style.display = 'flex';
-      watermarkElement.style.justifyContent = 'center';
-      watermarkElement.style.alignItems = 'center';
-      watermarkElement.style.pointerEvents = 'none';
-      watermarkElement.style.zIndex = '9999';
-      watermarkElement.style.overflow = 'hidden';
-      
-      const watermarkText = document.createElement('div');
-      watermarkText.innerText = 'Created with CVKonnekt – Sign in to remove watermark';
-      watermarkText.style.color = 'rgba(200, 200, 200, 0.4)';
-      watermarkText.style.fontSize = '32px';
-      watermarkText.style.transform = 'rotate(-30deg)';
-      watermarkText.style.whiteSpace = 'nowrap';
-      
-      watermarkElement.appendChild(watermarkText);
-      element.appendChild(watermarkElement);
+      const watermark = document.createElement("div")
+      watermark.style.position = "absolute"
+      watermark.style.inset = "0"
+      watermark.style.display = "flex"
+      watermark.style.justifyContent = "center"
+      watermark.style.alignItems = "center"
+      watermark.style.pointerEvents = "none"
+      watermark.style.zIndex = "9999"
+
+      const watermarkText = document.createElement("div")
+      watermarkText.innerText = "Created with CVKonnekt - Sign in to remove watermark"
+      watermarkText.style.color = "rgba(180, 180, 180, 0.38)"
+      watermarkText.style.fontSize = "32px"
+      watermarkText.style.transform = "rotate(-30deg)"
+      watermarkText.style.whiteSpace = "nowrap"
+
+      watermark.appendChild(watermarkText)
+      captureRoot.appendChild(watermark)
     }
 
-    const fileName = `${userData?.personalInfo?.fullName?.replace(/[^a-zA-Z0-9]/g, "_") || "CV"}_${templateName?.replace(/[^a-zA-Z0-9]/g, "_") || "Professional"}.pdf`
+    document.body.appendChild(captureRoot)
 
-    const opt = {
-      margin:       0,
-      filename:     fileName,
-      image:        { type: 'jpeg', quality: 1.0 },
-      html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
-      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 2))
+    const canvas = await html2canvas(captureRoot, {
+      scale,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      width: sourceWidth,
+      height: captureRoot.scrollHeight,
+      windowWidth: sourceWidth,
+      windowHeight: captureRoot.scrollHeight,
+    })
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    })
+
+    const pageWidthMm = 210
+    const pageHeightMm = 297
+    const imageWidthMm = pageWidthMm
+    const pxPerMm = canvas.width / imageWidthMm
+    const pageHeightPx = Math.floor(pageHeightMm * pxPerMm)
+
+    let renderedHeightPx = 0
+    let pageIndex = 0
+
+    while (renderedHeightPx < canvas.height) {
+      const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx)
+
+      const sliceCanvas = document.createElement("canvas")
+      sliceCanvas.width = canvas.width
+      sliceCanvas.height = sliceHeightPx
+
+      const ctx = sliceCanvas.getContext("2d")
+      if (!ctx) {
+        throw new Error("Could not create canvas context for PDF slicing.")
+      }
+
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedHeightPx,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx,
+      )
+
+      const sliceHeightMm = sliceHeightPx / pxPerMm
+      const imgData = sliceCanvas.toDataURL("image/png")
+
+      if (pageIndex > 0) {
+        pdf.addPage()
+      }
+
+      pdf.addImage(imgData, "PNG", 0, 0, imageWidthMm, sliceHeightMm, undefined, "FAST")
+
+      renderedHeightPx += sliceHeightPx
+      pageIndex += 1
     }
 
-    // Generate blob
-    const pdfBlob = await html2pdf().set(opt).from(element).output('blob')
-
-    // Cleanup watermark
-    if (watermarkElement && watermarkElement.parentNode) {
-      watermarkElement.parentNode.removeChild(watermarkElement);
-    }
-
-    return pdfBlob
+    return pdf.output("blob")
   } catch (error) {
     console.error("Error in generateCVPDF:", error)
     throw error
+  } finally {
+    if (captureRoot?.parentNode) {
+      captureRoot.parentNode.removeChild(captureRoot)
+    }
   }
 }
 
@@ -70,9 +142,6 @@ export async function generateCoverLetterPDF(
   templateName: string,
 ): Promise<Blob> {
   try {
-        // Generate template marker and metadata for later detection
-        const templateMarker = generateTemplateMarker(template, templateName || template);
-        const templateMetadata = generateTemplateMetadata(template, templateName || template);
     const response = await fetch("/api/generate-cover-letter-pdf", {
       method: "POST",
       headers: {
