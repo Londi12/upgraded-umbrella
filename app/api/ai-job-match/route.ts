@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { CVData } from '@/types/cv-types'
-import { SA_JOB_PROFILES, detectJobFamily } from '@/lib/sa-job-knowledgebase'
+import knowledgebase, { SA_JOB_PROFILES } from '@/lib/sa-job-knowledgebase'
 
 export interface JobMatchResult {
   jobId: string
@@ -120,48 +120,77 @@ function guessCVFamily(cvData: CVData): string {
 }
 
 function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatchResult {
-  const jobText = `${(job.title || '')} ${(job.description || '')} ${((job.requirements || []).join(' '))}`.toLowerCase()
-  const cvText = buildCVText(cvData).toLowerCase()
-  
+  const jobText = `${job.title || ''} ${job.description || ''} ${(job.requirements || []).join(' ')}`.toLowerCase()
+
+  // Resolve job profile from knowledgebase for accurate keyword + NQF + registration scoring
+  const jobProfile = knowledgebase.getClosestProfile(job.title || '', { threshold: 0.3 })
+    || knowledgebase.getClosestProfile(jobText.slice(0, 200), { threshold: 0.25 })
+  const jobFamily = jobProfile?.family || 'unknown'
+
   let score = 0
   const strengths: string[] = []
   const gaps: string[] = []
-  const dealBreakers: string[] = []
 
-  // 1. Title match (40 pts)
+  // 1. Title/experience alignment (25 pts)
   const cvTitles = (cvData.experience || []).map((e: any) => (e.title || '').toLowerCase())
   const jobTitleLower = (job.title || '').toLowerCase()
-  const titleMatch = cvTitles.some((t: string) => jobTitleLower.includes(t) || t.includes(jobTitleLower))
+  // Require titles to be >= 4 chars to prevent generic words ('at', 'in') from matching
+  const titleMatch = cvTitles.some((t: string) =>
+    t.length >= 4 && jobTitleLower.length >= 4 &&
+    (jobTitleLower.includes(t) || t.includes(jobTitleLower))
+  )
   if (titleMatch) {
-    score += 40
+    score += 25
     strengths.push('Title/experience alignment')
   } else {
     gaps.push('Limited matching experience')
   }
 
-  // 2. Skills overlap (35 pts)
+  // 2. Skills overlap (40 pts) — use knowledgebase keywords when available, else fallback
   const cvSkills = normalizeSkills(cvData.skills)
-  const jobSkills = extractJobSkills(jobText)
-  const matchedSkills = cvSkills.filter((s: string) => jobSkills.some((js: string) => js.includes(s) || s.includes(js)))
-  score += Math.min(matchedSkills.length * 7, 35)
-  strengths.push(...matchedSkills.slice(0, 3).map((s: string) => `Skill: ${s}`))
-  if (matchedSkills.length === 0) {
-    gaps.push('No matching skills detected')
+  const jobSkills = jobProfile
+    ? [
+        ...jobProfile.industryKeywords,
+        ...Object.values(jobProfile.experienceTiers).flatMap(t => t.coreSkills)
+      ].map(s => s.toLowerCase())
+    : extractJobSkillsFallback(jobText)
+  // Only forward containment: job skill contains CV skill (not reverse) to prevent
+  // "java" matching "javascript", "r" matching "react", etc. Min 4 chars on both sides.
+  const matchedSkills = cvSkills.filter(s =>
+    s.length >= 4 && jobSkills.some(js => js.length >= 4 && (js === s || js.includes(s)))
+  )
+  const skillsPts = Math.min(matchedSkills.length * 8, 40)
+  score += skillsPts
+  strengths.push(...matchedSkills.slice(0, 3).map(s => `Skill: ${s}`))
+  if (matchedSkills.length === 0) gaps.push('No matching skills detected')
+
+  // 3. Profile-based NQF (10 pts) + registration (10 pts)
+  let nqfScore = 0
+  let registrationsScore = 0
+  if (jobProfile) {
+    const cvYears = calculateYearsExperience(cvData)
+    const tier = cvYears >= jobProfile.experienceTiers.senior.minYears ? 'senior'
+      : cvYears >= jobProfile.experienceTiers.mid.minYears ? 'mid' : 'junior'
+    const profScore = knowledgebase.scoreAgainstProfile(cvData, jobProfile, tier)
+    // Use boolean flags — not string-grepping on human-readable messages
+    nqfScore = profScore.meetsNQF ? 10 : 0
+    registrationsScore = profScore.hasRegistration ? 10 : 0
+    score += nqfScore + registrationsScore
+    strengths.push(...profScore.strengths.filter(s => !strengths.includes(s)).slice(0, 2))
+    gaps.push(...profScore.gaps.filter(g => !gaps.includes(g)).slice(0, 2))
   }
 
-  // 3. Seniority (15 pts)
+  // 4. Seniority (10 pts)
   const cvYears = calculateYearsExperience(cvData)
   const seniorityScore = scoreSeniority(cvYears, jobText)
   score += seniorityScore
 
-  // 4. Location (10 pts)
-  const locationScore = scoreLocation(cvData, job)
-  score += Math.round(locationScore / 10)
+  // 5. Location (5 pts)
+  const locationPts = scoreLocation(cvData, job)
+  score += locationPts
 
-  // Final
+  // Max possible: 25 + 40 + 10 + 10 + 10 + 5 = 100 — no clamp needed
   score = Math.max(0, Math.min(100, score))
-
-  const jobFamily = (detectJobFamily({title: job.title, description: job.description}) as any)?.family || 'unknown'
 
   return {
     jobId: job.id || job.url || job.title || 'unknown',
@@ -173,17 +202,17 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
     gaps,
     dealBreakers: score < 20 ? ['Major gaps - low fit'] : [],
     skillsMatch: matchedSkills,
-    skillsGap: jobSkills.filter((js: string) => !matchedSkills.some((ms: string) => ms.includes(js))).slice(0, 3),
-    atsKeywords: extractATSKeywords(jobText),
+    skillsGap: jobSkills.filter(js => !matchedSkills.some(ms => ms.includes(js) || js.includes(ms))).slice(0, 5),
+    atsKeywords: jobProfile ? jobProfile.industryKeywords.slice(0, 8) : extractATSKeywords(jobText),
     detectedCVFamily: cvFamily,
     detectedJobFamily: jobFamily,
     isAmbiguous: false,
     breakdown: {
-      nqf: 0,
-      skills: matchedSkills.length * 10,
-      registrations: 0,
+      nqf: nqfScore,
+      skills: skillsPts,
+      registrations: registrationsScore,
       experience: seniorityScore,
-      saFlags: Math.round(locationScore / 10)
+      location: locationPts
     }
   }
 }
@@ -195,10 +224,19 @@ function normalizeSkills(skills: string | any[]): string[] {
   return (skills as any[]).map((s: any) => ((s.name || s) as string).toLowerCase()).filter((s: string) => s.length > 2)
 }
 
-function extractJobSkills(jobText: string): string[] {
-  const candidates = (jobText.match(/\b\w{4,}\b/g) || [])
-  const stopWords = new Set(['the', 'and', 'for', 'with', 'experience', 'years', 'team', 'client', 'develop', 'manage'])
-  return candidates.filter((w: string) => !stopWords.has(w) && w.length > 4).slice(0, 20)
+function extractJobSkillsFallback(jobText: string): string[] {
+  // Checked against common SA job posting vocabulary
+  const knownSkills = [
+    'excel', 'word', 'powerpoint', 'outlook', 'sql', 'python', 'javascript', 'typescript',
+    'react', 'node', 'java', 'aws', 'azure', 'docker', 'git', 'linux',
+    'power bi', 'tableau', 'sap', 'pastel', 'sage', 'xero', 'quickbooks',
+    'autocad', 'revit', 'solidworks', 'matlab',
+    'project management', 'communication', 'leadership', 'stakeholder management',
+    'customer service', 'problem solving', 'data analysis', 'reporting',
+    'recruitment', 'procurement', 'budgeting', 'forecasting',
+    'ifrs', 'tax', 'audit', 'compliance', 'risk management'
+  ]
+  return knownSkills.filter(skill => jobText.includes(skill))
 }
 
 function calculateYearsExperience(cvData: CVData): number {
@@ -222,21 +260,12 @@ function calculateYearsExperience(cvData: CVData): number {
 function scoreSeniority(years: number, jobText: string): number {
   const isSenior = /senior|lead|manager|director|head|executive/i.test(jobText)
   const isJunior = /junior|entry|graduate|intern|trainee/i.test(jobText)
-  
-  if (isSenior && years >= 5) return 15
-  if (isSenior && years < 3) return 0
-  if (isJunior && years <= 3) return 15
-  if (isJunior && years > 5) return 5
-  return 10
-}
 
-function buildCVText(cvData: CVData): string {
-  return [
-    cvData.summary || '',
-    ...(cvData.experience || []).map((e: any) => `${e.title || ''} ${e.company || ''} ${e.description || ''}`),
-    Array.isArray(cvData.skills) ? (cvData.skills as any[]).map((s: any) => s.name || s).join(' ') : '',
-    ...(cvData.education || []).map((e: any) => e.degree || '')
-  ].join(' ')
+  if (isSenior && years >= 5) return 10
+  if (isSenior && years < 3) return 0
+  if (isJunior && years <= 3) return 10
+  if (isJunior && years > 5) return 3
+  return 7
 }
 
 function buildSimpleReasoning(score: number, jobTitle: string, skills: string[], seniorityScore: number, years: number): string {
@@ -246,19 +275,20 @@ function buildSimpleReasoning(score: number, jobTitle: string, skills: string[],
   return parts.join(' | ')
 }
 
+// Returns pts directly (max 5) — cleaner than returning 0-100 then dividing
 function scoreLocation(cvData: CVData, job: any): number {
   const cvLocation = (cvData.personalInfo?.location || '').toLowerCase()
   const jobLocation = (job.location || '').toLowerCase()
 
-  if (!jobLocation || jobLocation.includes('remote')) return 100
-  if (cvLocation.includes(jobLocation) || jobLocation.includes(cvLocation)) return 100
+  if (!jobLocation || jobLocation.includes('remote')) return 5
+  if (cvLocation.includes(jobLocation) || jobLocation.includes(cvLocation)) return 5
 
   const provinces = ['gauteng', 'western cape', 'kwazulu-natal', 'eastern cape', 'free state', 'limpopo', 'mpumalanga', 'northern cape', 'north west']
   const cvProvince = provinces.find(p => cvLocation.includes(p))
   const jobProvince = provinces.find(p => jobLocation.includes(p))
-  if (cvProvince && cvProvince === jobProvince) return 80
+  if (cvProvince && cvProvince === jobProvince) return 3
 
-  return 50
+  return 0
 }
 
 function extractATSKeywords(text: string): string[] {

@@ -770,7 +770,8 @@ const knowledgebase: SAKnowledgebase = {
 
     // NQF check — uses full NQF_MAP, not a stub
     const nqf = getHighestNQF(cvData);
-    if (nqf >= profile.minNQF) {
+    const meetsNQF = nqf >= profile.minNQF;
+    if (meetsNQF) {
       matchScore += 25;
       strengths.push(`NQF ${nqf} meets the NQF ${profile.minNQF} requirement`);
     } else {
@@ -778,6 +779,7 @@ const knowledgebase: SAKnowledgebase = {
     }
 
     // Skills: match against both tier coreSkills AND profile industryKeywords
+    // Require min 4 chars to avoid short-word false positives (e.g. "r", "c", "java" ≠ "javascript")
     const cvSkills = extractSkills(cvData);
     const allProfileSkills = [
       ...expTier.coreSkills,
@@ -785,23 +787,30 @@ const knowledgebase: SAKnowledgebase = {
     ];
     const uniqueProfileSkills = [...new Set(allProfileSkills.map(s => s.toLowerCase()))];
     const matchedSkills = uniqueProfileSkills.filter(skill =>
-      cvSkills.some(cvSkill => cvSkill.toLowerCase().includes(skill) || skill.includes(cvSkill.toLowerCase()))
+      skill.length >= 4 &&
+      cvSkills.some(cvSkill => {
+        const cv = cvSkill.toLowerCase();
+        // Only check if job skill contains CV skill (not reverse) to avoid "java" → "javascript"
+        return cv.length >= 4 && (cv === skill || skill.includes(cv) || cv.includes(skill));
+      })
     );
     matchScore += Math.min((matchedSkills.length / Math.max(uniqueProfileSkills.length, 1)) * 40, 40);
     strengths.push(...matchedSkills.slice(0, 4).map(s => `Strong in ${s}`));
     const missingCritical = expTier.coreSkills.filter(s =>
-      !cvSkills.some(cv => cv.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(cv.toLowerCase()))
+      s.length >= 4 && !matchedSkills.includes(s.toLowerCase())
     );
     gaps.push(...missingCritical.slice(0, 3).map(s => `Needs ${s}`));
 
     // Professional registration check
     const cvRegs = (cvData.registrations || []).map((r: string) => r.toLowerCase());
     const requiredRegs = profile.professionalRegistrations;
+    let hasRegistration = false;
     if (requiredRegs.length > 0) {
       const matched = requiredRegs.filter(reg =>
         cvRegs.some((cv: string) => cv.includes(reg.toLowerCase()) || reg.toLowerCase().includes(cv))
       );
       if (matched.length > 0) {
+        hasRegistration = true;
         matchScore += 20;
         strengths.push(`Registration confirmed: ${matched.join(', ')}`);
       } else {
@@ -816,7 +825,7 @@ const knowledgebase: SAKnowledgebase = {
       matchScore += (flagMatches.length / profile.saSpecificFlags.length) * 15;
     }
 
-    return { matchScore: Math.round(matchScore), gaps, strengths };
+    return { matchScore: Math.round(matchScore), gaps, strengths, meetsNQF, hasRegistration };
   }
 };
 
