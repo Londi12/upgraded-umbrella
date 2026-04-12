@@ -471,10 +471,10 @@ export default function CreateCVPage() {
           summary: result.data.summary || "",
           experience: Array.isArray(result.data.experience) && result.data.experience.length > 0
             ? result.data.experience
-            : formData.experience,
+            : [{ title: "", company: "", location: "", startDate: "", endDate: "", description: "", isLearnership: false, isInternship: false }],
           education: Array.isArray(result.data.education) && result.data.education.length > 0
             ? result.data.education
-            : formData.education,
+            : [{ degree: "", institution: "", location: "", graduationDate: "", nqfLevel: undefined as number | undefined, saqa: "", internationalEquivalence: "" }],
           skills: normalizeSkillsForForm(result.data.skills),
         });
         setParseStep('complete');
@@ -512,7 +512,8 @@ export default function CreateCVPage() {
   }
 
   const handleInputFocus = (section: string) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    handleSectionChange(section);
+    // strip trailing index (e.g. 'education-0' → 'education') so the tab value stays valid
+    handleSectionChange(section.replace(/-\d+$/, ''));
   };
 
   // Track CV interactions for analytics

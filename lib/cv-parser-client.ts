@@ -504,6 +504,27 @@ function extractEducation(text: string): Education[] {
 
   if (education.length > 0) return education
 
+  // Format 1.5: single-line "Degree — Institution Year" or "Qualification Year"
+  for (const line of educationText.split('\n')) {
+    const t = line.trim()
+    if (!t || isProfBody(t)) continue
+    // "Degree — Institution Year (current)?"
+    const dashM = t.match(/^(.+?)\s*[—–]\s*(.+?)\s+(\d{4})(?:\s*\(current\))?$/i)
+    if (dashM) {
+      const [, deg, inst, year] = dashM
+      if ((hasQualification(deg) || hasQualification(t)) && !isProfBody(deg) && !isProfBody(inst)) {
+        education.push({ degree: deg.trim(), institution: inst.trim(), location: '', graduationDate: year, nqfLevel: undefined, saqa: '', internationalEquivalence: '' })
+        continue
+      }
+    }
+    // "Qualification Year" on a single line with no institution
+    const shortM = t.match(/^(Matric(?:ulation)?|NSC|National Senior Certificate|Grade\s*1[012]|[A-Z][A-Za-z\s]{2,50})\s+(\d{4})$/)
+    if (shortM && hasQualification(shortM[1])) {
+      education.push({ degree: shortM[1].trim(), institution: '', location: '', graduationDate: shortM[2], nqfLevel: undefined, saqa: '', internationalEquivalence: '' })
+    }
+  }
+  if (education.length > 0) return education
+
   // Format 2: degree/institution on separate lines
   const lines2 = educationText.split('\n')
   let currentEdu: Partial<Education> | null = null
