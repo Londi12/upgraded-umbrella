@@ -55,6 +55,21 @@ export function useJobSearch() {
   const [disambiguationOptions, setDisambiguationOptions] = useState<DisambiguationOption[]>([])
   const [cvClassification, setCvClassification] = useState<{ detectedFamily: string; confidence: string; tier: string } | null>(null)
 
+  // Clear stale match state when user picks a different CV or a different job
+  useEffect(() => {
+    setAiMatchResults([])
+    setAiMatchError("")
+    setDisambiguationOptions([])
+    setCvClassification(null)
+  }, [selectedCVId])
+
+  useEffect(() => {
+    setAiMatchResults([])
+    setAiMatchError("")
+    setDisambiguationOptions([])
+    setCvClassification(null)
+  }, [selectedJob?.url])
+
   useEffect(() => {
     if (user) {
       getSavedCVs().then(({ data, error }) => {

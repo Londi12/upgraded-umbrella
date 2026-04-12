@@ -79,18 +79,26 @@ function extractPersonalInfo(text: string): PersonalInfo {
   if (!jobTitle) {
     for (let i = 1; i < Math.min(8, lines.length); i++) {
       const line = lines[i].trim()
+
+      // Skip pure contact lines
       if (
-        line.includes('@') || line.includes('|') ||
+        line.includes('@') ||
         line.match(/\(\d{3}\)/) ||
         line.match(/\d+\s+\w+\s+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr)/i) ||
         line.match(/^\d+\s/) ||
         (line.includes(',') && line.match(/\d{5}/))
       ) continue
 
+      // Accept lines with | — e.g. "School Leaver | Seeking Learnership"
+      if (line.includes('|') && line.length > 5 && line.length < 100 && !line.match(/\d{4}/) &&
+          !line.match(/Profile|Summary|Experience|Education|Skills|Contact/i)) {
+        jobTitle = line; break
+      }
+
       if (
         (line.match(/^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/) ||
-          line.match(/Manager|Director|Engineer|Developer|Analyst|Coordinator|Specialist|Assistant|Executive|Officer|Consultant|Administrator|Supervisor|Lead|Senior|Junior/i)) &&
-        line.length < 60 && line.length > 5 &&
+          line.match(/Manager|Director|Engineer|Developer|Analyst|Coordinator|Specialist|Assistant|Executive|Officer|Consultant|Administrator|Supervisor|Lead|Senior|Junior|Leaver|Learner|Intern|Graduate|Student/i)) &&
+        line.length < 80 && line.length > 5 &&
         !line.match(/\d{4}/) &&
         !line.match(/Profile|Summary|Experience|Education|Skills|Contact/i)
       ) { jobTitle = line; break }
@@ -98,10 +106,9 @@ function extractPersonalInfo(text: string): PersonalInfo {
   }
 
   if (!jobTitle) {
-    const m =
-      cleanText.match(/(?:^|\n)([^|\n\r]+?)\s*\|\s*[^|\n\r]+(?:\s*–|\s*to|\s*-)/im) ||
-      cleanText.match(/(?:job title|position|role)[\s:]*([^\n]+)/i)
-    if (m) jobTitle = m[1].trim()
+    // Only use this fallback if it doesn't look like a template placeholder
+    const m = cleanText.match(/(?:job title|position|role)[\s:]*([^\n]+)/i)
+    if (m && m[1].trim() !== 'Job Title' && m[1].trim().length > 3) jobTitle = m[1].trim()
   }
 
   const emailMatch = cleanText.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/)
@@ -133,10 +140,16 @@ function extractPersonalInfo(text: string): PersonalInfo {
     /([A-Z][a-z]+,\s*[A-Z]{2})/,
     /(?:address|location)[\s:]*([^\n]+)/i,
   ]
+  // Reject location candidates that look like qualifications (e.g. "2022 Higher Certificate in Logist")
+  const isQualificationText = (s: string) =>
+    /^\d{4}\s+(higher|national|further|advanced|general|certificate|diploma|degree|bachelor|matric)/i.test(s) ||
+    /(certificate|diploma|degree|nqf|qualification)\s+(in|of)/i.test(s)
+
   for (const pattern of locationPatterns) {
     const m = cleanText.match(pattern)
     if (m?.[1]) {
       const loc = m[1].trim()
+      if (isQualificationText(loc)) continue
       if (!loc.match(/^[A-Z][a-z]+\s+[A-Z][a-z]+$/) || loc.includes(',') || loc.match(/\d/)) {
         location = loc; break
       }
@@ -301,12 +314,21 @@ function extractEducation(text: string): Education[] {
 
   if (!educationText) return []
 
+  // Validate a pipe segment looks like an education qualification or institution
+  const looksLikeEdu = (s: string) =>
+    /bachelor|master|doctor|ph\.?d|diploma|certificate|matric|nsc|n\d|b\.?com|b\.?sc|m\.?com|m\.?sc|honours|hons|degree|qualification|nqf|higher cert|national cert|advanced cert|further ed/i.test(s) ||
+    /university|college|school|institute|academy|technikol|tvet|varsity|high school|secondary/i.test(s) ||
+    /\d{4}/.test(s)  // has a year
+
   // Format 1: pipe-separated lines
   for (const line of educationText.split('\n')) {
     const t = line.trim()
     if (!t || !t.includes('|')) continue
     const parts = t.split('|').map(p => p.trim()).filter(p => p.length > 0)
     if (parts.length >= 2) {
+      // Require at least one part to look like an education entry; skip professional body listings
+      if (!looksLikeEdu(parts[0]) && !looksLikeEdu(parts[1])) continue
+
       const datePattern = /(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{2}(?:XX|\d{2})|\d{4})/i
       let location = '', graduationDate = ''
       for (const part of parts.slice(2)) {
