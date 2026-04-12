@@ -231,6 +231,13 @@ const knowledgebase: SAKnowledgebase = {
 
 export default knowledgebase;
 
+export const SA_JOB_PROFILES = JOB_PROFILES;
+
+export function detectJobFamily(cv: any) {
+  const title = cv.title || cv.position || cv.job_title || '';
+  return knowledgebase.getClosestProfile(title, { threshold: 0.3 });
+}
+
 function getHighestNQF(cvData: any): number {
   if (!cvData.education?.length) return 4;
   return 7;
