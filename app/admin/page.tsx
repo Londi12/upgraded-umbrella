@@ -2,11 +2,19 @@
 
 import { useState, useEffect } from "react"
 import { Users, FileText, BarChart2, RefreshCw, Shield, Upload, Briefcase, LogOut, Menu, X, Trash2, Pencil } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  Badge, 
+  Button, 
+  Input,
+  Dialog,
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle 
+} from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
 import { useRouter } from "next/navigation"
 import { checkIsAdmin, getUserStats, getRecentUsers, getLiveActivity, getJobs, updateJob, deleteJob } from "@/lib/supabase"
