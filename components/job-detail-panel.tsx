@@ -112,6 +112,31 @@ export function JobDetailPanel({
 
   // Pre-compute low-match content (avoids IIFE-in-JSX scope issues under minification)
   const lowMatchReasons = useMemo(() => {
+    if (!currentJobMatch || currentJobMatch.matchScore >= 50) return []
+    const reasons: string[] = []
+    if (
+      currentJobMatch.detectedCVFamily &&
+      currentJobMatch.detectedJobFamily &&
+      currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
+    ) {
+      reasons.push(`Your experience is in ${currentJobMatch.detectedCVFamily}, not ${currentJobMatch.detectedJobFamily}`)
+    }
+    const toolGaps = currentJobMatch.skillsGap.filter(s => s.length > 1).slice(0, 3)
+    if (toolGaps.length > 0) reasons.push(`No evidence of required tools (${toolGaps.join(', ')})`)
+    const humanGap = currentJobMatch.dealBreakers[0] ||
+      currentJobMatch.gaps.find(g => !g.toLowerCase().includes('nqf') && !g.toLowerCase().includes('registration'))
+    if (humanGap) reasons.push(humanGap)
+    if (reasons.length < 2) reasons.push('Experience level does not match job requirements')
+    return reasons
+  }, [currentJobMatch])
+
+  const betterRoles = useMemo(() => {
+    if (recommendedFamilies.length > 0) return recommendedFamilies
+    if (currentJobMatch?.detectedCVFamily) {
+      return [`${currentJobMatch.detectedCVFamily} roles`, 'Related industry positions']
+    }
+    return []
+  }, [recommendedFamilies, currentJobMatch])
 
   const openTrackDialog = () => {
     setTrackForm(f => ({ ...f, cv_id: selectedCVId || '' }))
