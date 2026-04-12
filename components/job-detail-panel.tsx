@@ -41,6 +41,7 @@ interface JobDetailPanelProps {
   aiMatchError: string
   disambiguationOptions: DisambiguationOption[]
   cvClassification: { detectedFamily: string; confidence: string; tier: string } | null
+  recommendedFamilies?: string[]
   onAIMatch: (confirmedFamily?: string) => void
   showBackButton?: boolean
 }
@@ -56,6 +57,7 @@ export function JobDetailPanel({
   aiMatchError,
   disambiguationOptions,
   cvClassification,
+  recommendedFamilies = [],
   onAIMatch,
   showBackButton = true,
 }: JobDetailPanelProps) {
@@ -93,11 +95,16 @@ export function JobDetailPanel({
   const scoreBorder = (n: number) => n >= 70 ? 'border-green-400' : n >= 50 ? 'border-amber-400' : 'border-slate-300'
   const scoreBarColor = (n: number) => n >= 70 ? 'bg-green-500' : n >= 50 ? 'bg-amber-400' : 'bg-red-400'
 
-  // Find this specific job's match result; others become "similar roles"
+  // Find this specific job's match result — no fallback to avoid showing stale results
   const currentJobMatch = useMemo(() =>
-    aiMatchResults.find(m => m.jobId === job.url || m.jobId === job.title) || (aiMatchResults.length > 0 ? aiMatchResults[0] : null),
+    aiMatchResults.find(m =>
+      m.jobId === job.url ||
+      m.jobId === job.title ||
+      m.jobId === (job as any).id
+    ) ?? (aiMatchResults.length === 1 ? aiMatchResults[0] : null),
     [aiMatchResults, job.url, job.title]
   )
+  // otherMatches unused now (we only score 1 job); kept for SimilarRoles component
   const otherMatches = useMemo(() =>
     currentJobMatch ? aiMatchResults.filter(m => m.jobId !== currentJobMatch.jobId).slice(0, 4) : [],
     [aiMatchResults, currentJobMatch]
@@ -294,9 +301,9 @@ export function JobDetailPanel({
                     if (humanGap) reasons.push(humanGap)
                     if (reasons.length < 2) reasons.push('Experience level does not match job requirements')
 
-                    // Better alternatives — use other matched families or CV-based suggestions
-                    const betterRoles = otherMatches.length > 0
-                      ? otherMatches.slice(0, 3).map(m => m.detectedJobFamily || 'Similar role')
+                    // Better alternatives — use recommendedFamilies from API, then CV detected family
+                    const betterRoles = recommendedFamilies.length > 0
+                      ? recommendedFamilies
                       : currentJobMatch.detectedCVFamily
                         ? [`${currentJobMatch.detectedCVFamily} roles`, 'Related industry positions']
                         : []

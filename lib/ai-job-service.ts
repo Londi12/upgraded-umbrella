@@ -40,6 +40,7 @@ export interface DisambiguationOption {
 
 export interface JobMatchResponse {
   matches: JobMatchResult[]
+  recommendedFamilies?: string[]
   cvClassification: CVClassification
 }
 

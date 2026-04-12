@@ -68,6 +68,7 @@ export default function SAJobSearch() {
     aiMatchError,
     disambiguationOptions,
     cvClassification,
+    recommendedFamilies,
     onAIMatch: handleAIMatch,
   } : null
 

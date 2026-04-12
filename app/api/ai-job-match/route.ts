@@ -75,8 +75,29 @@ export async function POST(request: NextRequest) {
 
     console.log(`[AI-MATCH] Complete: ${results.length} scored jobs, top score: ${results[0]?.matchScore}`)
 
+    // Top profile families the CV is ACTUALLY strong against (for "Better matches" redirect UX)
+    const cvYearsGlobal = calculateYearsExperience(cvData)
+    const recommendedFamilies = (SA_JOB_PROFILES || [])
+      .map(profile => {
+        let s = 0
+        const cvSkillsGlobal = normalizeSkills(cvData.skills)
+        const profileSkills = [
+          ...profile.industryKeywords,
+          ...Object.values(profile.experienceTiers).flatMap(t => t.coreSkills)
+        ].map(k => k.toLowerCase())
+        s += Math.min(cvSkillsGlobal.filter(cs => cs.length >= 4 && profileSkills.some(ps => ps.length >= 4 && (ps === cs || ps.includes(cs)))).length * 8, 40)
+        const titleLower = (cvData.personalInfo?.jobTitle || '').toLowerCase()
+        if (profile.typicalTitles.some(t => titleLower.includes(t.toLowerCase()))) s += 25
+        return { family: profile.family, score: s }
+      })
+      .filter(r => r.family !== cvFamily)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map(r => r.family)
+
     return NextResponse.json({
       matches: results,
+      recommendedFamilies,
       cvClassification: {
         detectedFamily: cvFamily,
         confidence: 'medium',
@@ -148,14 +169,19 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
     gaps.push('Limited matching experience')
   }
 
-  // 2. Skills overlap (40 pts) — use knowledgebase keywords when available, else fallback
+  // 2. Skills overlap (40 pts) — blend profile keywords with keywords extracted from
+  //    the actual job description so different jobs in the same family score differently.
   const cvSkills = normalizeSkills(cvData.skills)
-  const jobSkills = jobProfile
+  const profileSkills = jobProfile
     ? [
         ...jobProfile.industryKeywords,
         ...Object.values(jobProfile.experienceTiers).flatMap(t => t.coreSkills)
       ].map(s => s.toLowerCase())
-    : extractJobSkillsFallback(jobText)
+    : []
+  const descriptionSkills = extractJobSkillsFallback(jobText)
+  // Union: profile gives the baseline, description adds job-specific terms
+  const jobSkillsSet: Set<string> = new Set([...profileSkills, ...descriptionSkills])
+  const jobSkills = Array.from(jobSkillsSet)
   // Only forward containment: job skill contains CV skill (not reverse) to prevent
   // "java" matching "javascript", "r" matching "react", etc. Min 4 chars on both sides.
   const matchedSkills = cvSkills.filter(s =>

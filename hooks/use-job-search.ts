@@ -54,6 +54,7 @@ export function useJobSearch() {
   const [aiMatchError, setAiMatchError] = useState("")
   const [disambiguationOptions, setDisambiguationOptions] = useState<DisambiguationOption[]>([])
   const [cvClassification, setCvClassification] = useState<{ detectedFamily: string; confidence: string; tier: string } | null>(null)
+  const [recommendedFamilies, setRecommendedFamilies] = useState<string[]>([])
 
   // Clear stale match state when user picks a different CV or a different job
   useEffect(() => {
@@ -61,6 +62,7 @@ export function useJobSearch() {
     setAiMatchError("")
     setDisambiguationOptions([])
     setCvClassification(null)
+    setRecommendedFamilies([])
   }, [selectedCVId])
 
   useEffect(() => {
@@ -68,6 +70,7 @@ export function useJobSearch() {
     setAiMatchError("")
     setDisambiguationOptions([])
     setCvClassification(null)
+    setRecommendedFamilies([])
   }, [selectedJob?.url])
 
   useEffect(() => {
@@ -185,16 +188,17 @@ export function useJobSearch() {
       const selectedCV = savedCVs.find(cv => cv.id === selectedCVId)
       if (!selectedCV) throw new Error("Selected CV not found")
 
-      let jobsToMatch: any[] = []
-      try {
-        const res = await fetch(`/api/sa-jobs?q=${encodeURIComponent(selectedJob.title || 'jobs')}&limit=10`)
-        if (res.ok) { const d = await res.json(); jobsToMatch = d.results || [] }
-      } catch { /* use selected job only */ }
-
-      if (!jobsToMatch.some((j: any) => j.url === selectedJob.url)) jobsToMatch.unshift(selectedJob)
-      if (jobsToMatch.length === 0) {
-        jobsToMatch = [{ id: selectedJob.url, title: selectedJob.title, company: selectedJob.company || selectedJob.source, description: selectedJob.description || selectedJob.snippet, requirements: [] }]
-      }
+      // Only score the exact job the user is viewing — don't fetch similar jobs,
+      // which caused every click to return the same results.
+      const jobsToMatch = [{
+        id: selectedJob.url || selectedJob.title,
+        url: selectedJob.url,
+        title: selectedJob.title,
+        company: selectedJob.company || selectedJob.source,
+        description: selectedJob.description || selectedJob.snippet || '',
+        location: selectedJob.location,
+        requirements: [],
+      }]
 
       const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily)
       if ('needsDisambiguation' in result) {
@@ -202,6 +206,7 @@ export function useJobSearch() {
       } else {
         setAiMatchResults(result.matches)
         setCvClassification(result.cvClassification)
+        setRecommendedFamilies(result.recommendedFamilies || [])
         if (result.matches.length === 0) setAiMatchError("No job matches found. Try selecting a different CV or job.")
       }
     } catch (error) {
@@ -231,6 +236,7 @@ export function useJobSearch() {
     aiMatchError,
     disambiguationOptions,
     cvClassification,
+    recommendedFamilies,
     search,
     updateFilter,
     toggleQuickFilter,
