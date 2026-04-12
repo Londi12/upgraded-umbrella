@@ -51,10 +51,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
       .filter(Boolean)
   }
 
-  // Parse skills into an array if provided
-  const skillsArray = userData?.skills
-    ? normalizeSkills(userData.skills)
-    : ["Excel", "SQL", "Python", "Tableau", "Financial Modeling", "Data Analysis"]
+  // Parse skills into an array — never use default placeholder skills
+  const skillsArray = userData?.skills ? normalizeSkills(userData.skills) : []
+
+  // Helper: only render date range if at least one real value exists
+  const dateRange = (start?: string, end?: string) => {
+    const s = start && start !== 'Start Date' && start !== 'Start' ? start : ''
+    const e = end && end !== 'End Date' && end !== 'End' && end !== 'End Date' ? end : ''
+    if (!s && !e) return null
+    return `${s}${s && e ? ' – ' : ''}${e}`
+  }
 
   // Use an explicit marker class to avoid accidental A4 mode in non-A4 containers.
   const isA4Preview = className.includes("a4-preview")
@@ -95,21 +101,19 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index} className="border-l-4 border-gray-400 pl-4">
-                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{exp.title || "Job Title"}</h3>
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{exp.title}</h3>
                         <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
-                          {exp.company || "Company"} | {exp.location || "Location"} | {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
+                          {[exp.company, exp.location, dateRange(exp.startDate, exp.endDate)].filter(Boolean).join(' | ')}
                         </p>
-                        <div className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800 mt-2`}>
-                          {exp.description ? (
+                        {exp.description && (
+                          <div className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-800 mt-2`}>
                             <ul className="space-y-1 list-disc ml-4">
-                              {exp.description.split('\n').map((line, i) => (
+                              {exp.description.split('\n').filter(Boolean).map((line, i) => (
                                 <li key={i} className="leading-relaxed">{line}</li>
                               ))}
                             </ul>
-                          ) : (
-                            <p className="leading-relaxed">Job description with measurable achievements</p>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -148,9 +152,9 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.education && userData.education.length > 0 ? (
                     userData.education.map((edu, index) => (
                       <div key={index} className="border-l-4 border-gray-400 pl-4">
-                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{edu.degree || "Degree"}</h3>
+                        <h3 className={`${isA4Preview ? 'text-sm' : 'text-xs'} font-bold text-gray-900`}>{edu.degree}</h3>
                         <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-700`}>
-                          {edu.institution || "Institution"} | {edu.location || "Location"} | {edu.graduationDate || "Graduation Date"}
+                          {[edu.institution, edu.location, edu.graduationDate].filter(Boolean).join(' | ')}
                         </p>
                         {edu.nqfLevel && (
                           <p className={`${isA4Preview ? 'text-xs' : 'text-[10px]'} text-gray-600 mt-1`}>NQF Level {edu.nqfLevel}</p>
@@ -222,13 +226,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                     userData.experience.map((exp, index) => (
                       <div key={index} className="flex justify-between items-start">
                         <div>
-                          <h3 className="text-xs font-medium">{exp.title || "Job Title"}</h3>
-                          <p className="text-xs text-gray-500">{exp.company || "Company"}</p>
-                          <p className="text-xs text-gray-600 mt-1">{exp.description || "Job description"}</p>
+                          <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                          {exp.company && <p className="text-xs text-gray-500">{exp.company}</p>}
+                          {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {exp.startDate || "Start"}-{exp.endDate || "End"}
-                        </span>
+                        {dateRange(exp.startDate, exp.endDate) && (
+                          <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">{dateRange(exp.startDate, exp.endDate)}</span>
+                        )}
                       </div>
                     ))
                   ) : (
@@ -275,7 +279,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 <h1 className="text-lg font-bold text-gray-900">
                   {userData?.personalInfo?.fullName || "Alex Creative"}
                 </h1>
-                <p className="text-sm text-gray-600">{userData?.personalInfo?.jobTitle || "Graphic Designer"}</p>
+                {userData?.personalInfo?.jobTitle && <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>}
               </div>
 
               <div className="space-y-2 text-center text-xs">
@@ -311,11 +315,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index} className="bg-white/50 rounded p-2">
-                        <h3 className="text-xs font-medium">{exp.title || "Job Title"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.startDate || "Start Date"}-{exp.endDate || "End Date"}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job Description"}</p>
+                        <h3 className="text-xs font-semibold">{exp.title}</h3>
+                        {(exp.company || dateRange(exp.startDate, exp.endDate)) && (
+                          <p className="text-xs text-gray-500">
+                            {[exp.company, dateRange(exp.startDate, exp.endDate)].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
                   ) : (
@@ -375,18 +381,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 {userData?.education && userData.education.length > 0 ? (
                   userData.education.map((edu, index) => (
                     <div key={index}>
-                      <h3 className="text-xs font-medium text-gray-700">{edu.degree || "Degree"}</h3>
-                      <p className="text-xs text-gray-500">
-                        {edu.institution || "Institution"} • {edu.graduationDate || "Graduation Date"}
-                      </p>
-                      <p className="text-xs text-gray-600">{edu.location || "Location"}</p>
+                      <h3 className="text-xs font-semibold text-gray-800">{edu.degree}</h3>
+                      {(edu.institution || edu.graduationDate) && (
+                        <p className="text-xs text-gray-500">
+                          {[edu.institution, edu.graduationDate].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+                      {edu.location && <p className="text-xs text-gray-600">{edu.location}</p>}
                     </div>
-                  ))
-                ) : (
-                  <div>
-                    <h3 className="text-xs font-medium text-gray-700">BSc Computer Science</h3>
-                    <p className="text-xs text-gray-500">University of Cape Town • 2024</p>
-                    <p className="text-xs text-gray-600 mt-1">First Class Honours • Dean's List</p>
                   </div>
                 )}
               </div>
@@ -407,8 +409,8 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 {userData?.experience && userData.experience.length > 0 ? (
                   userData.experience.map((exp, index) => (
                     <div key={index}>
-                      <h3 className="text-xs font-medium text-gray-700">{exp.title || "Project Title"}</h3>
-                      <p className="text-xs text-gray-600 mt-1">{exp.description || "Project Description"}</p>
+                      <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                      {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                     </div>
                   ))
                 ) : (
@@ -458,33 +460,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index} className="border-l-2 border-gray-900 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job Description"}</p>
+                        <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                        {(exp.company || dateRange(exp.startDate, exp.endDate)) && (
+                          <p className="text-xs text-gray-500">
+                            {[exp.company, dateRange(exp.startDate, exp.endDate)].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
-                  ) : (
-                    <>
-                      <div className="border-l-2 border-gray-900 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">Chief Executive Officer</h3>
-                        <p className="text-xs text-gray-500">Global Corp • 2018 - Present</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Led company through digital transformation, resulting in 45% revenue growth and 30% increase
-                          in market share. Expanded operations to 5 new markets.
-                        </p>
-                      </div>
-                      <div className="border-l-2 border-gray-300 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">Vice President</h3>
-                        <p className="text-xs text-gray-500">Tech Solutions • 2015 - 2018</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Oversaw strategic initiatives that increased annual revenue by R75M. Restructured operations
-                          to improve efficiency.
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -565,13 +550,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                     userData.experience.map((exp, index) => (
                       <div key={index}>
                         <div className="flex justify-between items-start">
-                          <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                          <span className="text-xs text-gray-500">
-                            {exp.startDate || "Start Date"}-{exp.endDate || "End Date"}
-                          </span>
+                          <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                          {dateRange(exp.startDate, exp.endDate) && (
+                            <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">{dateRange(exp.startDate, exp.endDate)}</span>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500">{exp.company || "Company"}</p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job Description"}</p>
+                        {exp.company && <p className="text-xs text-gray-500">{exp.company}</p>}
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
                   ) : (
@@ -636,17 +621,14 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 {userData?.education && userData.education.length > 0 ? (
                   userData.education.map((edu, index) => (
                     <div key={index}>
-                      <h3 className="text-xs font-medium text-gray-700">{edu.degree || "Degree"}</h3>
-                      <p className="text-xs text-gray-500">
-                        {edu.institution || "Institution"} • {edu.graduationDate || "Graduation Date"}
-                      </p>
-                      <p className="text-xs text-gray-600">{edu.location || "Location"}</p>
+                      <h3 className="text-xs font-semibold text-gray-800">{edu.degree}</h3>
+                      {(edu.institution || edu.graduationDate) && (
+                        <p className="text-xs text-gray-500">
+                          {[edu.institution, edu.graduationDate].filter(Boolean).join(' • ')}
+                        </p>
+                      )}
+                      {edu.location && <p className="text-xs text-gray-600">{edu.location}</p>}
                     </div>
-                  ))
-                ) : (
-                  <div>
-                    <h3 className="text-xs font-medium text-gray-700">Bachelor of Commerce (Marketing)</h3>
-                    <p className="text-xs text-gray-500">University of Witwatersrand • 2024</p>
                     <p className="text-xs text-gray-600 mt-1">Cum Laude • GPA: 3.8/4.0</p>
                     <p className="text-xs text-gray-600">
                       Relevant coursework: Digital Marketing, Consumer Behavior, Marketing Research
@@ -662,11 +644,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index}>
-                        <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.startDate || "Start Date"}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job Description"}</p>
+                        <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                        {(exp.company || dateRange(exp.startDate, exp.endDate)) && (
+                          <p className="text-xs text-gray-500">
+                            {[exp.company, dateRange(exp.startDate, exp.endDate)].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
                   ) : (
@@ -748,10 +732,8 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                     userData.experience.map((exp, index) => (
                       <div key={index} className="bg-white/70 rounded p-2">
                         <div className="w-full h-8 bg-gradient-to-r from-pink-200 to-purple-200 rounded mb-1"></div>
-                        <p className="text-xs font-medium">{exp.title || "Brand Identity"}</p>
-                        <p className="text-xs text-gray-600">
-                          {exp.description || "Visual identity for tech startups"}
-                        </p>
+                        <p className="text-xs font-semibold">{exp.title}</p>
+                        {exp.description && <p className="text-xs text-gray-600">{exp.description}</p>}
                       </div>
                     ))
                   ) : (
@@ -853,18 +835,18 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index}>
-                        <div className="flex justify-between">
-                          <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                          <span className="text-xs text-gray-500">
-                            {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
-                          </span>
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                          {dateRange(exp.startDate, exp.endDate) && (
+                            <span className="text-xs text-gray-500 ml-2 whitespace-nowrap">{dateRange(exp.startDate, exp.endDate)}</span>
+                          )}
                         </div>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.location || "Location"}
-                        </p>
+                        {(exp.company || exp.location) && (
+                          <p className="text-xs text-gray-500">{[exp.company, exp.location].filter(Boolean).join(' • ')}</p>
+                        )}
                         {exp.isLearnership && <p className="text-xs text-green-600 font-medium">Learnership</p>}
                         {exp.isInternship && <p className="text-xs text-blue-600 font-medium">Internship</p>}
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job description"}</p>
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
                   ) : (
@@ -904,13 +886,13 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.education && userData.education.length > 0 ? (
                     userData.education.map((edu, index) => (
                       <div key={index}>
-                        <div className="flex justify-between">
-                          <h3 className="text-xs font-medium text-gray-700">{edu.degree || "Degree"}</h3>
-                          <span className="text-xs text-gray-500">{edu.graduationDate || "Graduation Date"}</span>
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xs font-semibold text-gray-800">{edu.degree}</h3>
+                          {edu.graduationDate && <span className="text-xs text-gray-500 ml-2">{edu.graduationDate}</span>}
                         </div>
-                        <p className="text-xs text-gray-500">
-                          {edu.institution || "Institution"} • {edu.location || "Location"}
-                        </p>
+                        {(edu.institution || edu.location) && (
+                          <p className="text-xs text-gray-500">{[edu.institution, edu.location].filter(Boolean).join(' • ')}</p>
+                        )}
                         {edu.nqfLevel && <p className="text-xs text-gray-600">NQF Level: {edu.nqfLevel}</p>}
                         {edu.saqa && <p className="text-xs text-gray-600">SAQA ID: {edu.saqa}</p>}
                       </div>
@@ -956,7 +938,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
           <div className={`bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden ${className}`}>
             <div className="bg-gradient-to-r from-green-600 to-blue-600 text-white p-4">
               <h1 className="text-lg font-bold">{userData?.personalInfo?.fullName || "Nomsa Dlamini"}</h1>
-              <p className="text-sm opacity-90">{userData?.personalInfo?.jobTitle || "Marketing Specialist"}</p>
+              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>}
             </div>
             <div className="p-4 space-y-3">
               <div className="flex gap-4 text-xs text-gray-600">
@@ -999,17 +981,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index} className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-xs font-medium">{exp.title || "Job Title"}</h3>
-                          <p className="text-xs text-gray-500">{exp.company || "Company"}</p>
+                        <div className="flex-1">
+                          <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                          {exp.company && <p className="text-xs text-gray-500">{exp.company}</p>}
                           {exp.isLearnership && <p className="text-xs text-green-600 font-medium">Learnership</p>}
                           {exp.isInternship && <p className="text-xs text-blue-600 font-medium">Internship</p>}
-                          <p className="text-xs text-gray-600 mt-1">{exp.description || "Job description"}</p>
+                          {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {exp.startDate || "Start"}-{exp.endDate || "End"}
-                        </span>
-                      </div>
+                        {dateRange(exp.startDate, exp.endDate) && (
+                          <span className="text-xs text-gray-400 ml-2 whitespace-nowrap">{dateRange(exp.startDate, exp.endDate)}</span>
+                        )}
                     ))
                   ) : (
                     <>
@@ -1045,11 +1026,11 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.education && userData.education.length > 0 ? (
                     userData.education.map((edu, index) => (
                       <div key={index}>
-                        <div className="flex justify-between">
-                          <h3 className="text-xs font-medium">{edu.degree || "Degree"}</h3>
-                          <span className="text-xs text-gray-400">{edu.graduationDate || "Year"}</span>
+                        <div className="flex justify-between items-start">
+                          <h3 className="text-xs font-semibold">{edu.degree}</h3>
+                          {edu.graduationDate && <span className="text-xs text-gray-400 ml-2">{edu.graduationDate}</span>}
                         </div>
-                        <p className="text-xs text-gray-500">{edu.institution || "Institution"}</p>
+                        {edu.institution && <p className="text-xs text-gray-500">{edu.institution}</p>}
                         {edu.nqfLevel && <p className="text-xs text-gray-600">NQF Level: {edu.nqfLevel}</p>}
                       </div>
                     ))
@@ -1139,32 +1120,16 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.experience && userData.experience.length > 0 ? (
                     userData.experience.map((exp, index) => (
                       <div key={index} className="border-l-2 border-gray-900 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">{exp.title || "Job Title"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {exp.company || "Company"} • {exp.startDate || "Start Date"} - {exp.endDate || "End Date"}
-                        </p>
-                        <p className="text-xs text-gray-600 mt-1">{exp.description || "Job Description"}</p>
+                        <h3 className="text-xs font-semibold text-gray-800">{exp.title}</h3>
+                        {(exp.company || dateRange(exp.startDate, exp.endDate)) && (
+                          <p className="text-xs text-gray-500">
+                            {[exp.company, dateRange(exp.startDate, exp.endDate)].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
+                        {exp.description && <p className="text-xs text-gray-600 mt-1">{exp.description}</p>}
                       </div>
                     ))
-                  ) : (
-                    <>
-                      <div className="border-l-2 border-gray-900 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">Chief Operations Officer</h3>
-                        <p className="text-xs text-gray-500">South African Holdings • 2018 - Present</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Led operational transformation resulting in 30% efficiency improvement and R50M annual savings.
-                          Implemented BEE strategies that achieved Level 2 B-BBEE status.
-                        </p>
-                      </div>
-                      <div className="border-l-2 border-gray-300 pl-3">
-                        <h3 className="text-xs font-medium text-gray-700">Operations Director</h3>
-                        <p className="text-xs text-gray-500">National Corporation • 2015 - 2018</p>
-                        <p className="text-xs text-gray-600 mt-1">
-                          Oversaw operations across 5 provinces with staff of 250+. Increased operational efficiency by 25%.
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -1174,10 +1139,12 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                   {userData?.education && userData.education.length > 0 ? (
                     userData.education.map((edu, index) => (
                       <div key={index}>
-                        <h3 className="text-xs font-medium text-gray-700">{edu.degree || "Degree"}</h3>
-                        <p className="text-xs text-gray-500">
-                          {edu.institution || "Institution"} • {edu.graduationDate || "Graduation Date"}
-                        </p>
+                        <h3 className="text-xs font-semibold text-gray-800">{edu.degree}</h3>
+                        {(edu.institution || edu.graduationDate) && (
+                          <p className="text-xs text-gray-500">
+                            {[edu.institution, edu.graduationDate].filter(Boolean).join(' • ')}
+                          </p>
+                        )}
                         {edu.nqfLevel && <p className="text-xs text-gray-600">NQF Level: {edu.nqfLevel}</p>}
                         {edu.internationalEquivalence && (
                           <p className="text-xs text-gray-600">International Equivalence: {edu.internationalEquivalence}</p>
@@ -1230,7 +1197,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div className="flex justify-between items-start border-b border-gray-300 pb-3 mb-3">
                 <div>
                   <h1 className="text-base font-bold text-gray-900">{userData?.personalInfo?.fullName || "Lerato Mokoena"}</h1>
-                  <p className="text-xs text-gray-600">{userData?.personalInfo?.jobTitle || "Operations Manager"}</p>
+                  {userData?.personalInfo?.jobTitle && <p className="text-xs text-gray-600">{userData.personalInfo.jobTitle}</p>}
                 </div>
                 <div className="text-right text-xs text-gray-500 space-y-0.5">
                   <p>{userData?.personalInfo?.email || "lerato@email.co.za"}</p>
@@ -1257,8 +1224,10 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                     <p className="text-xs font-bold text-gray-800 uppercase mb-1">Education</p>
                     {(userData?.education || []).slice(0,2).map((edu, i) => (
                       <div key={i} className="mb-1">
-                        <p className="text-xs font-medium">{edu.degree || "BCom"}</p>
-                        <p className="text-xs text-gray-500">{edu.institution || "University of Johannesburg"} · {edu.graduationDate || "2020"}</p>
+                        <p className="text-xs font-medium">{edu.degree}</p>
+                        {(edu.institution || edu.graduationDate) && (
+                          <p className="text-xs text-gray-500">{[edu.institution, edu.graduationDate].filter(Boolean).join(' · ')}</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1375,7 +1344,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
               <div className="w-1/3 bg-gray-800 text-white p-3 space-y-3">
                 <div>
                   <h1 className="text-xs font-bold leading-tight">{userData?.personalInfo?.fullName || "Precious Ndlovu"}</h1>
-                  <p className="text-xs opacity-75 mt-0.5">{userData?.personalInfo?.jobTitle || "HR Manager"}</p>
+                  {userData?.personalInfo?.jobTitle && <p className="text-xs opacity-75 mt-0.5">{userData.personalInfo.jobTitle}</p>}
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs opacity-60 uppercase font-bold">Contact</p>
@@ -1485,7 +1454,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 <h1 className="text-xl font-bold text-gray-900">
                   {userData?.personalInfo?.fullName || "Professional Name"}
                 </h1>
-                <p className="text-sm text-gray-600">{userData?.personalInfo?.jobTitle || "Job Title"}</p>
+                {userData?.personalInfo?.jobTitle && <p className="text-sm text-gray-600">{userData.personalInfo.jobTitle}</p>}
               </div>
               <div className="space-y-3">
                 <p className="text-xs text-gray-600">

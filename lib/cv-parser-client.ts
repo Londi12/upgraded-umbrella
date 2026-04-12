@@ -271,7 +271,23 @@ function extractExperience(text: string): Experience[] {
   }
   if (current.length > 0) blocks.push(current)
 
+  // Post-process blocks: merge blocks that are pure description text (no title/date)
+  // into the previous block, avoiding fake job entries from bold description paragraphs
+  const mergedBlocks: string[][] = []
   for (const block of blocks) {
+    const firstNonBullet = block.find(l => !/^[•\-–*►▪◦]/.test(l) && l.trim())
+    const blockHasDate = block.some(l => parseDateRange(l) !== null)
+    const blockHasPipe = block.some(l => l.includes('|'))
+    const looksLikeNewEntry = firstNonBullet && !isFakeTitle(firstNonBullet) && (blockHasDate || blockHasPipe || block.length <= 2)
+    if (looksLikeNewEntry || mergedBlocks.length === 0) {
+      mergedBlocks.push([...block])
+    } else {
+      // Append to last block
+      mergedBlocks[mergedBlocks.length - 1].push('', ...block)
+    }
+  }
+
+  for (const block of mergedBlocks) {
     if (block.length === 0) continue
 
     let title = ''
@@ -358,6 +374,14 @@ function extractExperience(text: string): Experience[] {
     }
 
     if (title || company) {
+      // Reject entries where the "title" is actually a description sentence
+      // (happens when bold body text in DOCX creates standalone paragraph blocks)
+      const effectiveTitle = title || company
+      if (isFakeTitle(effectiveTitle) && !company && descParts.length === 0 && !startDate) {
+        // This block is a stray description sentence — skip it entirely
+        continue
+      }
+
       const entry: Experience = {
         title: title || company,
         company: company || title,
@@ -386,6 +410,22 @@ function isJobTitle(line: string): boolean {
     || /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,5}$/.test(line)  // Title Case with up to 6 words, no digits
 }
 
+// Returns true if a line looks like a description sentence rather than a job title
+function isFakeTitle(line: string): boolean {
+  if (!line) return true
+  // Too long to be a job title
+  if (line.length > 70) return true
+  // Starts with action verb (common CV bullet starters)
+  if (/^(Guided|Resolved|Identified|Leveraged|Accurately|Proactively|Participated|Collaborated|Acted|Ensured|Provided|Supported|Assisted|Performed|Maintained|Managed|Developed|Created|Implemented|Coordinated|Handled|Worked|Prepared|Processed|Monitored|Reported|Trained|Operated|Achieved|Delivered|Reviewed|Assessed|Analysed|Analyzed|Built|Established|Improved|Oversaw|Executed|Facilitated|Communicated|Responded|Investigated|Initiated|Administered|Organised|Organized|Directed|Promoted|Generated|Evaluated|Conducted|Drafted|Compiled|Supplied|Allocated|Designed|Planned|Reviewed|Scheduled|Arranged|Negotiated|Advised|Interpreted|Represented|Utilized|Utilised)/i.test(line)) return true
+  // Contains words that indicate it's body text, not a title
+  if (/\bcustomers?\b|\bthrough\b|\bincluding\b|\bsuch as\b|\bin order to\b|\bwith the\b|\bof the\b|\bto ensure\b|\bin a\b|\bon a\b/i.test(line)) return true
+  // Contains em/en dash mid-sentence (not a date range)
+  if (/[\w]\s*[–—]\s*[a-z]/i.test(line)) return true
+  // Starts with lowercase (definitely description)
+  if (/^[a-z]/.test(line)) return true
+  return false
+}
+
 function parseDateRange(line: string): { start: string; end: string } | null {
   // "Jan 2020 - Dec 2022" or "2020 - 2023" or "Jan 2020 - Present"
   const m = line.match(/(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(\d{4})\s*(?:–|—|-|to)\s*(?:(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+)?(\d{4}|Present|Current|Now)/i)
@@ -409,10 +449,10 @@ function extractEducation(text: string): Education[] {
   const education: Education[] = []
 
   const sectionPatterns = [
-    /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)(?=\n\s*(?:skills|activities|interests|experience|projects|work):)/is,
-    /EDUCATION\s*\n([^]*?)(?=\n\s*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK))/is,
-    /QUALIFICATIONS\s*\n([^]*?)(?=\n\s*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK))/is,
-    /(?:education|academic|qualifications)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]+\s*\n)/is,
+    /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)(?=\n[ \t]*(?:skills|activities|interests|experience|projects|work|employment|professional\s+experience|references|memberships?|professional\s+memberships?|additional|profile|summary|certifications?|achievements?|awards?|volunteer|languages?|hobbies?)\b)/is,
+    /EDUCATION\s*\n([^]*?)(?=\n[ \t]*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK|EMPLOYMENT|REFERENCES|MEMBERSHIP|ADDITIONAL|PROFILE|SUMMARY|CERTIFICATION|ACHIEVEMENT|AWARD|VOLUNTEER|LANGUAGE|HOBB)\b)/is,
+    /QUALIFICATIONS\s*\n([^]*?)(?=\n[ \t]*(?:SKILLS|ACTIVITIES|INTERESTS|EXPERIENCE|PROJECTS|WORK|EMPLOYMENT|REFERENCES|MEMBERSHIP|ADDITIONAL|PROFILE|SUMMARY)\b)/is,
+    /(?:education|academic|qualifications)[:.\s]*\n([^]*?)(?=\n\s*\n\s*[A-Z][A-Z\s]{3,}\s*\n)/is,
     /(?:education|academic|qualifications|academics|academic background)[:.\s]*\n([^]*?)$/is,
     /EDUCATION\s*\n([^]*?)$/is,
   ]
