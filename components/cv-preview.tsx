@@ -1064,7 +1064,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 <div className="w-full h-1 bg-white"></div>
               </div>
               <h1 className="text-xl font-bold">{userData?.personalInfo?.fullName}</h1>
-              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>
+              {userData?.personalInfo?.jobTitle && <p className="text-sm opacity-90">{userData.personalInfo.jobTitle}</p>}
             </div>
             <div className="p-4 space-y-4">
               <div className="grid grid-cols-2 gap-4 text-xs">
