@@ -7,8 +7,7 @@ import {
  Save,
  AlertCircle,
  ChevronLeft,
- ChevronRight,
- Brain
+ ChevronRight
 } from "lucide-react"
 import { useSearchParams, useRouter } from "next/navigation"
 import {
@@ -32,7 +31,6 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ApplicationTracker } from "@/components/application-tracker"
 import { JobMatching } from "@/components/job-matching"
-import { WorkingATSScore } from "@/components/working-ats-score"
 import { WorkingSaveButton } from "@/components/working-save-button"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -471,10 +469,10 @@ export default function CreateCVPage() {
           summary: result.data.summary || "",
           experience: Array.isArray(result.data.experience) && result.data.experience.length > 0
             ? result.data.experience
-            : [{ title: "", company: "", location: "", startDate: "", endDate: "", description: "", isLearnership: false, isInternship: false }],
+            : formData.experience,
           education: Array.isArray(result.data.education) && result.data.education.length > 0
             ? result.data.education
-            : [{ degree: "", institution: "", location: "", graduationDate: "", nqfLevel: undefined as number | undefined, saqa: "", internationalEquivalence: "" }],
+            : formData.education,
           skills: normalizeSkillsForForm(result.data.skills),
         });
         setParseStep('complete');
@@ -512,8 +510,7 @@ export default function CreateCVPage() {
   }
 
   const handleInputFocus = (section: string) => (e: React.FocusEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    // strip trailing index (e.g. 'education-0' → 'education') so the tab value stays valid
-    handleSectionChange(section.replace(/-\d+$/, ''));
+    handleSectionChange(section);
   };
 
   // Track CV interactions for analytics
@@ -563,23 +560,6 @@ export default function CreateCVPage() {
               ) : (
                 <WorkingSaveButton cvData={formData as CVData} className="border-gray-200 text-gray-700 hover:bg-gray-50" />
               )}
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-gray-200 text-gray-700 hover:bg-gray-50">
-                    <Brain className="h-4 w-4 mr-1.5" />
-                    ATS Score
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>ATS Compatibility Analysis</DialogTitle>
-                    <DialogDescription>See how well your CV performs with Applicant Tracking Systems</DialogDescription>
-                  </DialogHeader>
-                  <div className="overflow-y-auto flex-1 pr-1">
-                    <WorkingATSScore cvData={formData as CVData} />
-                  </div>
-                </DialogContent>
-              </Dialog>
               <Button
                 size="sm"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold"

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
-import { ArrowLeft, Save, Download, Eye, Brain, ArrowRight } from "lucide-react"
+import { ArrowLeft, Save, Download, Eye, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -15,7 +15,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { CVPreview } from "@/components/cv-preview"
 import { PageHeader } from "@/components/ui/page-header"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { ATSScoringPanel } from "@/components/cv-ats-scoring"
 import { useAuth } from "@/contexts/auth-context"
 import { saveCV } from "@/lib/user-data-service"
 import { generateCVPDF, downloadBlob } from "@/lib/pdf-utils"
@@ -148,23 +147,6 @@ function BuildPageContent() {
                     <DialogTitle>CV Preview</DialogTitle>
                   </DialogHeader>
                   <CVPreview template={selectedTemplate.type} userData={formData} />
-                </DialogContent>
-              </Dialog>
-
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button variant="outline">
-                    <Brain className="h-4 w-4 mr-2" />
-                    ATS Score
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle>ATS Score Analysis</DialogTitle>
-                  </DialogHeader>
-                  <div className="overflow-y-auto flex-1 pr-1">
-                    <ATSScoringPanel cvData={formData as CVData} currentSection={activeSection} />
-                  </div>
                 </DialogContent>
               </Dialog>
 
