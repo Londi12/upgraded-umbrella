@@ -67,6 +67,18 @@ export async function POST(request: NextRequest) {
     }).sort((a, b) => b.matchScore - a.matchScore)
 
     const cvSkillsGlobal = normalizeSkills(cvData.skills)
+    // For recommendations: also consider skills mentioned in experience descriptions
+    const cvDescTextGlobal = [
+      cvData.summary || '',
+      ...(cvData.experience || []).map((e: any) => e.description || ''),
+    ].join(' ').toLowerCase()
+    const cvDescSkillsGlobal = extractJobSkillsFallback(cvDescTextGlobal)
+    const cvAllSkillsGlobal = [...new Set([...cvSkillsGlobal, ...cvDescSkillsGlobal])]
+    // All title text for better profile matching (not just current job title)
+    const cvAllTitlesGlobal = [
+      (cvData.personalInfo?.jobTitle || '').toLowerCase(),
+      ...(cvData.experience || []).map((e: any) => (e.title || '').toLowerCase()),
+    ].join(' ')
     const recommendedFamilies = (SA_JOB_PROFILES || [])
       .map(profile => {
         let s = 0
@@ -74,12 +86,13 @@ export async function POST(request: NextRequest) {
           ...profile.industryKeywords,
           ...Object.values(profile.experienceTiers).flatMap(t => t.coreSkills)
         ].map(k => k.toLowerCase())
-        s += Math.min(cvSkillsGlobal.filter(cs => cs.length >= 4 && profileSkills.some(ps => ps.length >= 4 && (ps === cs || ps.includes(cs)))).length * 8, 40)
-        const titleLower = (cvData.personalInfo?.jobTitle || '').toLowerCase()
-        if (profile.typicalTitles.some(t => titleLower.includes(t.toLowerCase()))) s += 25
+        s += Math.min(cvAllSkillsGlobal.filter(cs => cs.length >= 4 && profileSkills.some(ps => ps.length >= 4 && (ps === cs || ps.includes(cs)))).length * 8, 40)
+        if (profile.typicalTitles.some(t => t.length >= 4 && cvAllTitlesGlobal.includes(t.toLowerCase()))) s += 25
         return { family: profile.family, score: s }
       })
-      .filter(r => r.family !== cvFamily)
+      // Only recommend profiles with genuine evidence; filter avoids returning Mining/Geo
+      // when all scores are 0 simply because they appear first in the profile array
+      .filter(r => r.family !== cvFamily && r.score > 0)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3)
       .map(r => r.family)
@@ -106,9 +119,21 @@ export async function POST(request: NextRequest) {
 }
 
 function guessCVFamily(cvData: CVData): string {
-  const title = cvData.personalInfo?.jobTitle?.toLowerCase() || ''
-  // normalizeSkills handles both string and array — safe for all CV types
-  const skillsText = normalizeSkills(cvData.skills).join(' ')
+  const personalTitle = (cvData.personalInfo?.jobTitle || '').toLowerCase()
+  // Collect all past experience titles — critical when personalInfo.jobTitle is empty
+  const expTitles = (cvData.experience || []).map((e: any) => (e.title || '').toLowerCase()).join(' ')
+
+  // Normalised skills list, plus token set for word-boundary-safe short-keyword matching
+  const skills = normalizeSkills(cvData.skills)
+  const skillsText = skills.join(' ')
+  // Split multi-word skills into individual tokens so 'R' doesn't match 'react'/'javascript'
+  const skillsTokenSet = new Set(skills.flatMap((s: string) => s.split(/\s+/)))
+
+  // Also look at certifications and registrations — strong family signals (e.g. 'SAICA', 'ECSA')
+  const certsText = [
+    ...(cvData.certifications || []),
+    ...(cvData.registrations || []),
+  ].join(' ').toLowerCase()
 
   const profiles = SA_JOB_PROFILES || []
   let bestMatch = 'general'
@@ -116,11 +141,35 @@ function guessCVFamily(cvData: CVData): string {
 
   for (const profile of profiles) {
     let score = 0
-    if (title.includes(profile.family.toLowerCase()) || profile.typicalTitles.some(t => title.includes(t.toLowerCase()))) {
+
+    // Title matching — current title weighted more than historical titles
+    if (
+      personalTitle.includes(profile.family.toLowerCase()) ||
+      profile.typicalTitles.some(t => t.length >= 4 && personalTitle.includes(t.toLowerCase()))
+    ) {
       score += 50
+    } else if (
+      profile.typicalTitles.some(t => t.length >= 4 && expTitles.includes(t.toLowerCase()))
+    ) {
+      // Past experience title match — valid evidence but weighted less than current title
+      score += 30
     }
-    const matches = profile.industryKeywords.filter(kw => skillsText.includes(kw.toLowerCase()))
-    score += matches.length * 5
+
+    // Keyword matching — word-boundary-safe for short keywords to prevent
+    // single-char 'R' matching 'react', 'docker', 'javascript' etc.
+    for (const kw of profile.industryKeywords) {
+      const kwLower = kw.toLowerCase()
+      let matched: boolean
+      if (kwLower.length <= 3) {
+        // Exact token match — 'r' only matches if the skill IS 'r' (the language)
+        matched = skillsTokenSet.has(kwLower)
+      } else {
+        // Substring match is fine for longer keywords; also check certs/registrations
+        matched = skillsText.includes(kwLower) || certsText.includes(kwLower)
+      }
+      if (matched) score += 5
+    }
+
     if (score > bestScore) {
       bestScore = score
       bestMatch = profile.family
@@ -141,11 +190,14 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   const gaps: string[] = []
 
   // 1. Title/experience alignment (25 pts)
-  const cvTitles = (cvData.experience || []).map((e: any) => (e.title || '').toLowerCase())
+  // Include personalInfo.jobTitle — it is the most important self-identification signal
+  const cvTitles = [
+    (cvData.personalInfo?.jobTitle || '').toLowerCase(),
+    ...(cvData.experience || []).map((e: any) => (e.title || '').toLowerCase()),
+  ].filter(t => t.length >= 4)
   const jobTitleLower = (job.title || '').toLowerCase()
-  const titleMatch = cvTitles.some((t: string) =>
-    t.length >= 4 && jobTitleLower.length >= 4 &&
-    (jobTitleLower.includes(t) || t.includes(jobTitleLower))
+  const titleMatch = jobTitleLower.length >= 4 && cvTitles.some(t =>
+    jobTitleLower.includes(t) || t.includes(jobTitleLower)
   )
   if (titleMatch) {
     score += 25
@@ -155,7 +207,17 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   }
 
   // 2. Skills overlap (40 pts)
-  const cvSkills = normalizeSkills(cvData.skills)
+  // Primary source: explicit skills field
+  const cvExplicitSkills = normalizeSkills(cvData.skills)
+  // Secondary source: extract recognised skill tokens from experience descriptions + summary
+  // This bridges the gap where tools are mentioned in work history but not listed as skills
+  const cvDescText = [
+    cvData.summary || '',
+    ...(cvData.experience || []).map((e: any) => e.description || ''),
+  ].join(' ').toLowerCase()
+  const cvDescSkills = extractJobSkillsFallback(cvDescText)
+  // Merge, deduped — explicit skills take precedence but descriptions fill the gaps
+  const cvSkills = [...new Set([...cvExplicitSkills, ...cvDescSkills])]
   const profileSkills = jobProfile
     ? [
         ...jobProfile.industryKeywords,
@@ -266,14 +328,40 @@ function normalizeSkills(skills: any): string[] {
 
 function extractJobSkillsFallback(jobText: string): string[] {
   const knownSkills = [
-    'excel', 'word', 'powerpoint', 'outlook', 'sql', 'python', 'javascript', 'typescript',
-    'react', 'node', 'java', 'aws', 'azure', 'docker', 'git', 'linux',
-    'power bi', 'tableau', 'sap', 'pastel', 'sage', 'xero', 'quickbooks',
-    'autocad', 'revit', 'solidworks', 'matlab',
-    'project management', 'communication', 'leadership', 'stakeholder management',
-    'customer service', 'problem solving', 'data analysis', 'reporting',
-    'recruitment', 'procurement', 'budgeting', 'forecasting',
-    'ifrs', 'tax', 'audit', 'compliance', 'risk management'
+    // Office / productivity
+    'excel', 'word', 'powerpoint', 'outlook', 'sharepoint', 'ms office',
+    // Web / software development
+    'sql', 'python', 'javascript', 'typescript', 'react', 'angular', 'vue',
+    'node', 'java', 'c#', '.net', 'spring', 'php', 'ruby', 'kotlin', 'swift',
+    'html', 'css', 'graphql', 'rest api', 'microservices',
+    // Cloud & DevOps
+    'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'terraform', 'ansible',
+    'ci/cd', 'jenkins', 'github actions', 'git', 'linux', 'bash',
+    // IT infrastructure / networking / virtualisation
+    'vmware', 'vsphere', 'hyper-v', 'virtualisation', 'virtualization',
+    'active directory', 'windows server', 'powershell', 'sccm', 'scom',
+    'cisco', 'firewall', 'dns', 'dhcp', 'vpn', 'vlan', 'lan', 'wan',
+    'tcp/ip', 'networking', 'network', 'storage', 'san', 'nas', 'backup',
+    'veeam', 'itil', 'monitoring', 'nagios', 'zabbix',
+    // Data & BI
+    'power bi', 'tableau', 'qlik', 'ssrs', 'ssis', 'ssas',
+    'data analysis', 'data analytics', 'machine learning', 'ai',
+    'etl', 'data warehouse', 'big data', 'spark', 'hadoop',
+    // ERP / finance systems
+    'sap', 'pastel', 'sage', 'xero', 'quickbooks', 'oracle',
+    // CAD / engineering
+    'autocad', 'revit', 'solidworks', 'matlab', 'archicad',
+    // Finance / accounting
+    'ifrs', 'tax', 'audit', 'compliance', 'risk management',
+    'financial reporting', 'budgeting', 'forecasting', 'financial modelling',
+    // Soft / management skills
+    'project management', 'stakeholder management', 'leadership',
+    'communication', 'customer service', 'problem solving',
+    'recruitment', 'procurement', 'reporting',
+    // HR
+    'ccma', 'labour relations', 'performance management', 'payroll',
+    // Construction / QS
+    'bill of quantities', 'cost estimation', 'jbcc', 'nec', 'ccs candy',
   ]
   return knownSkills.filter(skill => jobText.includes(skill))
 }

@@ -228,6 +228,32 @@ const JOB_PROFILES: JobProfile[] = [
     industryKeywords: ['agile', 'scrum', 'Jira', 'PRINCE2', 'PMP', 'DevOps', 'Docker', 'Kubernetes', 'UX', 'business analysis'],
     sector: 'tech'
   },
+  {
+    family: 'Systems Engineer',
+    typicalTitles: [
+      'Systems Administrator', 'Systems Engineer', 'Network Engineer', 'Infrastructure Engineer',
+      'Virtualization Engineer', 'Cloud Engineer', 'Platform Engineer', 'Server Administrator',
+      'IT Infrastructure Specialist', 'VMware Administrator', 'Network Administrator',
+      'IT Support Engineer', 'IT Engineer', 'Systems Analyst', 'L1 Engineer', 'L2 Engineer', 'L3 Engineer'
+    ],
+    minNQF: 6,
+    acceptedQualifications: ['BSc IT', 'BSc Computer Science', 'NDip Information Technology', 'CompTIA Network+', 'CCNA', 'MCSA', 'MCSE'],
+    professionalRegistrations: ['CompTIA Network+', 'CCNA', 'MCSE', 'VMware VCP'],
+    experienceTiers: {
+      junior: { minYears: 1, coreSkills: ['Windows Server', 'Linux', 'Active Directory', 'networking', 'VMware'] },
+      mid: { minYears: 3, coreSkills: ['vSphere', 'Hyper-V', 'Azure', 'AWS', 'PowerShell', 'DNS', 'DHCP', 'backup'] },
+      senior: { minYears: 6, coreSkills: ['cloud architecture', 'disaster recovery', 'capacity planning', 'security hardening', 'SAN', 'NAS'] }
+    },
+    saSpecificFlags: ["Driver's license"],
+    industryKeywords: [
+      'VMware', 'vSphere', 'Hyper-V', 'Active Directory', 'Windows Server', 'Linux',
+      'Cisco', 'firewall', 'DNS', 'DHCP', 'virtualization', 'virtualisation',
+      'PowerShell', 'SCCM', 'SCOM', 'storage', 'SAN', 'NAS', 'backup', 'Veeam',
+      'networking', 'TCP/IP', 'LAN', 'WAN', 'VPN', 'VLAN', 'routing', 'switching',
+      'Azure', 'AWS', 'Terraform', 'Ansible', 'ITIL', 'monitoring'
+    ],
+    sector: 'tech'
+  },
 
   // ── HEALTHCARE & PHARMACEUTICALS ────────────────────────────────────────────
   {
