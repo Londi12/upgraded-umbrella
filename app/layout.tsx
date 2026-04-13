@@ -1,4 +1,5 @@
 import type React from "react"
+import Script from "next/script"
 import { SiteFooter } from "@/components/site-footer"
 import { SiteHeader } from "@/components/site-header"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -43,6 +44,18 @@ export default function RootLayout({
 
       </head>
       <body suppressHydrationWarning>
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=AW-18079364506"
+          strategy="afterInteractive"
+        />
+        <Script id="google-ads-gtag" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'AW-18079364506');
+          `}
+        </Script>
         <ThemeProvider attribute="class" defaultTheme="light">
           <ErrorBoundary>
             <AuthProvider>
