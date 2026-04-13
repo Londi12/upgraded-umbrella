@@ -696,7 +696,7 @@ function JobsTab() {
   const [isUploadingApplications, setIsUploadingApplications] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showPotentialDuplicatesOnly, setShowPotentialDuplicatesOnly] = useState(false)
-  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set())
+  const [keepByGroup, setKeepByGroup] = useState<Record<string, string>>({})
   const [editingJob, setEditingJob] = useState<{ id: string; title: string; company: string; location: string; source: string; snippet: string; posted_date: string; url: string } | null>(null)
 
   const loadJobs = async () => {
@@ -759,61 +759,22 @@ function JobsTab() {
     await loadJobs()
   }
 
-  const handleBulkDelete = async () => {
-    if (selectedJobIds.size === 0) return
-    if (!window.confirm(`Permanently delete ${selectedJobIds.size} selected job(s)?`)) return
-    for (const id of Array.from(selectedJobIds)) {
-      await deleteJob(id)
-    }
-    setSelectedJobIds(new Set())
-    await loadJobs()
-  }
+  const getDuplicateKey = (job: { title: string; company: string }) =>
+    `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
 
-  const toggleJobSelection = (id: string) => {
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
-
-  const selectDupesInGroup = (jobs: typeof existingJobs) => {
-    // Selects all but the first job in the group for deletion (first = keep)
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev)
-      jobs.slice(1).forEach((j) => next.add(j.id))
-      return next
-    })
-  }
-
-  const selectAllDupesKeepingFirst = (groups: Array<typeof existingJobs>) => {
-    setSelectedJobIds((prev) => {
-      const next = new Set(prev)
-      groups.forEach((group) => group.slice(1).forEach((j) => next.add(j.id)))
-      return next
-    })
-  }
-
-  const handleDeleteDupesInGroup = async (jobs: typeof existingJobs) => {
-    const ids = jobs.slice(1).map((j) => j.id)
+  const handleDeleteDupesInGroup = async (jobs: typeof existingJobs, groupKey: string) => {
+    const keepId = keepByGroup[groupKey] || jobs[0]?.id
+    const ids = jobs.filter((j) => j.id !== keepId).map((j) => j.id)
     if (ids.length === 0) return
     if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep 1?`)) return
     for (const id of ids) {
       await deleteJob(id)
     }
-    setSelectedJobIds(new Set())
-    await loadJobs()
-  }
-
-  const handleDeleteAllDupesKeepingFirst = async (groups: Array<typeof existingJobs>) => {
-    const ids = groups.flatMap((group) => group.slice(1).map((j) => j.id))
-    if (ids.length === 0) return
-    if (!window.confirm(`Delete ${ids.length} duplicate job(s) across all groups and keep 1 in each group?`)) return
-    for (const id of ids) {
-      await deleteJob(id)
-    }
-    setSelectedJobIds(new Set())
+    setKeepByGroup((prev) => {
+      const next = { ...prev }
+      delete next[groupKey]
+      return next
+    })
     await loadJobs()
   }
 
@@ -950,34 +911,6 @@ function JobsTab() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <h2 className="text-white font-medium">Jobs ({existingJobs.length})</h2>
           <div className="flex items-center gap-2">
-            {showPotentialDuplicatesOnly && groupedDuplicates && groupedDuplicates.length > 0 && (
-              <>
-                <Button
-                  type="button"
-                  onClick={() => selectAllDupesKeepingFirst(groupedDuplicates)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
-                >
-                  Select all dupes
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => void handleDeleteAllDupesKeepingFirst(groupedDuplicates)}
-                  className="bg-red-700 hover:bg-red-800 text-white text-xs"
-                >
-                  Delete all dupes (keep 1 each)
-                </Button>
-              </>
-            )}
-            {selectedJobIds.size > 0 && (
-              <Button
-                type="button"
-                onClick={() => void handleBulkDelete()}
-                className="bg-red-600 hover:bg-red-700 text-white text-xs"
-              >
-                <Trash2 className="h-3.5 w-3.5 mr-1" />
-                Delete selected ({selectedJobIds.size})
-              </Button>
-            )}
             <Input
               placeholder="Search title/company/source/location/url..."
               value={searchTerm}
@@ -987,7 +920,7 @@ function JobsTab() {
             <Button
               type="button"
               variant={showPotentialDuplicatesOnly ? "default" : "outline"}
-              onClick={() => { setShowPotentialDuplicatesOnly((prev) => !prev); setSelectedJobIds(new Set()) }}
+              onClick={() => setShowPotentialDuplicatesOnly((prev) => !prev)}
               className={showPotentialDuplicatesOnly ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-slate-700 text-slate-300"}
             >
               Duplicates {duplicateGroups > 0 ? `(${duplicateGroups})` : ''}
@@ -1004,6 +937,8 @@ function JobsTab() {
             ) : (
               groupedDuplicates.map((group) => {
                 const rep = group[0]
+                const groupKey = getDuplicateKey(rep)
+                const keepId = keepByGroup[groupKey] || rep.id
                 return (
                   <div key={`${rep.title}::${rep.company}`} className="border-b border-slate-700 last:border-0">
                     {/* Group header */}
@@ -1016,15 +951,7 @@ function JobsTab() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => selectDupesInGroup(group)}
-                        className="text-amber-400 hover:text-amber-300 text-xs h-6 flex-shrink-0"
-                      >
-                        Select dupes (keep 1st)
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => void handleDeleteDupesInGroup(group)}
+                        onClick={() => void handleDeleteDupesInGroup(group, groupKey)}
                         className="text-red-400 hover:text-red-300 text-xs h-6 flex-shrink-0"
                       >
                         Delete dupes in group
@@ -1034,20 +961,11 @@ function JobsTab() {
                     {group.map((job, idx) => (
                       <div
                         key={job.id}
-                        className={`flex items-start justify-between px-6 py-3 border-b border-slate-800 last:border-0 ${
-                          selectedJobIds.has(job.id) ? 'bg-red-900/10' : idx === 0 ? 'bg-green-900/10' : ''
-                        }`}
+                        className="flex items-start justify-between px-6 py-3 border-b border-slate-800 last:border-0"
                       >
                         <div className="flex items-start gap-3 flex-1 min-w-0 mr-4">
-                          <input
-                            type="checkbox"
-                            checked={selectedJobIds.has(job.id)}
-                            onChange={() => toggleJobSelection(job.id)}
-                            className="flex-shrink-0 mt-1 h-4 w-4 accent-red-500 cursor-pointer"
-                          />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              {idx === 0 && <span className="text-green-400 text-xs font-medium">[keep]</span>}
                               <p className="text-white text-sm font-medium">{job.title}</p>
                             </div>
                             <p className="text-slate-400 text-xs">{job.company} • {job.location} • {job.source}</p>
@@ -1055,6 +973,15 @@ function JobsTab() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setKeepByGroup((prev) => ({ ...prev, [groupKey]: job.id }))}
+                            className={keepId === job.id ? "text-green-400 hover:text-green-300 h-8 w-8 p-0" : "text-slate-500 hover:text-green-300 h-8 w-8 p-0"}
+                            title="Keep this job when deleting duplicates"
+                          >
+                            <CheckCircle className="h-3.5 w-3.5" />
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => setEditingJob({ ...job })} className="text-slate-400 hover:text-white h-8 w-8 p-0">
                             <FileText className="h-3.5 w-3.5" />
                           </Button>
