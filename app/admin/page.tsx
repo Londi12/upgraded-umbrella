@@ -696,6 +696,7 @@ function JobsTab() {
   const [isUploadingApplications, setIsUploadingApplications] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showPotentialDuplicatesOnly, setShowPotentialDuplicatesOnly] = useState(false)
+  const [selectedJobIds, setSelectedJobIds] = useState<Set<string>>(new Set())
   const [editingJob, setEditingJob] = useState<{ id: string; title: string; company: string; location: string; source: string; snippet: string; posted_date: string; url: string } | null>(null)
 
   const loadJobs = async () => {
@@ -756,6 +757,34 @@ function JobsTab() {
     if (!window.confirm("Delete this job?")) return
     await deleteJob(id)
     await loadJobs()
+  }
+
+  const handleBulkDelete = async () => {
+    if (selectedJobIds.size === 0) return
+    if (!window.confirm(`Permanently delete ${selectedJobIds.size} selected job(s)?`)) return
+    for (const id of Array.from(selectedJobIds)) {
+      await deleteJob(id)
+    }
+    setSelectedJobIds(new Set())
+    await loadJobs()
+  }
+
+  const toggleJobSelection = (id: string) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const selectDupesInGroup = (jobs: typeof existingJobs) => {
+    // Selects all but the first job in the group for deletion (first = keep)
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev)
+      jobs.slice(1).forEach((j) => next.add(j.id))
+      return next
+    })
   }
 
   const handleApplicationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -822,6 +851,17 @@ function JobsTab() {
     [duplicateKeyCounts]
   )
 
+  const groupedDuplicates = useMemo(() => {
+    if (!showPotentialDuplicatesOnly) return null
+    const groups = new Map<string, typeof existingJobs>()
+    for (const job of filtered) {
+      const key = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(job)
+    }
+    return Array.from(groups.values()).sort((a, b) => b.length - a.length)
+  }, [filtered, showPotentialDuplicatesOnly, existingJobs])
+
   const filtered = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
@@ -880,6 +920,16 @@ function JobsTab() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <h2 className="text-white font-medium">Jobs ({existingJobs.length})</h2>
           <div className="flex items-center gap-2">
+            {selectedJobIds.size > 0 && (
+              <Button
+                type="button"
+                onClick={() => void handleBulkDelete()}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs"
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete selected ({selectedJobIds.size})
+              </Button>
+            )}
             <Input
               placeholder="Search title/company/source/location/url..."
               value={searchTerm}
@@ -889,7 +939,7 @@ function JobsTab() {
             <Button
               type="button"
               variant={showPotentialDuplicatesOnly ? "default" : "outline"}
-              onClick={() => setShowPotentialDuplicatesOnly((prev) => !prev)}
+              onClick={() => { setShowPotentialDuplicatesOnly((prev) => !prev); setSelectedJobIds(new Set()) }}
               className={showPotentialDuplicatesOnly ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-slate-700 text-slate-300"}
             >
               Duplicates {duplicateGroups > 0 ? `(${duplicateGroups})` : ''}
@@ -900,24 +950,90 @@ function JobsTab() {
           </div>
         </div>
         <div className="divide-y divide-slate-800 max-h-[500px] overflow-y-auto">
-          {filtered.map((job) => (
-            <div key={job.id} className="flex items-start justify-between px-6 py-4">
-              <div className="flex-1 min-w-0 mr-4">
-                <p className="text-white text-sm font-medium">{job.title}</p>
-                <p className="text-slate-400 text-xs">{job.company} • {job.location}</p>
-                <p className="text-slate-500 text-xs mt-0.5">{formatAndTruncateJobDescription(job.snippet, 80)}</p>
-              </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <Button variant="ghost" size="sm" onClick={() => setEditingJob({ ...job })} className="text-slate-400 hover:text-white h-8 w-8 p-0">
-                  <FileText className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => void handleDelete(job.id)} className="text-red-400 hover:text-red-300 h-8 w-8 p-0">
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && <p className="text-slate-500 text-sm p-6">{searchTerm ? "No jobs match your search." : "No jobs in database."}</p>}
+          {showPotentialDuplicatesOnly && groupedDuplicates ? (
+            groupedDuplicates.length === 0 ? (
+              <p className="text-slate-500 text-sm p-6">No duplicate groups found.</p>
+            ) : (
+              groupedDuplicates.map((group) => {
+                const rep = group[0]
+                return (
+                  <div key={`${rep.title}::${rep.company}`} className="border-b border-slate-700 last:border-0">
+                    {/* Group header */}
+                    <div className="flex items-center justify-between px-6 py-2 bg-slate-800/60">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-white text-sm font-semibold truncate">{rep.title}</span>
+                        <span className="text-slate-400 text-xs flex-shrink-0">@ {rep.company}</span>
+                        <Badge className="bg-amber-600/20 text-amber-400 border-amber-600/40 text-xs flex-shrink-0">{group.length} copies</Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => selectDupesInGroup(group)}
+                        className="text-amber-400 hover:text-amber-300 text-xs h-6 flex-shrink-0"
+                      >
+                        Select dupes (keep 1st)
+                      </Button>
+                    </div>
+                    {/* Jobs in group */}
+                    {group.map((job, idx) => (
+                      <div
+                        key={job.id}
+                        className={`flex items-start justify-between px-6 py-3 border-b border-slate-800 last:border-0 ${
+                          selectedJobIds.has(job.id) ? 'bg-red-900/10' : idx === 0 ? 'bg-green-900/10' : ''
+                        }`}
+                      >
+                        <div className="flex items-start gap-3 flex-1 min-w-0 mr-4">
+                          <input
+                            type="checkbox"
+                            checked={selectedJobIds.has(job.id)}
+                            onChange={() => toggleJobSelection(job.id)}
+                            className="flex-shrink-0 mt-1 h-4 w-4 accent-red-500 cursor-pointer"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              {idx === 0 && <span className="text-green-400 text-xs font-medium">[keep]</span>}
+                              <p className="text-white text-sm font-medium">{job.title}</p>
+                            </div>
+                            <p className="text-slate-400 text-xs">{job.company} • {job.location} • {job.source}</p>
+                            <p className="text-slate-500 text-xs mt-0.5 truncate">{job.url}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <Button variant="ghost" size="sm" onClick={() => setEditingJob({ ...job })} className="text-slate-400 hover:text-white h-8 w-8 p-0">
+                            <FileText className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => void handleDelete(job.id)} className="text-red-400 hover:text-red-300 h-8 w-8 p-0">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })
+            )
+          ) : (
+            <>
+              {filtered.map((job) => (
+                <div key={job.id} className="flex items-start justify-between px-6 py-4">
+                  <div className="flex-1 min-w-0 mr-4">
+                    <p className="text-white text-sm font-medium">{job.title}</p>
+                    <p className="text-slate-400 text-xs">{job.company} • {job.location}</p>
+                    <p className="text-slate-500 text-xs mt-0.5">{formatAndTruncateJobDescription(job.snippet, 80)}</p>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <Button variant="ghost" size="sm" onClick={() => setEditingJob({ ...job })} className="text-slate-400 hover:text-white h-8 w-8 p-0">
+                      <FileText className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => void handleDelete(job.id)} className="text-red-400 hover:text-red-300 h-8 w-8 p-0">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && <p className="text-slate-500 text-sm p-6">{searchTerm ? "No jobs match your search." : "No jobs in database."}</p>}
+            </>
+          )}
         </div>
       </div>
 
