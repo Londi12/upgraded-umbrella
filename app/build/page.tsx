@@ -54,8 +54,8 @@ function BuildPageContent() {
       location: "",
     },
     summary: "",
-    experience: [{ title: "", company: "", startDate: "", endDate: "", description: "" }],
-    education: [{ degree: "", institution: "", graduationDate: "" }],
+    experience: [{ title: "", company: "", location: "", startDate: "", endDate: "", description: "" }],
+    education: [{ degree: "", institution: "", location: "", graduationDate: "" }],
     skills: "",
   })
 
@@ -178,13 +178,13 @@ function BuildPageContent() {
                 const file = e.target.files?.[0]
                 if (!file) return
                 
-                const formData = new FormData()
-                formData.append('file', file)
+                const uploadFormData = new FormData()
+                uploadFormData.append('file', file)
                 
                 try {
                   const response = await fetch('/api/parse-cv', {
                     method: 'POST',
-                    body: formData,
+                    body: uploadFormData,
                   })
                   
                   const result = await response.json()
@@ -200,21 +200,23 @@ function BuildPageContent() {
                       },
                       summary: result.data.summary || "",
                       experience: result.data.experience?.length > 0 ? 
-                        result.data.experience.map(exp => ({
+                        result.data.experience.map((exp: any) => ({
                           title: exp.title || "",
                           company: exp.company || "",
+                          location: exp.location || "",
                           startDate: exp.startDate || "",
                           endDate: exp.endDate || "",
                           description: exp.description || ""
                         })) : formData.experience,
                       education: result.data.education?.length > 0 ? 
-                        result.data.education.map(edu => ({
+                        result.data.education.map((edu: any) => ({
                           degree: edu.degree || "",
                           institution: edu.institution || "",
+                          location: edu.location || "",
                           graduationDate: edu.graduationDate || ""
                         })) : formData.education,
                       skills: Array.isArray(result.data.skills) ? 
-                        result.data.skills.map(s => typeof s === 'string' ? s : s.name).join(', ') : 
+                        result.data.skills.map((s: any) => typeof s === 'string' ? s : s.name).join(', ') : 
                         result.data.skills || "",
                     })
                     setSuccess("CV uploaded and fields auto-filled!")

@@ -1,7 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+import { createServerClient } from '@supabase/ssr'
+
+function createRequestClient(request: NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => request.cookies.getAll(),
+        setAll: () => {},
+      },
+    }
+  )
+}
 
 export async function POST(request: NextRequest) {
+  // Require authenticated admin
+  const supabase = createRequestClient(request)
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  if (authError || !user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const { data: adminRecord } = await supabase
+    .from('admin_users')
+    .select('user_id')
+    .eq('user_id', user.id)
+    .single()
+  if (!adminRecord) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   try {
     const formData = await request.formData()
     const file = formData.get('file') as File
@@ -10,19 +38,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
     }
 
-    const fileContent = await file.text()
     let jobs: any[] = []
 
     // Parse CSV format
     if (file.name.endsWith('.csv')) {
+      const fileContent = await file.text()
       jobs = parseCSV(fileContent)
     } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-      // Parse Excel files using 'xlsx' library
-      const XLSX = await import('xlsx')
-      const workbook = XLSX.read(fileContent, { type: 'binary' })
-      const sheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[sheetName]
-      jobs = XLSX.utils.sheet_to_json(worksheet)
+      // Parse Excel files using exceljs
+      const ExcelJS = (await import('exceljs')).default
+      const workbook = new ExcelJS.Workbook()
+      const bytes = new Uint8Array(await file.arrayBuffer())
+      await workbook.xlsx.load(bytes as any)
+      const worksheet = workbook.worksheets[0]
+      const headers: string[] = []
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) {
+          row.eachCell((cell) => { headers.push((cell.value?.toString() ?? '').trim().toLowerCase()) })
+        } else {
+          const job: any = {}
+          row.eachCell((cell, colNumber) => {
+            job[headers[colNumber - 1]] = cell.value?.toString()?.trim() ?? ''
+          })
+          jobs.push(job)
+        }
+      })
     } else {
       return NextResponse.json({ 
         error: 'Unsupported file format. Please upload CSV or Excel files.' 

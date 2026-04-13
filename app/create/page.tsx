@@ -29,7 +29,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ApplicationTracker } from "@/components/application-tracker"
-import { JobMatching } from "@/components/job-matching"
 import { WorkingSaveButton } from "@/components/working-save-button"
 import { Textarea } from "@/components/ui/textarea"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -151,6 +150,7 @@ export default function CreateCVPage() {
           experience: profile.experience?.length > 0 ? profile.experience : formData.experience,
           education: profile.education?.length > 0 ? profile.education : formData.education,
           skills: profile.skills || "",
+          customSections: formData.customSections,
         })
       }
       setIsLoadingProfile(false)
@@ -475,12 +475,30 @@ export default function CreateCVPage() {
           },
           summary: result.data.summary || "",
           experience: Array.isArray(result.data.experience) && result.data.experience.length > 0
-            ? result.data.experience
+            ? result.data.experience.map((exp: any) => ({
+                title: exp.title || "",
+                company: exp.company || "",
+                location: exp.location || "",
+                startDate: exp.startDate || "",
+                endDate: exp.endDate || "",
+                description: exp.description || "",
+                isLearnership: Boolean(exp.isLearnership),
+                isInternship: Boolean(exp.isInternship),
+              }))
             : formData.experience,
           education: Array.isArray(result.data.education) && result.data.education.length > 0
-            ? result.data.education
+            ? result.data.education.map((edu: any) => ({
+                degree: edu.degree || "",
+                institution: edu.institution || "",
+                location: edu.location || "",
+                graduationDate: edu.graduationDate || "",
+                nqfLevel: edu.nqfLevel,
+                saqa: edu.saqa || "",
+                internationalEquivalence: edu.internationalEquivalence || "",
+              }))
             : formData.education,
           skills: normalizeSkillsForForm(result.data.skills),
+          customSections: formData.customSections,
         });
         setParseStep('complete');
       } else {
@@ -716,7 +734,7 @@ export default function CreateCVPage() {
                                 }
                               }}
                             >
-                              <p className="text-slate-600 font-medium">{parseStep === 'uploading' || parseStep === 'parsing' ? 'Uploading...' : 'Drag and drop your CV here'}</p>
+                              <p className="text-slate-600 font-medium">Drag and drop your CV here</p>
                               <p className="text-xs text-slate-500 mt-1">or click to browse files (DOCX or TXT, ≤10MB)</p>
                             </div>
                           </>

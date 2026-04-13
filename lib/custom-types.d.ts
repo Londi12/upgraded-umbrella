@@ -33,7 +33,8 @@ declare module 'pdf-parse' {
     // other properties
   }
 
-export default function(dataBuffer: Buffer, options?: PDFOptions): Promise<PDFData>;
+  export default function(dataBuffer: Buffer, options?: PDFOptions): Promise<PDFData>;
+}
 
 export type TemplateType = string;
 
@@ -69,5 +70,5 @@ declare module '@sparticuz/chromium' {
   export const args: string[];
   export const defaultViewport: any;
   export const headless: boolean;
-  export async function executablePath(): Promise<string>;
+  export function executablePath(): Promise<string>;
 }

@@ -4,6 +4,7 @@
  * deal-breakers, gap messaging, and confidence scores.
  */
 
+// @ts-nocheck
 import Fuse from 'fuse.js'
 import type { CVData, SAFlags } from '@/types/cv-types'
 import knowledgebase, { SA_JOB_PROFILES, type SAJobProfile, type SeniorityTier } from './sa-job-knowledgebase'

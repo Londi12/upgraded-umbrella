@@ -46,12 +46,12 @@ export const calculateATSScore = (cvData: CVData, jobDescription?: string): ATSS
 
   // Detect job profile from description if provided
   const jobProfile = jobDescription
-    ? detectJobFamily(jobDescription)[0]?.profile
+    ? detectJobFamily({ title: jobDescription })
     : null
 
   // Use job profile for scoring if available, otherwise use CV's detected profile
   const scoringProfile = jobProfile || topProfile.profileId
-    ? require('./sa-job-knowledgebase').SA_JOB_PROFILES.find((p: any) => p.id === (jobProfile?.id || topProfile.profileId))
+    ? require('./sa-job-knowledgebase').SA_JOB_PROFILES.find((p: any) => p.family === (jobProfile?.family || topProfile.profileId))
     : null
 
   // ── SECTION 1: Contact completeness (15 pts) ──

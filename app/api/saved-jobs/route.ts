@@ -40,13 +40,13 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Job ID is required' }, { status: 400 })
     }
     
-    const { data, error } = await removeSavedJob(jobId)
+    const { error } = await removeSavedJob(jobId)
     
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 })
     }
     
-    return NextResponse.json({ data, message: 'Job removed successfully' })
+    return NextResponse.json({ message: 'Job removed successfully' })
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }

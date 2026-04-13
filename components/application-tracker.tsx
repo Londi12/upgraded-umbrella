@@ -15,9 +15,9 @@ import {
   updateApplicationStatus,
   getUserSavedJobs,
   removeSavedJob,
-  type ApplicationTracking,
-  type SavedJob 
+  type ApplicationTracking
 } from '@/lib/analytics-service'
+import type { SavedJob } from '@/lib/user-data-service'
 
 interface ApplicationTrackerProps {
   applications: ApplicationTracking[]

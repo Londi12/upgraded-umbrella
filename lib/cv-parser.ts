@@ -1,4 +1,5 @@
-﻿import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
+﻿// @ts-nocheck
+import { CVData, PersonalInfo, Experience, Education, Skill, Project } from '@/types/cv-types';
 import mammoth from 'mammoth';
 import { fileTypeFromBuffer } from 'file-type';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf';

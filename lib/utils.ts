@@ -13,7 +13,7 @@ export interface SEOConfig {
   keywords?: string[]
   canonical?: string
   ogImage?: string
-  ogType?: 'website' | 'article' | 'product'
+  ogType?: 'website' | 'article'
   twitterCard?: 'summary' | 'summary_large_image'
   noIndex?: boolean
   structuredData?: object
@@ -27,7 +27,6 @@ export function generateMetadata(config: SEOConfig): Metadata {
     title: config.title,
     description: config.description,
     keywords: config.keywords?.join(', '),
-    canonical: config.canonical ? `${baseUrl}${config.canonical}` : undefined,
     robots: config.noIndex ? 'noindex,nofollow' : 'index,follow',
     openGraph: {
       title: config.title,

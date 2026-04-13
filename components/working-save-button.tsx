@@ -126,7 +126,7 @@ export function WorkingSaveButton({ cvData, onSaved, className }: WorkingSaveBut
               </div>
 
               <div className="bg-gray-50 p-3 rounded-lg text-sm">
-                <p className="font-medium text-gray-900 mb-1">Saving as: {user?.name}</p>
+                <p className="font-medium text-gray-900 mb-1">Saving as: {user?.email}</p>
                 <p className="text-gray-600">{user?.email}</p>
               </div>
 

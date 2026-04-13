@@ -49,6 +49,7 @@ const DEFAULT_EDUCATION = [
     institution: "University",
     location: "South Africa",
     graduationDate: "2018",
+    nqfLevel: undefined,
   },
 ]
 

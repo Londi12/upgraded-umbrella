@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server'
 import { JobScraperService } from '@/lib/job-scraper-service'
 
 export async function POST(request: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'Not configured' }, { status: 500 })
+  }
+  const authHeader = request.headers.get('authorization')
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
   try {
     const scraper = new JobScraperService()
     

@@ -38,9 +38,7 @@ export async function middleware(request: NextRequest) {
   const token = extractAccessToken(rawToken)
 
   if (!token) {
-    // Allow request through when auth is only available in browser storage.
-    // The admin page already enforces auth + admin role on the client.
-    return NextResponse.next()
+    return NextResponse.redirect(new URL('/login?redirect=admin', request.url))
   }
 
   const { data: { user }, error } = await supabase.auth.getUser(token)

@@ -127,7 +127,7 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
               <span className="text-sm font-medium">Overall ATS Score</span>
               <span className={`text-sm font-medium ${getScoreColor(scores.overallScore)}`}>{scores.overallScore}%</span>
             </div>
-            <Progress value={scores.overallScore} className="h-2" indicatorClassName={getProgressColor(scores.overallScore)} />
+            <Progress value={scores.overallScore} className="h-2" />
             <p className="text-xs text-gray-500 mt-1">Higher scores increase chances of passing ATS filters</p>
           </div>
 
@@ -147,7 +147,6 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
             <Progress 
               value={currentSectionScore.score} 
               className="h-1.5 mb-2" 
-              indicatorClassName={getProgressColor(currentSectionScore.score)} 
             />
 
             {currentSectionScore.feedback.length > 0 ? (
@@ -215,7 +214,6 @@ export function ATSScoringPanel({ cvData, currentSection }: ATSScoringPanelProps
                 <Progress 
                   value={jobMatchScore.score} 
                   className="h-1.5 mb-3" 
-                  indicatorClassName={getProgressColor(jobMatchScore.score)} 
                 />
 
                 {/* Keyword analysis */}
