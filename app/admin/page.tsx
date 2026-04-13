@@ -851,17 +851,6 @@ function JobsTab() {
     [duplicateKeyCounts]
   )
 
-  const groupedDuplicates = useMemo(() => {
-    if (!showPotentialDuplicatesOnly) return null
-    const groups = new Map<string, typeof existingJobs>()
-    for (const job of filtered) {
-      const key = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
-      if (!groups.has(key)) groups.set(key, [])
-      groups.get(key)!.push(job)
-    }
-    return Array.from(groups.values()).sort((a, b) => b.length - a.length)
-  }, [filtered, showPotentialDuplicatesOnly, existingJobs])
-
   const filtered = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
@@ -880,6 +869,17 @@ function JobsTab() {
         .some((value) => String(value).toLowerCase().includes(query))
     })
   }, [existingJobs, searchTerm, showPotentialDuplicatesOnly, duplicateKeyCounts])
+
+  const groupedDuplicates = useMemo(() => {
+    if (!showPotentialDuplicatesOnly) return null
+    const groups = new Map<string, typeof existingJobs>()
+    for (const job of filtered) {
+      const key = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
+      if (!groups.has(key)) groups.set(key, [])
+      groups.get(key)!.push(job)
+    }
+    return Array.from(groups.values()).sort((a, b) => b.length - a.length)
+  }, [filtered, showPotentialDuplicatesOnly])
 
   return (
     <div className="space-y-6">
