@@ -846,17 +846,36 @@ function JobsTab() {
     return counts
   }, [existingJobs])
 
+  const keptJobIds = useMemo(() => {
+    return new Set(Object.values(keepByGroup).flat())
+  }, [keepByGroup])
+
+  const activeDuplicateKeyCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const job of existingJobs) {
+      if (keptJobIds.has(job.id)) continue
+      const key = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
+      if (!key || key === '::') continue
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+    return counts
+  }, [existingJobs, keptJobIds])
+
   const duplicateGroups = useMemo(
-    () => Array.from(duplicateKeyCounts.values()).filter((count) => count > 1).length,
-    [duplicateKeyCounts]
+    () => Array.from(activeDuplicateKeyCounts.values()).filter((count) => count > 1).length,
+    [activeDuplicateKeyCounts]
   )
 
   const filtered = useMemo(() => {
     const query = searchTerm.trim().toLowerCase()
 
     return existingJobs.filter((job) => {
+      if (showPotentialDuplicatesOnly && keptJobIds.has(job.id)) {
+        return false
+      }
+
       const duplicateKey = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
-      const isPotentialDuplicate = (duplicateKeyCounts.get(duplicateKey) || 0) > 1
+      const isPotentialDuplicate = (activeDuplicateKeyCounts.get(duplicateKey) || 0) > 1
 
       if (showPotentialDuplicatesOnly && !isPotentialDuplicate) {
         return false
@@ -868,7 +887,7 @@ function JobsTab() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(query))
     })
-  }, [existingJobs, searchTerm, showPotentialDuplicatesOnly, duplicateKeyCounts])
+  }, [existingJobs, searchTerm, showPotentialDuplicatesOnly, activeDuplicateKeyCounts, keptJobIds])
 
   const groupedDuplicates = useMemo(() => {
     if (!showPotentialDuplicatesOnly) return null
@@ -929,7 +948,10 @@ function JobsTab() {
             <Button
               type="button"
               variant={showPotentialDuplicatesOnly ? "default" : "outline"}
-              onClick={() => setShowPotentialDuplicatesOnly((prev) => !prev)}
+              onClick={() => {
+                setShowPotentialDuplicatesOnly((prev) => !prev)
+                setKeepByGroup({})
+              }}
               className={showPotentialDuplicatesOnly ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-slate-700 text-slate-300"}
             >
               Duplicates {duplicateGroups > 0 ? `(${duplicateGroups})` : ''}
@@ -968,14 +990,18 @@ function JobsTab() {
                     </div>
                     {/* Jobs in group */}
                     {group.map((job, idx) => (
+                      (() => {
+                        const isKept = keptIds.includes(job.id)
+                        return (
                       <div
                         key={job.id}
-                        className="flex items-start justify-between px-6 py-3 border-b border-slate-800 last:border-0"
+                        className={`flex items-start justify-between px-6 py-3 border-b border-slate-800 last:border-0 ${isKept ? 'bg-green-900/10' : ''}`}
                       >
                         <div className="flex items-start gap-3 flex-1 min-w-0 mr-4">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
                               <p className="text-white text-sm font-medium">{job.title}</p>
+                              {isKept && <span className="text-green-400 text-[11px] font-medium">Kept</span>}
                             </div>
                             <p className="text-slate-400 text-xs">{job.company} • {job.location} • {job.source}</p>
                             <p className="text-slate-500 text-xs mt-0.5 truncate">{job.url}</p>
@@ -986,7 +1012,7 @@ function JobsTab() {
                             variant="ghost"
                             size="sm"
                             onClick={() => toggleKeepInGroup(groupKey, job.id)}
-                            className={keptIds.includes(job.id) ? "text-green-400 hover:text-green-300 h-8 w-8 p-0" : "text-slate-500 hover:text-green-300 h-8 w-8 p-0"}
+                            className={isKept ? "text-green-400 hover:text-green-300 h-8 w-8 p-0" : "text-slate-500 hover:text-green-300 h-8 w-8 p-0"}
                             title="Keep this job when deleting duplicates"
                           >
                             <CheckCircle className="h-3.5 w-3.5" />
@@ -999,6 +1025,8 @@ function JobsTab() {
                           </Button>
                         </div>
                       </div>
+                        )
+                      })()
                     ))}
                   </div>
                 )
