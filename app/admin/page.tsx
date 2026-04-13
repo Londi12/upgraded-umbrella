@@ -31,6 +31,7 @@ import {
   checkIsAdmin,
   getAdminCVs,
   getAdminOverviewStats,
+  getAdminUserDetail,
   getAdminUserActivity,
   getAdminUsers,
   getJobs,
@@ -43,6 +44,8 @@ import {
   type AdminCVItem,
   type AdminManagedUser,
   type AdminOverviewStats,
+  type AdminUserApplicationItem,
+  type AdminUserDetail,
   type AdminUserActivityItem,
 } from "@/lib/supabase"
 import { formatAndTruncateJobDescription } from "@/lib/text-formatter"
@@ -97,6 +100,9 @@ export default function AdminDashboard() {
   const [selectedUserActivity, setSelectedUserActivity] = useState<AdminUserActivityItem[]>([])
   const [selectedUserName, setSelectedUserName] = useState("")
   const [activityOpen, setActivityOpen] = useState(false)
+  const [selectedUserDetail, setSelectedUserDetail] = useState<AdminUserDetail>({ cvs: [], applications: [], templatesUsed: [] })
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   useEffect(() => {
     if (loading) return
@@ -173,6 +179,19 @@ export default function AdminDashboard() {
     setSelectedUserActivity(logs)
     setSelectedUserName(userName)
     setActivityOpen(true)
+  }
+
+  const openUserDetails = async (targetUserId: string, userName: string) => {
+    setSelectedUserName(userName)
+    setDetailsLoading(true)
+    setDetailsOpen(true)
+
+    try {
+      const detail = await getAdminUserDetail(targetUserId)
+      setSelectedUserDetail(detail)
+    } finally {
+      setDetailsLoading(false)
+    }
   }
 
   const handleDeleteCV = async (cvId: string) => {
@@ -282,6 +301,7 @@ export default function AdminDashboard() {
               onSuspend={(id) => void handleUserStatus(id, "suspended")}
               onDelete={(id) => void handleDeleteUser(id)}
               onViewActivity={(id, name) => void openUserActivity(id, name)}
+              onViewDetails={(id, name) => void openUserDetails(id, name)}
             />
           )}
 
@@ -317,6 +337,22 @@ export default function AdminDashboard() {
               ))
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent className="bg-slate-900 border-slate-700 text-white max-w-4xl">
+          <DialogHeader>
+            <DialogTitle className="text-white">User Details: {selectedUserName}</DialogTitle>
+          </DialogHeader>
+
+          {detailsLoading ? (
+            <div className="py-10 flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400" />
+            </div>
+          ) : (
+            <UserDetailsContent detail={selectedUserDetail} />
+          )}
         </DialogContent>
       </Dialog>
     </div>
@@ -391,6 +427,7 @@ function UsersTab(props: {
   onSuspend: (userId: string) => void
   onDelete: (userId: string) => void
   onViewActivity: (userId: string, userName: string) => void
+  onViewDetails: (userId: string, userName: string) => void
 }) {
   return (
     <div className="space-y-4">
@@ -444,6 +481,9 @@ function UsersTab(props: {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" className="border-slate-700 text-slate-300" onClick={() => props.onViewDetails(u.userId, u.name)}>
+                    <FileText className="h-3.5 w-3.5 mr-1" /> Details
+                  </Button>
                   <Button size="sm" variant="outline" className="border-slate-700 text-slate-300" onClick={() => props.onViewActivity(u.userId, u.name)}>
                     <Eye className="h-3.5 w-3.5 mr-1" /> Activity
                   </Button>
@@ -465,6 +505,102 @@ function UsersTab(props: {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function UserDetailsContent({ detail }: { detail: AdminUserDetail }) {
+  return (
+    <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <MetricCard title="User CVs" value={detail.cvs.length} subtitle="Saved CV records" color="text-blue-400" />
+        <MetricCard title="Templates Used" value={detail.templatesUsed.length} subtitle="Unique template types" color="text-emerald-400" />
+        <MetricCard title="Applications" value={detail.applications.length} subtitle="Tracked job applications" color="text-amber-400" />
+      </div>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-slate-100 text-base">Templates Used</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {detail.templatesUsed.length === 0 ? (
+            <p className="text-slate-500 text-sm">No templates recorded.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {detail.templatesUsed.map((template) => (
+                <Badge key={template} variant="outline" className="border-slate-700 text-slate-300">
+                  {template}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-slate-100 text-base">User CVs</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {detail.cvs.length === 0 ? (
+            <p className="text-slate-500 text-sm">No CVs found for this user.</p>
+          ) : (
+            detail.cvs.map((cv) => (
+              <div key={cv.id} className="rounded-lg border border-slate-800 px-4 py-3 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-slate-100 text-sm font-medium">{cv.cvName}</p>
+                  <p className="text-slate-500 text-xs mt-1">Template: {cv.templateType}</p>
+                  <p className="text-slate-500 text-xs mt-1">Updated {cv.updatedAt ? new Date(cv.updatedAt).toLocaleString() : "-"}</p>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Badge variant="outline" className="border-slate-700 text-slate-300">Views {cv.viewCount}</Badge>
+                  <Badge variant="outline" className="border-slate-700 text-slate-300">Downloads {cv.downloadCount}</Badge>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="bg-slate-900 border-slate-800">
+        <CardHeader>
+          <CardTitle className="text-slate-100 text-base">Job Tracker</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {detail.applications.length === 0 ? (
+            <p className="text-slate-500 text-sm">No tracked applications found for this user.</p>
+          ) : (
+            detail.applications.map((application) => (
+              <ApplicationTrackerCard key={application.id} application={application} />
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+function ApplicationTrackerCard({ application }: { application: AdminUserApplicationItem }) {
+  return (
+    <div className="rounded-lg border border-slate-800 px-4 py-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-slate-100 text-sm font-medium">{application.jobTitle}</p>
+          <p className="text-slate-400 text-xs">{application.companyName} • {application.jobBoard}</p>
+          <p className="text-slate-500 text-xs mt-1">
+            Applied {application.applicationDate ? new Date(application.applicationDate).toLocaleDateString() : "-"}
+            {application.createdAt ? ` • Recorded ${new Date(application.createdAt).toLocaleString()}` : ""}
+          </p>
+        </div>
+        <div className="flex gap-2 flex-wrap">
+          <Badge variant="outline" className="border-slate-700 text-slate-300">{application.status}</Badge>
+          <Badge variant="outline" className="border-slate-700 text-slate-300">ATS {application.atsScore}</Badge>
+        </div>
+      </div>
+
+      {application.notes && (
+        <p className="text-slate-400 text-xs mt-3">Notes: {application.notes}</p>
+      )}
     </div>
   )
 }

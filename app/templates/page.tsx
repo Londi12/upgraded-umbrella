@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { Search, ExternalLink, CheckCircle, Lightbulb, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
+import { Search, ExternalLink, CheckCircle, ChevronLeft, ChevronRight, ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -251,13 +251,6 @@ export default function TemplatesPage() {
                   </Button>
                 </Link>
 
-                {/* Tip box */}
-                <div className="bg-blue-50 rounded-lg p-3 flex gap-2">
-                  <Lightbulb className="h-4 w-4 text-blue-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700">
-                    You can customise colours, fonts and sections after selecting a template.
-                  </p>
-                </div>
               </div>
             </div>
           </div>

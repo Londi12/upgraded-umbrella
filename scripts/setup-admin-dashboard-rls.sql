@@ -49,6 +49,114 @@ begin
 end
 $$;
 
+-- LOGIN EVENTS (real sign-in tracking)
+create table if not exists public.login_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  provider text,
+  logged_in_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_login_events_user_id on public.login_events(user_id);
+create index if not exists idx_login_events_logged_in_at on public.login_events(logged_in_at);
+
+do $$
+begin
+  alter table public.login_events enable row level security;
+
+  drop policy if exists "Users can view own login events" on public.login_events;
+  create policy "Users can view own login events"
+  on public.login_events
+  for select
+  using (auth.uid() = user_id);
+
+  drop policy if exists "Users can insert own login events" on public.login_events;
+  create policy "Users can insert own login events"
+  on public.login_events
+  for insert
+  with check (auth.uid() = user_id);
+
+  drop policy if exists "Admins can view all login events" on public.login_events;
+  create policy "Admins can view all login events"
+  on public.login_events
+  for select
+  using (public.is_admin_user());
+
+  drop policy if exists "Admins can delete all login events" on public.login_events;
+  create policy "Admins can delete all login events"
+  on public.login_events
+  for delete
+  using (public.is_admin_user());
+end
+$$;
+
+-- USER SESSIONS (time-on-site tracking)
+create table if not exists public.user_sessions (
+  session_id uuid primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  started_at timestamptz not null default now(),
+  last_seen_at timestamptz not null default now(),
+  ended_at timestamptz,
+  end_reason text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists idx_user_sessions_user_id on public.user_sessions(user_id);
+create index if not exists idx_user_sessions_started_at on public.user_sessions(started_at);
+create index if not exists idx_user_sessions_last_seen_at on public.user_sessions(last_seen_at);
+
+do $$
+begin
+  alter table public.user_sessions enable row level security;
+
+  drop policy if exists "Users can view own sessions" on public.user_sessions;
+  create policy "Users can view own sessions"
+  on public.user_sessions
+  for select
+  using (auth.uid() = user_id);
+
+  drop policy if exists "Users can insert own sessions" on public.user_sessions;
+  create policy "Users can insert own sessions"
+  on public.user_sessions
+  for insert
+  with check (auth.uid() = user_id);
+
+  drop policy if exists "Users can update own sessions" on public.user_sessions;
+  create policy "Users can update own sessions"
+  on public.user_sessions
+  for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+  drop policy if exists "Admins can view all user sessions" on public.user_sessions;
+  create policy "Admins can view all user sessions"
+  on public.user_sessions
+  for select
+  using (public.is_admin_user());
+
+  drop policy if exists "Admins can delete all user sessions" on public.user_sessions;
+  create policy "Admins can delete all user sessions"
+  on public.user_sessions
+  for delete
+  using (public.is_admin_user());
+end
+$$;
+
+create or replace function update_updated_at_column()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language 'plpgsql';
+
+drop trigger if exists update_user_sessions_updated_at on public.user_sessions;
+create trigger update_user_sessions_updated_at
+before update on public.user_sessions
+for each row execute function update_updated_at_column();
+
 -- SAVED CVS
 do $$
 begin

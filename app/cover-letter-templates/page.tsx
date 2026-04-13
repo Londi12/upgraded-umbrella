@@ -1,132 +1,259 @@
-import { ArrowRight, Filter, Search } from "lucide-react"
+"use client"
+
+import { useState, useMemo } from "react"
+import { Search, ExternalLink, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
-
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CoverLetterPreview } from "@/components/cover-letter-preview"
-import { PageHeader } from "@/components/ui/page-header"
-import {
-  generateMetadata as generateSEOMetadata,
-  seoConfigs,
-} from "@/lib/utils"
+import type { TemplateType } from "@/types/cv-types"
 
-export const metadata = generateSEOMetadata(seoConfigs.coverLetterTemplates)
+interface CoverLetterTemplate {
+  id: number
+  name: string
+  type: TemplateType
+  category: string
+  tags: string[]
+  bestFor: string
+  popular?: boolean
+}
+
+const TEMPLATES: CoverLetterTemplate[] = [
+  { id: 1, name: "Professional Business", type: "professional", category: "Professional", tags: ["Professional", "Corporate"], bestFor: "Finance, Law, Consulting", popular: true },
+  { id: 2, name: "Modern Minimalist", type: "modern", category: "Modern", tags: ["Modern", "Clean"], bestFor: "Tech, Creative, Startups" },
+  { id: 3, name: "Creative Design", type: "creative", category: "Creative", tags: ["Creative", "Visual"], bestFor: "Design, Marketing, Media" },
+  { id: 4, name: "Simple Clean", type: "simple", category: "Simple", tags: ["Simple", "ATS-Friendly"], bestFor: "Corporate, Entry-level, General", popular: true },
+  { id: 5, name: "Executive Premium", type: "executive", category: "Executive", tags: ["Executive", "Premium"], bestFor: "C-Suite, Senior Management" },
+  { id: 6, name: "Technical Expert", type: "technical", category: "Professional", tags: ["Professional", "Technical"], bestFor: "Engineering, IT, Data" },
+  { id: 7, name: "SA Modern", type: "sa-modern", category: "South African", tags: ["South Africa", "Modern"], bestFor: "SA market, BEE roles, General", popular: true },
+  { id: 8, name: "SA Professional", type: "sa-professional", category: "South African", tags: ["South Africa", "Professional"], bestFor: "SA corporate, Government, Finance" },
+]
+
+// Map SA Professional to sa-modern since we don't have sa-professional in CoverLetterPreview yet
+const SA_PROFESSIONAL_TYPE = "sa-modern" as TemplateType
+
+const CATEGORIES = ["All Templates", "Professional", "Modern", "Creative", "Executive", "South African"]
+const SORT_OPTIONS = ["Most Popular", "Newest", "A-Z"]
+const PAGE_SIZE = 9
 
 export default function CoverLetterTemplatesPage() {
-  const categories = ["All", "Professional", "Modern", "Creative", "Simple", "Executive", "South African"]
+  const [search, setSearch] = useState("")
+  const [activeCategory, setActiveCategory] = useState("All Templates")
+  const [sortBy, setSortBy] = useState("Most Popular")
+  const [selectedId, setSelectedId] = useState(1)
+  const [page, setPage] = useState(1)
 
-  const templates = [
-    { id: 1, name: "Professional Business", template: "professional" as const, category: "Professional", popular: true },
-    { id: 2, name: "Modern Creative", template: "modern" as const, category: "Modern", popular: false },
-    { id: 3, name: "Executive Premium", template: "executive" as const, category: "Executive", popular: true },
-    { id: 4, name: "Simple Clean", template: "simple" as const, category: "Simple", popular: false },
-    { id: 5, name: "SA Professional", template: "sa-professional" as const, category: "South African", popular: true },
-  ]
+  const filtered = useMemo(() => {
+    let list = TEMPLATES.filter(t => {
+      const matchesSearch = t.name.toLowerCase().includes(search.toLowerCase()) ||
+        t.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()))
+      const matchesCategory =
+        activeCategory === "All Templates" ||
+        t.category === activeCategory ||
+        t.tags.includes(activeCategory)
+      return matchesSearch && matchesCategory
+    })
+
+    if (sortBy === "Most Popular") list = [...list].sort((a, b) => (b.popular ? 1 : 0) - (a.popular ? 1 : 0))
+    if (sortBy === "A-Z") list = [...list].sort((a, b) => a.name.localeCompare(b.name))
+
+    return list
+  }, [search, activeCategory, sortBy])
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const selected = TEMPLATES.find(t => t.id === selectedId) ?? TEMPLATES[0]
+  const selectedType = selected.id === 8 ? SA_PROFESSIONAL_TYPE : selected.type
+
+  const handleSelect = (id: number) => setSelectedId(id)
+  const handleCategoryChange = (cat: string) => { setActiveCategory(cat); setPage(1) }
+  const handleSearch = (val: string) => { setSearch(val); setPage(1) }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      <main className="flex-1">
-        <PageHeader
-          title="Cover Letter Templates"
-          description="Professional, customizable cover letter templates designed to complement your CV and make a strong first impression."
-        >
-          <div className="w-full max-w-md flex items-center space-x-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-500" />
-              <Input className="pl-10 h-12 border-gray-300 focus:border-blue-500 focus:ring-blue-500" placeholder="Search templates..." type="search" />
+    <div className="min-h-screen bg-gray-50">
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="container mx-auto max-w-7xl flex items-center gap-3">
+          <span className="text-xs font-semibold uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">Step 1</span>
+          <h1 className="text-base font-semibold text-gray-800">Choose Your Cover Letter Template</h1>
+          <p className="text-sm text-gray-500 hidden sm:block">Select a template — you can customize it later.</p>
+        </div>
+      </div>
+
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="flex gap-6 items-start">
+
+          {/* ── LEFT COLUMN ── */}
+          <div className="flex-1 min-w-0">
+
+            {/* Search + Sort row */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  className="pl-9 bg-white border-gray-200"
+                  placeholder="Search templates..."
+                  value={search}
+                  onChange={e => handleSearch(e.target.value)}
+                />
+              </div>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-sm text-gray-500">Sort by</span>
+                <select
+                  className="text-sm border border-gray-200 rounded-md px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                >
+                  {SORT_OPTIONS.map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
             </div>
-            <Button variant="outline" size="icon" className="h-12 w-12 border-gray-300 hover:bg-blue-50">
-              <Filter className="h-4 w-4" />
-              <span className="sr-only">Filter</span>
-            </Button>
-          </div>
-        </PageHeader>
 
-        {/* Templates Section */}
-        <section className="w-full py-12">
-          <div className="container px-4 md:px-6 mx-auto">
-            <Tabs defaultValue="All" className="w-full">
-              <TabsList className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-1 mb-8 h-auto bg-gray-100 p-1">
-                {categories.map((category) => (
-                  <TabsTrigger
-                    key={category}
-                    value={category}
-                    className="px-3 py-2 text-sm font-medium data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md transition-all"
-                  >
-                    {category}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {categories.map((category) => (
-                <TabsContent key={category} value={category} className="mt-0">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                    {templates
-                      .filter((t) => category === "All" || t.category === category)
-                      .map((template) => (
-                        <Card
-                          key={template.id}
-                          className="overflow-hidden border border-gray-200 transition-all hover:shadow-lg hover:scale-105 duration-200 bg-white"
-                        >
-                          <div className="relative">
-                            {template.popular && (
-                              <div className="absolute top-3 right-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-xs px-3 py-1 rounded-full z-10 font-medium shadow-sm">
-                                Popular
-                              </div>
-                            )}
-                            <div className="h-[280px] md:h-[320px] p-4 bg-gray-50">
-                              <CoverLetterPreview template={template.template} className="h-full w-full" />
-                            </div>
-                          </div>
-                          <CardContent className="p-4">
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                              <div>
-                                <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                                <p className="text-sm text-gray-500">{template.category}</p>
-                              </div>
-                              <Link href={`/create-cover-letter?template=${template.id}`}>
-                                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 w-full sm:w-auto">
-                                  Use Template
-                                </Button>
-                              </Link>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                  </div>
-                </TabsContent>
+            {/* Category filter pills */}
+            <div className="flex flex-wrap gap-2 mb-6">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => handleCategoryChange(cat)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                    activeCategory === cat
+                      ? "bg-blue-600 text-white"
+                      : "bg-white border border-gray-200 text-gray-600 hover:border-blue-300 hover:text-blue-600"
+                  }`}
+                >
+                  {cat}
+                </button>
               ))}
-            </Tabs>
-          </div>
-        </section>
+            </div>
 
-        {/* CTA Section */}
-        <section className="w-full py-16 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-          <div className="container px-4 md:px-6 mx-auto">
-            <div className="flex flex-col items-center text-center space-y-6">
-              <h2 className="text-3xl md:text-4xl font-bold">Ready to write a winning cover letter?</h2>
-              <p className="text-blue-100 max-w-[600px] text-lg">
-                Choose a template and craft your cover letter in minutes. It's completely free and easy to use.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link href="/create-cover-letter">
-                  <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-4">
-                    Create my Cover Letter
-                    <ArrowRight className="ml-2 h-5 w-5" />
+            {/* Template card grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginated.map(template => {
+                const isSelected = template.id === selectedId
+                return (
+                  <button
+                    key={template.id}
+                    onClick={() => handleSelect(template.id)}
+                    className={`relative rounded-xl border-2 overflow-hidden text-left transition-all duration-200 bg-white hover:shadow-md ${
+                      isSelected
+                        ? "border-blue-500 shadow-md"
+                        : "border-gray-200 hover:border-blue-300"
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 z-10 bg-blue-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <CheckCircle className="h-3 w-3" /> Selected
+                      </div>
+                    )}
+                    {template.popular && !isSelected && (
+                      <div className="absolute top-2 right-2 z-10 bg-amber-500 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                        Popular
+                      </div>
+                    )}
+                    {/* Thumbnail */}
+                    <div className="h-56 bg-gray-50 overflow-hidden p-2">
+                      <div className="w-full h-full overflow-hidden rounded scale-[0.85] origin-top">
+                        <CoverLetterPreview 
+                          template={template.id === 8 ? SA_PROFESSIONAL_TYPE : template.type} 
+                          className="w-full h-full" 
+                        />
+                      </div>
+                    </div>
+                    {/* Card footer */}
+                    <div className="px-4 py-3 border-t border-gray-100">
+                      <p className="font-semibold text-gray-900 text-sm">{template.name}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{template.tags.join(" • ")}</p>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <p className="text-sm text-gray-500">
+                  Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length} templates
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="p-1.5 rounded border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(n => (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n)}
+                      className={`w-8 h-8 rounded text-sm font-medium transition-colors ${
+                        n === page
+                          ? "bg-blue-600 text-white"
+                          : "border border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                      }`}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="p-1.5 rounded border border-gray-200 bg-white disabled:opacity-40 hover:bg-gray-50"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ── RIGHT COLUMN — sticky preview sidebar ── */}
+          <div className="w-80 xl:w-96 flex-shrink-0 sticky top-6 self-start">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+              <div className="px-4 pt-4 pb-2 border-b border-gray-100">
+                <p className="font-semibold text-gray-900">Preview</p>
+              </div>
+
+              {/* Live preview */}
+              <div className="p-3 bg-gray-50 border-b border-gray-100 h-96 overflow-hidden">
+                <div className="w-full h-full overflow-hidden rounded scale-[0.9] origin-top">
+                  <CoverLetterPreview template={selectedType} className="w-full h-full" />
+                </div>
+              </div>
+
+              {/* Template info */}
+              <div className="px-4 py-3 space-y-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-gray-900">{selected.name}</p>
+                  {selected.tags.map(tag => (
+                    <span key={tag} className="text-xs bg-green-50 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-gray-600">
+                  <span className="font-medium text-gray-700">Best for:</span> {selected.bestFor}
+                </p>
+
+                {/* CTA buttons */}
+                <Link href={`/create-cover-letter?template=${selected.id}`} className="block">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Use This Template
                   </Button>
                 </Link>
-                <Link href="/dashboard">
-                  <Button variant="outline" size="lg" className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4">
-                    View Dashboard
+                <Link href={`/create-cover-letter?template=${selected.id}&preview=true`} className="block">
+                  <Button variant="outline" className="w-full border-gray-200 text-gray-700 hover:bg-gray-50">
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Preview Fullscreen
                   </Button>
                 </Link>
+
               </div>
             </div>
           </div>
-        </section>
-      </main>
+        </div>
+      </div>
     </div>
   )
 }

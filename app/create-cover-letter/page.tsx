@@ -22,14 +22,16 @@ export default function CreateCoverLetterPage() {
   const searchParams = useSearchParams()
   const templateId = searchParams.get("template") || "1"
 
-  // Map template IDs to template types
-  const templateMap: Record<string, any> = {
-    "1": { type: "professional", name: "Corporate Professional" },
+  // Map template IDs to template types - must match cover-letter-templates/page.tsx
+  const templateMap: Record<string, { type: any; name: string }> = {
+    "1": { type: "professional", name: "Professional Business" },
     "2": { type: "modern", name: "Modern Minimalist" },
     "3": { type: "creative", name: "Creative Design" },
     "4": { type: "simple", name: "Simple Clean" },
-    "5": { type: "executive", name: "Executive Elite" },
+    "5": { type: "executive", name: "Executive Premium" },
     "6": { type: "technical", name: "Technical Expert" },
+    "7": { type: "sa-modern", name: "SA Modern" },
+    "8": { type: "sa-modern", name: "SA Professional" }, // Use sa-modern as fallback
   }
 
   const selectedTemplate = templateMap[templateId] || templateMap["1"]
@@ -38,7 +40,6 @@ export default function CreateCoverLetterPage() {
   const [formData, setFormData] = useState({
     personalInfo: {
       fullName: "",
-      jobTitle: "",
       email: "",
       phone: "",
     },
@@ -208,16 +209,6 @@ export default function CreateCoverLetterPage() {
                         value={formData.personalInfo.fullName}
                         onChange={handlePersonalInfoChange}
                         placeholder="e.g., John Smith"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="jobTitle">Job Title</Label>
-                      <Input
-                        id="jobTitle"
-                        name="jobTitle"
-                        value={formData.personalInfo.jobTitle}
-                        onChange={handlePersonalInfoChange}
-                        placeholder="e.g., Senior Financial Analyst"
                       />
                     </div>
                     <div>

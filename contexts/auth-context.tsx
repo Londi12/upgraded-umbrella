@@ -2,9 +2,17 @@
 
 import type React from "react"
 
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useRef, useState } from "react"
 import type { User } from "@supabase/supabase-js"
-import { supabase, hasValidCredentials } from "@/lib/supabase"
+import {
+  endUserSession,
+  hasValidCredentials,
+  heartbeatUserSession,
+  startUserSession,
+  supabase,
+  trackLoginEvent,
+} from "@/lib/supabase"
+import { generateId } from "@/lib/uuid-fallback"
 
 interface AuthContextType {
   user: User | null
@@ -20,6 +28,45 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const userRef = useRef<User | null>(null)
+  const sessionIdRef = useRef<string | null>(null)
+  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopHeartbeat = () => {
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current)
+      heartbeatRef.current = null
+    }
+  }
+
+  const beginSessionTracking = async (activeUser: User) => {
+    if (sessionIdRef.current) return
+
+    const sessionId = generateId()
+    sessionIdRef.current = sessionId
+    await startUserSession(activeUser.id, sessionId)
+
+    heartbeatRef.current = setInterval(() => {
+      if (!sessionIdRef.current) return
+      void heartbeatUserSession(activeUser.id, sessionIdRef.current)
+    }, 60000)
+  }
+
+  const closeSessionTracking = async (
+    activeUser: User | null,
+    reason: 'sign_out' | 'tab_hidden' | 'app_unmount'
+  ) => {
+    const sessionId = sessionIdRef.current
+    if (!activeUser || !sessionId) {
+      stopHeartbeat()
+      sessionIdRef.current = null
+      return
+    }
+
+    stopHeartbeat()
+    await endUserSession(activeUser.id, sessionId, reason)
+    sessionIdRef.current = null
+  }
 
   useEffect(() => {
     if (!hasValidCredentials) {
@@ -32,7 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const {
         data: { session },
       } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
+      const initialUser = session?.user ?? null
+      userRef.current = initialUser
+      setUser(initialUser)
+      if (initialUser) {
+        await beginSessionTracking(initialUser)
+      }
       setLoading(false)
     }
 
@@ -42,11 +94,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null)
+      const currentUser = session?.user ?? null
+
+      if (event === 'SIGNED_OUT') {
+        await closeSessionTracking(userRef.current, 'sign_out')
+      }
+
+      if (event === 'SIGNED_IN' && currentUser) {
+        await trackLoginEvent(currentUser.id, currentUser.app_metadata?.provider)
+      }
+
+      if (currentUser) {
+        await beginSessionTracking(currentUser)
+      }
+
+      userRef.current = currentUser
+      setUser(currentUser)
       setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        void closeSessionTracking(userRef.current, 'tab_hidden')
+      } else if (userRef.current) {
+        void beginSessionTracking(userRef.current)
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+      void closeSessionTracking(userRef.current, 'app_unmount')
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signUp = async (email: string, password: string) => {

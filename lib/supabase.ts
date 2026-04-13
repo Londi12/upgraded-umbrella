@@ -198,6 +198,103 @@ export const getLiveActivity = async () => {
   }
 }
 
+export const trackLoginEvent = async (userId: string, provider?: string | null) => {
+  if (!hasValidCredentials) {
+    return { error: { message: "Database not configured" } }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('login_events')
+      .insert({
+        user_id: userId,
+        provider: provider || 'email',
+      })
+
+    return { error }
+  } catch (err) {
+    console.error('Error tracking login event:', err)
+    return { error: { message: 'Failed to track login event' } }
+  }
+}
+
+export const startUserSession = async (userId: string, sessionId: string) => {
+  if (!hasValidCredentials) {
+    return { error: { message: "Database not configured" } }
+  }
+
+  try {
+    const nowIso = new Date().toISOString()
+    const { error } = await supabase
+      .from('user_sessions')
+      .upsert(
+        {
+          session_id: sessionId,
+          user_id: userId,
+          started_at: nowIso,
+          last_seen_at: nowIso,
+          ended_at: null,
+          end_reason: null,
+        },
+        { onConflict: 'session_id' }
+      )
+
+    return { error }
+  } catch (err) {
+    console.error('Error starting user session:', err)
+    return { error: { message: 'Failed to start user session' } }
+  }
+}
+
+export const heartbeatUserSession = async (userId: string, sessionId: string) => {
+  if (!hasValidCredentials) {
+    return { error: { message: "Database not configured" } }
+  }
+
+  try {
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({ last_seen_at: new Date().toISOString() })
+      .eq('session_id', sessionId)
+      .eq('user_id', userId)
+      .is('ended_at', null)
+
+    return { error }
+  } catch (err) {
+    console.error('Error sending user session heartbeat:', err)
+    return { error: { message: 'Failed to send session heartbeat' } }
+  }
+}
+
+export const endUserSession = async (
+  userId: string,
+  sessionId: string,
+  reason: 'sign_out' | 'tab_hidden' | 'app_unmount' = 'app_unmount'
+) => {
+  if (!hasValidCredentials) {
+    return { error: { message: "Database not configured" } }
+  }
+
+  try {
+    const nowIso = new Date().toISOString()
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({
+        last_seen_at: nowIso,
+        ended_at: nowIso,
+        end_reason: reason,
+      })
+      .eq('session_id', sessionId)
+      .eq('user_id', userId)
+      .is('ended_at', null)
+
+    return { error }
+  } catch (err) {
+    console.error('Error ending user session:', err)
+    return { error: { message: 'Failed to end user session' } }
+  }
+}
+
 // Job data functions (used by both job cards and admin)
 export const getJobs = async (query?: string, location?: string, limit = 100) => {
   if (!hasValidCredentials) {
@@ -344,9 +441,27 @@ export interface AdminCVItem {
   downloadCount: number
 }
 
+export interface AdminUserApplicationItem {
+  id: string
+  jobTitle: string
+  companyName: string
+  jobBoard: string
+  status: string
+  applicationDate: string
+  atsScore: number
+  createdAt: string
+  notes: string
+}
+
+export interface AdminUserDetail {
+  cvs: AdminCVItem[]
+  applications: AdminUserApplicationItem[]
+  templatesUsed: string[]
+}
+
 export interface AdminUserActivityItem {
   id: string
-  type: 'login' | 'search' | 'application' | 'cv_view' | 'cv_download'
+  type: 'login' | 'search' | 'application' | 'cv_view' | 'cv_download' | 'session_start' | 'session_end'
   time: string
   details: string
 }
@@ -395,6 +510,7 @@ export const getAdminOverviewStats = async (): Promise<AdminOverviewStats | null
       applicationsRes,
       searchesRes,
       recentActiveRes,
+      loginEventsRes,
     ] = await Promise.all([
       supabase.from('user_profiles').select('*', { count: 'exact', head: true }),
       supabase.from('user_profiles').select('*', { count: 'exact', head: true }).gte('created_at', dayStart.toISOString()),
@@ -404,6 +520,7 @@ export const getAdminOverviewStats = async (): Promise<AdminOverviewStats | null
       supabase.from('application_tracking').select('*', { count: 'exact', head: true }),
       supabase.from('job_search_analytics').select('*', { count: 'exact', head: true }),
       supabase.from('user_profiles').select('*', { count: 'exact', head: true }).gte('updated_at', weekStart.toISOString()),
+      supabase.from('login_events').select('*', { count: 'exact', head: true }).gte('logged_in_at', weekStart.toISOString()),
     ])
 
     let activeJobListings = 0
@@ -433,8 +550,8 @@ export const getAdminOverviewStats = async (): Promise<AdminOverviewStats | null
       filledPositions,
       cvUploadsCount: cvUploadsRes.count || 0,
       platformEngagement: {
-        // Proxy for logins where explicit login event table is unavailable.
-        logins: recentActiveRes.count || 0,
+        // Fall back to profile activity count when explicit login events are unavailable.
+        logins: loginEventsRes.error ? (recentActiveRes.count || 0) : (loginEventsRes.count || 0),
         searches: searchesRes.count || 0,
         applications: applicationsRes.count || 0,
       },
@@ -589,11 +706,13 @@ export const getAdminUserActivity = async (userId: string): Promise<AdminUserAct
   if (!hasValidCredentials) return []
 
   try {
-    const [appsRes, searchesRes, cvRes, profileRes] = await Promise.all([
+    const [appsRes, searchesRes, cvRes, profileRes, loginRes, sessionRes] = await Promise.all([
       supabase.from('application_tracking').select('id, job_title, company_name, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(30),
       supabase.from('job_search_analytics').select('id, search_query, search_date').eq('user_id', userId).order('search_date', { ascending: false }).limit(30),
       supabase.from('cv_interactions').select('id, interaction_type, timestamp').eq('user_id', userId).order('timestamp', { ascending: false }).limit(30),
       supabase.from('user_profiles').select('updated_at').eq('user_id', userId).single(),
+      supabase.from('login_events').select('id, logged_in_at, provider').eq('user_id', userId).order('logged_in_at', { ascending: false }).limit(30),
+      supabase.from('user_sessions').select('session_id, started_at, last_seen_at, ended_at').eq('user_id', userId).order('started_at', { ascending: false }).limit(30),
     ])
 
     const activity: AdminUserActivityItem[] = []
@@ -606,6 +725,44 @@ export const getAdminUserActivity = async (userId: string): Promise<AdminUserAct
         time: profileUpdatedAt,
         details: 'Recent profile/session activity detected',
       })
+    }
+
+    for (const row of loginRes.data || []) {
+      const item = row as any
+      const provider = String(item.provider || 'email')
+      activity.push({
+        id: `auth-${item.id}`,
+        type: 'login',
+        time: item.logged_in_at,
+        details: `Signed in via ${provider}`,
+      })
+    }
+
+    for (const row of sessionRes.data || []) {
+      const item = row as any
+      const startedAt = String(item.started_at || '')
+      const endedAt = String(item.ended_at || item.last_seen_at || '')
+      const start = startedAt ? new Date(startedAt).getTime() : 0
+      const end = endedAt ? new Date(endedAt).getTime() : 0
+      const durationMinutes = start > 0 && end >= start ? Math.max(1, Math.round((end - start) / 60000)) : 0
+
+      if (startedAt) {
+        activity.push({
+          id: `session-start-${item.session_id}`,
+          type: 'session_start',
+          time: startedAt,
+          details: 'Session started',
+        })
+      }
+
+      if (endedAt) {
+        activity.push({
+          id: `session-end-${item.session_id}`,
+          type: 'session_end',
+          time: endedAt,
+          details: durationMinutes > 0 ? `Session ended (${durationMinutes} min)` : 'Session ended',
+        })
+      }
     }
 
     for (const row of searchesRes.data || []) {
@@ -706,6 +863,81 @@ export const getAdminCVs = async (search = ''): Promise<AdminCVItem[]> => {
   } catch (err) {
     console.error('Error fetching admin CVs:', err)
     return []
+  }
+}
+
+export const getAdminUserDetail = async (userId: string): Promise<AdminUserDetail> => {
+  if (!hasValidCredentials) {
+    return { cvs: [], applications: [], templatesUsed: [] }
+  }
+
+  try {
+    const [cvsRes, profileRes, interactionsRes, appsRes] = await Promise.all([
+      supabase
+        .from('saved_cvs')
+        .select('id, user_id, name, template_type, created_at, updated_at')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false }),
+      supabase.from('user_profiles').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('cv_interactions').select('cv_id, interaction_type').eq('user_id', userId),
+      supabase
+        .from('application_tracking')
+        .select('id, job_title, company_name, job_board, status, application_date, ats_score_at_application, created_at, notes')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(100),
+    ])
+
+    const profile = profileRes.data || {}
+    const personalInfo = (profile as any).personal_info || {}
+
+    const counts = new Map<string, { views: number; downloads: number }>()
+    for (const row of interactionsRes.data || []) {
+      const cvId = String((row as any).cv_id || '')
+      if (!cvId) continue
+
+      const current = counts.get(cvId) || { views: 0, downloads: 0 }
+      const interaction = String((row as any).interaction_type || '')
+      if (interaction === 'view') current.views += 1
+      if (interaction === 'download') current.downloads += 1
+      counts.set(cvId, current)
+    }
+
+    const cvs = (cvsRes.data || []).map((cv: any) => {
+      const metrics = counts.get(String(cv.id)) || { views: 0, downloads: 0 }
+
+      return {
+        id: String(cv.id),
+        userId: String(cv.user_id || ''),
+        cvName: String(cv.name || 'Untitled CV'),
+        templateType: String(cv.template_type || 'unknown'),
+        ownerName: String((profile as any).full_name || personalInfo.fullName || 'Unknown user'),
+        ownerEmail: String((profile as any).email || personalInfo.email || ''),
+        createdAt: String(cv.created_at || ''),
+        updatedAt: String(cv.updated_at || ''),
+        viewCount: metrics.views,
+        downloadCount: metrics.downloads,
+      } as AdminCVItem
+    })
+
+    const applications = (appsRes.data || []).map((application: any) => ({
+      id: String(application.id || ''),
+      jobTitle: String(application.job_title || 'Untitled job'),
+      companyName: String(application.company_name || 'Unknown company'),
+      jobBoard: String(application.job_board || 'Unknown source'),
+      status: String(application.status || 'applied'),
+      applicationDate: String(application.application_date || ''),
+      atsScore: Number(application.ats_score_at_application || 0),
+      createdAt: String(application.created_at || ''),
+      notes: String(application.notes || ''),
+    }))
+
+    const templatesUsed = Array.from(new Set(cvs.map((cv) => cv.templateType).filter(Boolean))).sort()
+
+    return { cvs, applications, templatesUsed }
+  } catch (err) {
+    console.error('Error fetching admin user detail:', err)
+    return { cvs: [], applications: [], templatesUsed: [] }
   }
 }
 

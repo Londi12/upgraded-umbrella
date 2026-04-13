@@ -352,7 +352,6 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
                   <span>{userData?.personalInfo?.email || "thabo.nkosi@email.co.za"}</span>
                   <span>{userData?.personalInfo?.phone || "072 123 4567"}</span>
                   <span>{userData?.personalInfo?.location || "Johannesburg, South Africa"}</span>
-                  <span>ID: {userData?.personalInfo?.idNumber || "8001015009087"}</span>
                 </div>
               </div>
 
@@ -452,9 +451,6 @@ export function CoverLetterPreview({ template, className = "", userData }: Cover
                 <p>{userData?.letterContent?.signature || "Best regards,"}</p>
                 <p className="font-medium mt-1 text-blue-600">
                   {userData?.personalInfo?.fullName || "Lerato Moloi"}
-                </p>
-                <p className="text-xs text-gray-500">
-                  ID: {userData?.personalInfo?.idNumber || "9001020123081"}
                 </p>
               </div>
             </div>
