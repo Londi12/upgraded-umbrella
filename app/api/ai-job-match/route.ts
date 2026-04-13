@@ -22,7 +22,7 @@ export interface JobMatchResult {
     skills: number
     registrations: number
     experience: number
-    saFlags: number
+    location: number
   }
 }
 
@@ -30,24 +30,17 @@ export async function POST(request: NextRequest) {
   try {
     const { cvData, jobs, confirmedFamily } = await request.json()
 
-    console.log(`[AI-MATCH] Processing ${jobs.length} jobs for CV with ${cvData?.personalInfo?.fullName || 'Unknown'}`)
-
     if (!cvData) {
-      console.error('[AI-MATCH] Missing cvData')
       return NextResponse.json({ error: 'CV data is required', matches: [] })
     }
     // Ensure personalInfo exists so downstream scoring doesn't crash on undefined access
     if (!cvData.personalInfo) cvData.personalInfo = { fullName: '', email: '', phone: '', location: '', jobTitle: '' }
     if (!jobs || !Array.isArray(jobs) || jobs.length === 0) {
-      console.error('[AI-MATCH] Invalid jobs:', jobs)
       return NextResponse.json({ error: 'Jobs array required', matches: [] })
     }
 
-    // Simple CV family guess (fallback to general)
     const cvFamily = guessCVFamily(cvData)
-    const isAmbiguous = false // Simplified
 
-    // Safe per-job scoring
     const results: JobMatchResult[] = jobs.map((job, index) => {
       try {
         return scoreJobAgainstCV(cvData, job, cvFamily)
@@ -68,19 +61,15 @@ export async function POST(request: NextRequest) {
           detectedCVFamily: cvFamily,
           detectedJobFamily: 'unknown',
           isAmbiguous: false,
-          breakdown: { nqf: 0, skills: 0, registrations: 0, experience: 0, saFlags: 0 }
+          breakdown: { nqf: 0, skills: 0, registrations: 0, experience: 0, location: 0 }
         }
       }
     }).sort((a, b) => b.matchScore - a.matchScore)
 
-    console.log(`[AI-MATCH] Complete: ${results.length} scored jobs, top score: ${results[0]?.matchScore}`)
-
-    // Top profile families the CV is ACTUALLY strong against (for "Better matches" redirect UX)
-    const cvYearsGlobal = calculateYearsExperience(cvData)
+    const cvSkillsGlobal = normalizeSkills(cvData.skills)
     const recommendedFamilies = (SA_JOB_PROFILES || [])
       .map(profile => {
         let s = 0
-        const cvSkillsGlobal = normalizeSkills(cvData.skills)
         const profileSkills = [
           ...profile.industryKeywords,
           ...Object.values(profile.experienceTiers).flatMap(t => t.coreSkills)
@@ -102,35 +91,34 @@ export async function POST(request: NextRequest) {
         detectedFamily: cvFamily,
         confidence: 'medium',
         tier: 'mid',
-        isAmbiguous
+        isAmbiguous: false
       }
     })
 
   } catch (error) {
     console.error('[AI-MATCH] Fatal error:', error)
-    return NextResponse.json({ 
-      error: 'Job matching service unavailable', 
+    return NextResponse.json({
+      error: 'Job matching service unavailable',
       matches: [],
-      details: error instanceof Error ? error.message : 'Unknown' 
+      details: error instanceof Error ? error.message : 'Unknown'
     })
   }
 }
 
 function guessCVFamily(cvData: CVData): string {
   const title = cvData.personalInfo?.jobTitle?.toLowerCase() || ''
-  const skillsText = (cvData.skills || []).map((s: any) => s.name || s).join(' ').toLowerCase()
-  
+  // normalizeSkills handles both string and array — safe for all CV types
+  const skillsText = normalizeSkills(cvData.skills).join(' ')
+
   const profiles = SA_JOB_PROFILES || []
   let bestMatch = 'general'
   let bestScore = 0
 
   for (const profile of profiles) {
     let score = 0
-    // Title match
     if (title.includes(profile.family.toLowerCase()) || profile.typicalTitles.some(t => title.includes(t.toLowerCase()))) {
       score += 50
     }
-    // Skills overlap
     const matches = profile.industryKeywords.filter(kw => skillsText.includes(kw.toLowerCase()))
     score += matches.length * 5
     if (score > bestScore) {
@@ -138,15 +126,13 @@ function guessCVFamily(cvData: CVData): string {
       bestMatch = profile.family
     }
   }
-  
+
   return bestScore > 20 ? bestMatch : 'general'
 }
 
 function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatchResult {
   const jobText = `${job.title || ''} ${job.description || ''} ${(job.requirements || []).join(' ')}`.toLowerCase()
 
-  // Use a strict title match first. If a role is outside the knowledgebase, leave it unknown
-  // rather than forcing an unrelated family from loose description keywords.
   const jobProfile = resolveJobProfile(job)
   const jobFamily = jobProfile?.family || 'unknown'
 
@@ -157,7 +143,6 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   // 1. Title/experience alignment (25 pts)
   const cvTitles = (cvData.experience || []).map((e: any) => (e.title || '').toLowerCase())
   const jobTitleLower = (job.title || '').toLowerCase()
-  // Require titles to be >= 4 chars to prevent generic words ('at', 'in') from matching
   const titleMatch = cvTitles.some((t: string) =>
     t.length >= 4 && jobTitleLower.length >= 4 &&
     (jobTitleLower.includes(t) || t.includes(jobTitleLower))
@@ -169,8 +154,7 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
     gaps.push('Limited matching experience')
   }
 
-  // 2. Skills overlap (40 pts) — blend profile keywords with keywords extracted from
-  //    the actual job description so different jobs in the same family score differently.
+  // 2. Skills overlap (40 pts)
   const cvSkills = normalizeSkills(cvData.skills)
   const profileSkills = jobProfile
     ? [
@@ -179,11 +163,8 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
       ].map(s => s.toLowerCase())
     : []
   const descriptionSkills = extractJobSkillsFallback(jobText)
-  // Union: profile gives the baseline, description adds job-specific terms
   const jobSkillsSet: Set<string> = new Set([...profileSkills, ...descriptionSkills])
   const jobSkills = Array.from(jobSkillsSet)
-  // Only forward containment: job skill contains CV skill (not reverse) to prevent
-  // "java" matching "javascript", "r" matching "react", etc. Min 4 chars on both sides.
   const matchedSkills = cvSkills.filter(s =>
     s.length >= 4 && jobSkills.some(js => js.length >= 4 && (js === s || js.includes(s)))
   )
@@ -199,13 +180,12 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
     const cvYears = calculateYearsExperience(cvData)
     const tier = cvYears >= jobProfile.experienceTiers.senior.minYears ? 'senior'
       : cvYears >= jobProfile.experienceTiers.mid.minYears ? 'mid' : 'junior'
-    const profScore = knowledgebase.scoreAgainstProfile(cvData, jobProfile, tier)
-    // Use boolean flags — not string-grepping on human-readable messages
+    const profScore = knowledgebase.scoreAgainstProfile(cvData, jobProfile, tier) as any
     nqfScore = profScore.meetsNQF ? 10 : 0
     registrationsScore = profScore.hasRegistration ? 10 : 0
     score += nqfScore + registrationsScore
-    strengths.push(...profScore.strengths.filter(s => !strengths.includes(s)).slice(0, 2))
-    gaps.push(...profScore.gaps.filter(g => !gaps.includes(g)).slice(0, 2))
+    strengths.push(...(profScore.strengths as string[]).filter(s => !strengths.includes(s)).slice(0, 2))
+    gaps.push(...(profScore.gaps as string[]).filter(g => !gaps.includes(g)).slice(0, 2))
   }
 
   // 4. Seniority (10 pts)
@@ -217,7 +197,6 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   const locationPts = scoreLocation(cvData, job)
   score += locationPts
 
-  // Max possible: 25 + 40 + 10 + 10 + 10 + 5 = 100 — no clamp needed
   score = Math.max(0, Math.min(100, score))
 
   return {
@@ -273,15 +252,19 @@ function resolveJobProfile(job: any) {
   return bestScore >= 3 ? bestProfile : null
 }
 
-function normalizeSkills(skills: string | any[]): string[] {
+// Handles both string ("js, python") and array ([{name:"js"}, "python"]) skills
+function normalizeSkills(skills: any): string[] {
+  if (!skills) return []
   if (typeof skills === 'string') {
     return skills.split(/[,;|]/).map((s: string) => s.trim().toLowerCase()).filter((s: string) => s.length > 2)
   }
-  return (skills as any[]).map((s: any) => ((s.name || s) as string).toLowerCase()).filter((s: string) => s.length > 2)
+  if (Array.isArray(skills)) {
+    return skills.map((s: any) => ((s?.name || s) as string).toLowerCase()).filter((s: string) => s && s.length > 2)
+  }
+  return []
 }
 
 function extractJobSkillsFallback(jobText: string): string[] {
-  // Checked against common SA job posting vocabulary
   const knownSkills = [
     'excel', 'word', 'powerpoint', 'outlook', 'sql', 'python', 'javascript', 'typescript',
     'react', 'node', 'java', 'aws', 'azure', 'docker', 'git', 'linux',
@@ -303,8 +286,7 @@ function calculateYearsExperience(cvData: CVData): number {
       const start = new Date(exp.startDate || 0)
       const end = (exp.endDate || '').toLowerCase().includes('present') ? new Date() : new Date(exp.endDate || 0)
       if (!isNaN(start.getTime()) && !isNaN(end.getTime())) {
-        const years = end.getFullYear() - start.getFullYear()
-        totalYears += Math.max(0, years)
+        totalYears += Math.max(0, end.getFullYear() - start.getFullYear())
       }
     } catch {
       // Safe skip
@@ -327,11 +309,10 @@ function scoreSeniority(years: number, jobText: string): number {
 function buildSimpleReasoning(score: number, jobTitle: string, skills: string[], seniorityScore: number, years: number): string {
   const parts: string[] = [`${score}% match: ${jobTitle}`]
   if (skills.length > 0) parts.push(`Skills: ${skills.slice(0, 2).join(', ')}`)
-  parts.push(`${years}yrs → ${seniorityScore === 15 ? 'Perfect seniority' : 'Good fit'}`)
+  parts.push(`${years}yrs → ${seniorityScore === 10 ? 'Good seniority fit' : 'Reviewed'}`)
   return parts.join(' | ')
 }
 
-// Returns pts directly (max 5) — cleaner than returning 0-100 then dividing
 function scoreLocation(cvData: CVData, job: any): number {
   const cvLocation = (cvData.personalInfo?.location || '').toLowerCase()
   const jobLocation = (job.location || '').toLowerCase()
@@ -354,5 +335,3 @@ function extractATSKeywords(text: string): string[] {
   words.forEach((w: string) => freq[w] = (freq[w] || 0) + 1)
   return Object.entries(freq).sort(([, a], [, b]) => b - a).slice(0, 8).map(([w]) => w)
 }
-
-
