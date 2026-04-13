@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       .from('scraped_jobs')
       .select('*')
       .order('posted_date', { ascending: false })
-      .limit(100)
+      .limit(500)
 
     if (query && query !== 'jobs') {
       const safeQuery = sanitizeForOrFilter(query)
