@@ -98,10 +98,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid jobs found in file' }, { status: 400 })
     }
 
-    // Validate required fields
-    const validJobs = jobs.filter(job => 
-      job.title && job.company && job.location && job.snippet && job.url && job.source
-    )
+    // Validate required fields and collapse duplicate URLs within the uploaded file.
+    const dedupedByUrl = new Map<string, any>()
+    for (const job of jobs) {
+      if (!(job.title && job.company && job.location && job.snippet && job.url && job.source)) {
+        continue
+      }
+      const normalizedUrl = String(job.url).trim().toLowerCase()
+      if (!normalizedUrl) continue
+      dedupedByUrl.set(normalizedUrl, {
+        title: String(job.title).trim(),
+        company: String(job.company).trim(),
+        location: String(job.location).trim(),
+        snippet: String(job.snippet).trim(),
+        url: String(job.url).trim(),
+        source: String(job.source).trim(),
+        posted_date: job.posted_date || new Date().toISOString().split('T')[0],
+      })
+    }
+
+    const validJobs = Array.from(dedupedByUrl.values())
 
     if (validJobs.length === 0) {
       return NextResponse.json({ 
@@ -109,18 +125,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Insert jobs into database
+    // Upsert jobs into database by URL so re-uploads update existing rows instead of failing.
     const { data, error } = await supabase
       .from('scraped_jobs')
-      .insert(validJobs.map(job => ({
-        title: job.title,
-        company: job.company,
-        location: job.location,
-        snippet: job.snippet,
-        url: job.url,
-        source: job.source,
-        posted_date: job.posted_date || new Date().toISOString().split('T')[0]
-      })))
+      .upsert(validJobs, { onConflict: 'url' })
       .select()
 
     if (error) {
