@@ -153,45 +153,71 @@ export async function POST(request: NextRequest) {
 }
 
 function parseCSV(content: string): any[] {
-  const lines = content.split('\n').filter(line => line.trim())
-  if (lines.length < 2) return []
+  const rows = parseCSVRows(content)
+  if (rows.length < 2) return []
 
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+  const headers = rows[0].map((h) => h.trim().toLowerCase())
   const jobs: any[] = []
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = parseCSVLine(lines[i])
+  for (let i = 1; i < rows.length; i++) {
+    const values = rows[i]
     if (values.length !== headers.length) continue
 
     const job: any = {}
     headers.forEach((header, index) => {
       job[header] = values[index]?.trim() || ''
     })
-
     jobs.push(job)
   }
 
   return jobs
 }
 
-function parseCSVLine(line: string): string[] {
-  const result: string[] = []
-  let current = ''
+function parseCSVRows(content: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
   let inQuotes = false
 
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i]
-    
+  for (let i = 0; i < content.length; i++) {
+    const char = content[i]
+    const next = content[i + 1]
+
     if (char === '"') {
-      inQuotes = !inQuotes
-    } else if (char === ',' && !inQuotes) {
-      result.push(current)
-      current = ''
-    } else {
-      current += char
+      // Handle escaped double quote inside a quoted field.
+      if (inQuotes && next === '"') {
+        field += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+      continue
     }
+
+    if (char === ',' && !inQuotes) {
+      row.push(field)
+      field = ''
+      continue
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') i++
+      row.push(field)
+      const hasContent = row.some((v) => v.trim() !== '')
+      if (hasContent) rows.push(row)
+      row = []
+      field = ''
+      continue
+    }
+
+    field += char
   }
-  
-  result.push(current)
-  return result
+
+  if (field.length > 0 || row.length > 0) {
+    row.push(field)
+    const hasContent = row.some((v) => v.trim() !== '')
+    if (hasContent) rows.push(row)
+  }
+
+  return rows
 }
