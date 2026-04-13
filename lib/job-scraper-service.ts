@@ -27,6 +27,12 @@ const SA_PROVINCES = [
 
 const PURGE_DAYS = 21
 
+function shouldRunLowQuotaProviders(now: Date = new Date()): boolean {
+  // Free-tier friendly cadence: run on 1st, 8th, 15th, and 22nd UTC (~4 runs/month).
+  const day = now.getUTCDate()
+  return day === 1 || day === 8 || day === 15 || day === 22
+}
+
 function isSALocation(city: string, state: string, country: string): boolean {
   const all = [city, state, country].map(s => s?.toLowerCase() || '')
   if (all.some(s => s.includes('south africa') || s === 'za')) return true
@@ -41,9 +47,9 @@ function formatLocation(city: string, state: string): string {
 }
 
 async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
-  const apiKey = process.env.JSEARCH_API_KEY
+  const apiKey = process.env.JSEARCH_API_KEY || process.env.RAPIDAPI_KEY
   if (!apiKey) {
-    console.error('JSEARCH_API_KEY not set')
+    console.error('JSEARCH_API_KEY/RAPIDAPI_KEY not set')
     return []
   }
 
@@ -81,6 +87,130 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   return mapped
     .filter((j: any) => j.url && isSALocation(j._city, j._state, j._country))
     .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
+}
+
+function isSouthAfricaText(value: string): boolean {
+  const v = (value || '').toLowerCase()
+  if (!v) return false
+  if (v.includes('south africa') || v.includes('remote')) return true
+  if (SA_PROVINCES.some((p) => v.includes(p))) return true
+  if (SA_CITIES.some((c) => v.includes(c))) return true
+  return false
+}
+
+function truncateSnippet(value: string, max = 1500): string {
+  return (value || '').slice(0, max)
+}
+
+async function fetchActiveJobsDBJobs(): Promise<ScrapedJob[]> {
+  const apiKey = process.env.ACTIVE_JOBS_DB_RAPIDAPI_KEY || process.env.RAPIDAPI_KEY
+  if (!apiKey) {
+    console.error('ACTIVE_JOBS_DB_RAPIDAPI_KEY/RAPIDAPI_KEY not set')
+    return []
+  }
+
+  try {
+    const params = new URLSearchParams({
+      offset: '0',
+      description_type: 'text',
+      location_filter: '"South Africa"',
+    })
+
+    const res = await fetch(`https://active-jobs-db.p.rapidapi.com/active-ats-1h?${params.toString()}`, {
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'active-jobs-db.p.rapidapi.com',
+      },
+    })
+
+    if (!res.ok) {
+      console.error(`ActiveJobsDB failed: ${res.status}`)
+      return []
+    }
+
+    const data = await res.json()
+    const rawJobs = data?.data || data?.jobs || data || []
+
+    const mapped = (Array.isArray(rawJobs) ? rawJobs : []).map((j: any) => {
+      const city = j.job_city || j.city || ''
+      const state = j.job_state || j.state || ''
+      const country = j.job_country || j.country || ''
+      const location = j.job_location || j.location || formatLocation(city, state)
+
+      return {
+        title: j.job_title || j.title || 'Untitled',
+        snippet: truncateSnippet(j.job_description || j.description || j.snippet || ''),
+        url: j.job_url || j.job_apply_link || j.linkedin_job_url_cleaned || j.url || '',
+        source: 'ActiveJobsDB',
+        company: j.employer_name || j.company_name || j.company || 'Unknown',
+        location,
+        posted_date: j.job_posted_at_datetime_utc || j.posted_date || j.date || new Date().toISOString(),
+        _city: city,
+        _state: state,
+        _country: country,
+      }
+    })
+
+    return mapped
+      .filter((j: any) => j.url)
+      .filter((j: any) => isSALocation(j._city, j._state, j._country) || isSouthAfricaText(j.location))
+      .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
+  } catch (err) {
+    console.error('Error fetching ActiveJobsDB jobs:', err)
+    return []
+  }
+}
+
+async function fetchIndeedJobs(query: string): Promise<ScrapedJob[]> {
+  const apiKey = process.env.RAPIDAPI_INDEED_KEY || process.env.RAPIDAPI_KEY
+  if (!apiKey) {
+    console.error('RAPIDAPI_INDEED_KEY/RAPIDAPI_KEY not set')
+    return []
+  }
+
+  try {
+    const params = new URLSearchParams({
+      query,
+      location: 'South Africa',
+      country_code: 'za',
+      page_id: '1',
+      from_age: '7',
+    })
+
+    const res = await fetch(`https://indeed12.p.rapidapi.com/jobs/search?${params.toString()}`, {
+      headers: {
+        'X-RapidAPI-Key': apiKey,
+        'X-RapidAPI-Host': 'indeed12.p.rapidapi.com',
+      },
+    })
+
+    if (!res.ok) {
+      console.error(`Indeed failed for "${query}": ${res.status}`)
+      return []
+    }
+
+    const data = await res.json()
+    const rawJobs = data?.hits || data?.jobs || data?.data || []
+
+    return (Array.isArray(rawJobs) ? rawJobs : [])
+      .map((j: any) => ({
+        title: j.title || j.job_title || 'Untitled',
+        snippet: truncateSnippet(j.description || j.job_description || j.snippet || ''),
+        url: j.link || j.job_url || j.url || '',
+        source: 'Indeed',
+        company: j.company?.name || j.employer_name || j.company_name || j.company || 'Unknown',
+        location:
+          j.location?.formatted ||
+          [j.location?.city, j.location?.country].filter(Boolean).join(', ') ||
+          j.job_location ||
+          'South Africa',
+        posted_date: j.date || j.job_posted_at_datetime_utc || j.posted_date || new Date().toISOString(),
+      }))
+      .filter((j: any) => j.url && isSouthAfricaText(j.location))
+  } catch (err) {
+    console.error('Error fetching Indeed jobs:', err)
+    return []
+  }
 }
 
 async function fetchLinkedInJobs(): Promise<ScrapedJob[]> {
@@ -150,39 +280,63 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
 
-// Original queries before 10x volume expansion
     const queries = [
       'jobs South Africa',
       'engineer developer analyst South Africa',
       'manager accountant nurse teacher South Africa'
     ]
 
-    console.log(`Starting scrape with ${queries.length} queries...`)
+    console.log(`Starting multi-source scrape with ${queries.length} JSearch queries...`)
 
-    // Simple parallel execution for original small query set
-    const results = await Promise.allSettled(
+    const jsearchResults = await Promise.allSettled(
       queries.map(async (query) => {
         try {
-          return await fetchJSearchJobs(query);
+          return await fetchJSearchJobs(query)
         } catch (err: any) {
-          errors.push(`Query "${query}": ${err.message}`);
-          return [];
+          errors.push(`JSearch "${query}": ${err.message}`)
+          return []
         }
       })
-    );
+    )
 
-    for (const result of results) {
+    for (const result of jsearchResults) {
       if (result.status === 'fulfilled') {
         for (const job of result.value) {
           if (!seen.has(job.url)) {
-            seen.add(job.url);
-            allJobs.push(job);
+            seen.add(job.url)
+            allJobs.push(job)
           }
         }
       }
     }
 
-    console.log(`Total unique jobs collected: ${allJobs.length} from ${queries.length} queries`)
+    if (shouldRunLowQuotaProviders()) {
+      console.log('Running low-quota providers (ActiveJobsDB, Indeed) this cycle')
+      const providerRuns = await Promise.allSettled([
+        fetchActiveJobsDBJobs(),
+        fetchIndeedJobs('jobs South Africa'),
+        fetchIndeedJobs('software engineer South Africa'),
+      ])
+
+      providerRuns.forEach((run, index) => {
+        const label = index === 0 ? 'ActiveJobsDB' : 'Indeed'
+        if (run.status === 'rejected') {
+          errors.push(`${label}: ${run.reason?.message || 'Unknown error'}`)
+          return
+        }
+
+        for (const job of run.value) {
+          if (!seen.has(job.url)) {
+            seen.add(job.url)
+            allJobs.push(job)
+          }
+        }
+      })
+    } else {
+      console.log('Skipping low-quota providers this cycle to preserve free-tier limits')
+    }
+
+    console.log(`Total unique jobs collected across all providers: ${allJobs.length}`)
 
     if (allJobs.length > 0) {
       const { error } = await supabase.from('scraped_jobs').upsert(

@@ -8,16 +8,6 @@
       "maxDuration": 60
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/scrape-jobs",
-      "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/cron/scrape-linkedin-jobs",
-      "schedule": "0 9 * * *"
-    }
-  ],
   "git": {
     "deploymentEnabled": {
       "main": true

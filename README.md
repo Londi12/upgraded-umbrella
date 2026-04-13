@@ -20,7 +20,8 @@ CV builder, job search, and application tracker for South African job seekers. F
 - Tailwind CSS + shadcn/ui
 - Google Gemini API
 - JSearch API (RapidAPI)
-- Vercel (hosting + cron)
+- Vercel (hosting)
+- GitHub Actions (daily job scrape trigger)
 
 ## Setup
 
@@ -43,8 +44,12 @@ cp .env.example .env.local
 Required:
 - `NEXT_PUBLIC_SUPABASE_URL` — your Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` — your Supabase anon key
+- `SUPABASE_SERVICE_ROLE_KEY` — required for secure server-side inserts/updates
 - `NEXT_PUBLIC_SITE_URL` — your deployed URL (for auth redirects)
 - `JSEARCH_API_KEY` — RapidAPI key for JSearch (job scraping)
+- `RAPIDAPI_KEY` — optional shared RapidAPI key for all providers
+- `RAPIDAPI_INDEED_KEY` — optional Indeed-specific key (overrides shared key)
+- `ACTIVE_JOBS_DB_RAPIDAPI_KEY` — optional ActiveJobsDB key (overrides shared key)
 - `CRON_SECRET` — random secret to protect the scrape cron endpoint
 - `GOOGLE_GENERATIVE_AI_API_KEY` — Gemini API key for AI features
 
@@ -68,15 +73,26 @@ npm run dev
 
 ## Job Scraping
 
-Jobs are fetched from JSearch (RapidAPI) via a Vercel cron job that runs daily at 3am UTC (`/api/cron/scrape-jobs`).
+Jobs are fetched once per day via GitHub Actions by calling the protected endpoint `GET /api/cron/scrape-jobs`.
+The scrape aggregates multiple providers, deduplicates by URL, then upserts into `scraped_jobs`:
+- JSearch runs daily
+- ActiveJobsDB and Indeed run on quota-safe days each month (1st, 8th, 15th, 22nd UTC) to stay within common free-tier limits
 
 You can also trigger a manual scrape from the admin panel or by calling `POST /api/scrape-jobs`.
 
 The cron endpoint requires `Authorization: Bearer <CRON_SECRET>`.
 
+### GitHub Actions setup
+
+Create the following repository secrets in GitHub:
+- `SCRAPE_URL` — full endpoint URL, for example `https://your-app.vercel.app/api/cron/scrape-jobs`
+- `CRON_SECRET` — must match your app's `CRON_SECRET` environment variable
+
+Workflow file: `.github/workflows/daily-job-scrape.yml` (runs daily at 03:00 UTC and supports manual run).
+
 ## Deployment
 
-Deploy to Vercel. Set all env vars in the Vercel dashboard. The `vercel.json` cron config handles the daily scrape automatically.
+Deploy to Vercel. Set all env vars in the Vercel dashboard. Daily scraping is triggered from GitHub Actions.
 
 ## Support
 
