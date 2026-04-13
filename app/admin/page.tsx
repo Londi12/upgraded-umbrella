@@ -854,7 +854,7 @@ function JobsTab() {
           </div>
         </div>
         <div className="divide-y divide-slate-800 max-h-[500px] overflow-y-auto">
-          {filtered.slice(0, 50).map((job) => (
+          {filtered.map((job) => (
             <div key={job.id} className="flex items-start justify-between px-6 py-4">
               <div className="flex-1 min-w-0 mr-4">
                 <p className="text-white text-sm font-medium">{job.title}</p>
