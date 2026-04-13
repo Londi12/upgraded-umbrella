@@ -76,16 +76,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Get initial session
     const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-      const initialUser = session?.user ?? null
-      userRef.current = initialUser
-      setUser(initialUser)
-      if (initialUser) {
-        await beginSessionTracking(initialUser)
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        const initialUser = session?.user ?? null
+        userRef.current = initialUser
+        setUser(initialUser)
+
+        if (initialUser) {
+          void beginSessionTracking(initialUser)
+        }
+      } catch (err) {
+        console.error('Failed to load initial auth session:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     getInitialSession()
@@ -93,19 +100,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       const currentUser = session?.user ?? null
+      const previousUser = userRef.current
 
       if (event === 'SIGNED_OUT') {
-        await closeSessionTracking(userRef.current, 'sign_out')
+        void closeSessionTracking(previousUser, 'sign_out')
       }
 
       if (event === 'SIGNED_IN' && currentUser) {
-        await trackLoginEvent(currentUser.id, currentUser.app_metadata?.provider)
+        void trackLoginEvent(currentUser.id, currentUser.app_metadata?.provider)
       }
 
       if (currentUser) {
-        await beginSessionTracking(currentUser)
+        void beginSessionTracking(currentUser)
       }
 
       userRef.current = currentUser
