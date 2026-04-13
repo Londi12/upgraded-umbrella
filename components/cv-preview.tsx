@@ -201,6 +201,35 @@ const TEMPLATE_THEME: Record<TemplateType, Theme> = {
     tagBg: "bg-slate-100",
     tagText: "text-slate-700",
   },
+  editorial: {
+    accent: "border-amber-700",
+    accentSoft: "bg-amber-50",
+    headerBg: "bg-white",
+    headerText: "text-slate-900",
+    sectionTitle: "text-amber-800",
+    tagBg: "bg-amber-100",
+    tagText: "text-amber-900",
+  },
+}
+
+const TEMPLATE_FONT_FAMILY: Record<TemplateType, string> = {
+  professional: '"Times New Roman", Times, serif',
+  modern: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+  creative: '"Palatino Linotype", "Book Antiqua", Palatino, serif',
+  simple: 'Arial, Helvetica, sans-serif',
+  executive: 'Georgia, "Times New Roman", serif',
+  technical: '"Consolas", "Courier New", monospace',
+  graduate: '"Trebuchet MS", "Segoe UI", sans-serif',
+  digital: '"Avenir Next", "Segoe UI", sans-serif',
+  "sa-professional": '"Cambria", "Times New Roman", serif',
+  "sa-modern": '"Calibri", "Segoe UI", sans-serif',
+  "sa-executive": '"Garamond", Georgia, serif',
+  compact: '"Arial Narrow", Arial, sans-serif',
+  chronological: '"Book Antiqua", Georgia, serif',
+  functional: '"Verdana", "Segoe UI", sans-serif',
+  sidebar: '"Gill Sans", "Segoe UI", sans-serif',
+  matric: '"Century Gothic", Arial, sans-serif',
+  editorial: '"Baskerville", "Times New Roman", serif',
 }
 
 export function CVPreview({ template, className = "", userData, style, noId }: CVPreviewProps) {
@@ -243,6 +272,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
 
   const isA4Preview = className.includes("a4-preview")
   const theme = TEMPLATE_THEME[template]
+  const fontFamily = TEMPLATE_FONT_FAMILY[template]
   const isHarvardStyle = HARVARD_TEMPLATES.includes(template)
   const isSAClean = SA_CLEAN_TEMPLATES.includes(template)
 
@@ -314,6 +344,32 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
                 ))}
             </ul>
           ) : null}
+        </div>
+      ))}
+    </div>
+  )
+
+  const renderTimelineExperience = (max = 3) => (
+    <div className="space-y-3">
+      {experience.slice(0, max).map((exp, index) => (
+        <div key={`${exp.title}-${index}`} className="grid grid-cols-[100px_1fr] gap-3">
+          <div className={`${typeScale.fine} text-slate-500 pt-0.5`}>{dateRange(exp.startDate, exp.endDate) || "Dates"}</div>
+          <div className="relative pl-4 border-l border-slate-300">
+            <span className="absolute -left-[5px] top-1.5 h-2.5 w-2.5 rounded-full bg-slate-700" />
+            <h3 className={`${typeScale.body} font-semibold text-slate-900`}>{exp.title}</h3>
+            <p className={`${typeScale.fine} text-slate-600`}>{[exp.company, exp.location].filter(Boolean).join(" | ")}</p>
+            {exp.description ? (
+              <ul className="list-disc pl-4 space-y-1 mt-1">
+                {exp.description
+                  .split("\n")
+                  .filter(Boolean)
+                  .slice(0, isA4Preview ? 4 : 2)
+                  .map((line, i) => (
+                    <li key={i} className={`${typeScale.fine} text-slate-700`}>{line}</li>
+                  ))}
+              </ul>
+            ) : null}
+          </div>
         </div>
       ))}
     </div>
@@ -625,13 +681,344 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
     </div>
   )
 
+  const renderChronologicalTimeline = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="border-b border-slate-300 pb-3">
+          <h1 className={`${isA4Preview ? "text-[26px]" : "text-base"} font-bold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-slate-700 mt-0.5`}>{jobTitle}</p>
+          <p className={`${typeScale.fine} text-slate-600 mt-1`}>{email} | {phone} | {location}</p>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Profile")}
+          <p className={`${typeScale.body} text-slate-700 leading-relaxed`}>{summary}</p>
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Career Timeline")}
+          {renderTimelineExperience(3)}
+        </section>
+
+        <div className="grid grid-cols-2 gap-5">
+          <section className="space-y-2">
+            {sectionHeading("Education")}
+            {renderEducation(2)}
+          </section>
+          <section className="space-y-2">
+            {sectionHeading("Core Skills")}
+            {renderSkillsGrid(10)}
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderDigitalPortfolio = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-gradient-to-br from-indigo-50 via-sky-50 to-cyan-50`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="rounded-xl bg-gradient-to-r from-indigo-700 to-sky-600 text-white p-4">
+          <h1 className={`${isA4Preview ? "text-[27px]" : "text-base"} font-semibold`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-white/90 mt-1`}>{jobTitle}</p>
+          <div className={`${typeScale.fine} text-white/80 mt-2 flex flex-wrap gap-x-4 gap-y-1`}>
+            <span>{email}</span>
+            <span>{phone}</span>
+            <span>{location}</span>
+            {linkedIn ? <span>{linkedIn}</span> : null}
+          </div>
+        </header>
+
+        <div className="grid grid-cols-3 gap-5">
+          <section className="col-span-2 space-y-4 rounded-xl bg-white p-4 border border-indigo-100">
+            <div className="space-y-1.5">
+              {sectionHeading("About")}
+              <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+            </div>
+            <div className="space-y-2">
+              {sectionHeading("Selected Experience")}
+              {renderExperience(3)}
+            </div>
+            <div className="space-y-2">
+              {sectionHeading("Education")}
+              {renderEducation(2)}
+            </div>
+          </section>
+
+          <aside className="space-y-3 rounded-xl bg-white p-4 border border-indigo-100">
+            <div className="space-y-2">
+              {sectionHeading("Skills")}
+              <div className="space-y-1.5">
+                {skills.slice(0, 12).map((skill) => (
+                  <span key={skill} className={`inline-block w-full px-2 py-1 rounded bg-indigo-50 text-indigo-700 ${typeScale.fine}`}>
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+            {renderCustomSections()}
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderGraduateStarter = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="text-center border-b border-slate-200 pb-3">
+          <h1 className={`${isA4Preview ? "text-[25px]" : "text-base"} font-semibold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-slate-700`}>{jobTitle}</p>
+          <p className={`${typeScale.fine} text-slate-600 mt-1`}>{email} | {phone} | {location}</p>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Graduate Profile")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Education Highlights")}
+          {renderEducation(2)}
+        </section>
+
+        <div className="grid grid-cols-2 gap-5">
+          <section className="space-y-2">
+            {sectionHeading("Internships & Projects")}
+            {renderExperience(2)}
+          </section>
+          <section className="space-y-2">
+            {sectionHeading("Skills")}
+            {renderSkillsGrid(10)}
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderMatricStarter = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="border-b border-slate-300 pb-3">
+          <h1 className={`${isA4Preview ? "text-[24px]" : "text-base"} font-bold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.fine} text-slate-600 mt-1`}>{email} | {phone} | {location}</p>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Career Objective")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <div className="grid grid-cols-3 gap-5">
+          <section className="col-span-2 space-y-2">
+            {sectionHeading("Education")}
+            {renderEducation(1)}
+
+            <div className="space-y-2 pt-2">
+              {sectionHeading("Volunteer / Part-Time Experience")}
+              {renderExperience(2)}
+            </div>
+          </section>
+
+          <aside className="space-y-2">
+            {sectionHeading("Skills")}
+            <div className="space-y-1.5">
+              {skills.slice(0, 8).map((skill) => (
+                <p key={skill} className={`${typeScale.fine} text-slate-700`}>- {skill}</p>
+              ))}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderSAProfessional = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className="h-1.5 bg-gradient-to-r from-green-600 via-yellow-500 to-red-600" />
+      <div className={`${isA4Preview ? "p-7" : "p-4"} space-y-4`}>
+        <header className="border-b border-slate-300 pb-3 space-y-1.5">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <h1 className={`${isA4Preview ? "text-[26px]" : "text-base"} font-bold text-slate-900`}>{fullName}</h1>
+              <p className={`${typeScale.body} text-slate-700`}>{jobTitle}</p>
+            </div>
+            <div className={`${typeScale.fine} text-right text-slate-600`}>
+              <p>{email}</p>
+              <p>{phone}</p>
+              <p>{location}</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Professional Summary")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Experience")}
+          {renderExperience(3)}
+        </section>
+
+        <div className="grid grid-cols-2 gap-5">
+          <section className="space-y-2">
+            {sectionHeading("Education")}
+            {renderEducation(2)}
+          </section>
+          <section className="space-y-2">
+            {sectionHeading("Core Skills")}
+            {renderSkillsGrid(10)}
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderSAModern = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-slate-50`}>
+      <div className={`${isA4Preview ? "p-7" : "p-4"} space-y-4`}>
+        <header className="rounded-xl bg-white border border-slate-200 p-4">
+          <h1 className={`${isA4Preview ? "text-[26px]" : "text-base"} font-semibold text-slate-900`}>{fullName}</h1>
+          <p className={`${typeScale.body} text-slate-700 mt-1`}>{jobTitle}</p>
+          <div className={`${typeScale.fine} text-slate-600 mt-2 flex flex-wrap gap-x-4 gap-y-1`}>
+            <span>{email}</span>
+            <span>{phone}</span>
+            <span>{location}</span>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-3 gap-5">
+          <section className="col-span-2 rounded-xl bg-white border border-slate-200 p-4 space-y-4">
+            <div className="space-y-1.5">
+              {sectionHeading("Profile")}
+              <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+            </div>
+            <div className="space-y-2">
+              {sectionHeading("Experience")}
+              {renderExperience(3)}
+            </div>
+          </section>
+
+          <aside className="rounded-xl bg-white border border-slate-200 p-4 space-y-3">
+            <section className="space-y-2">
+              {sectionHeading("Education")}
+              {renderEducation(2)}
+            </section>
+            <section className="space-y-2">
+              {sectionHeading("Skills")}
+              <div className="space-y-1">
+                {skills.slice(0, 10).map((skill) => (
+                  <p key={skill} className={`${typeScale.fine} text-slate-700`}>{skill}</p>
+                ))}
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderSAExecutive = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <header className="bg-slate-900 text-white px-6 py-5">
+        <h1 className={`${isA4Preview ? "text-[28px]" : "text-lg"} font-bold tracking-tight`}>{fullName}</h1>
+        <p className={`${typeScale.body} text-white/90 mt-1`}>{jobTitle}</p>
+        <p className={`${typeScale.fine} text-white/80 mt-2`}>{email} | {phone} | {location}</p>
+      </header>
+
+      <div className={`${isA4Preview ? "p-7" : "p-4"} space-y-4`}>
+        <section className="space-y-1.5">
+          {sectionHeading("Executive Summary")}
+          <p className={`${typeScale.body} text-slate-700`}>{summary}</p>
+        </section>
+
+        <section className="space-y-2">
+          {sectionHeading("Leadership Experience")}
+          {renderExperience(3)}
+        </section>
+
+        <div className="grid grid-cols-2 gap-5">
+          <section className="space-y-2">
+            {sectionHeading("Qualifications")}
+            {renderEducation(2)}
+          </section>
+          <section className="space-y-2">
+            {sectionHeading("Strategic Skills")}
+            {renderSkillsGrid(10)}
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+
+  const renderEditorial = () => (
+    <div className={`${isA4Preview ? "min-h-full" : "h-full"} bg-white`}>
+      <div className={`${isA4Preview ? "p-8" : "p-4"} space-y-4`}>
+        <header className="border-b-2 border-amber-800 pb-3">
+          <div className="grid grid-cols-[1fr_auto] gap-4 items-start">
+            <div>
+              <h1 className={`${isA4Preview ? "text-[29px]" : "text-lg"} font-bold tracking-tight text-slate-900`}>{fullName}</h1>
+              <p className={`${typeScale.body} text-amber-900 mt-1`}>{jobTitle}</p>
+            </div>
+            <div className={`${typeScale.fine} text-right text-slate-600`}>
+              <p>{email}</p>
+              <p>{phone}</p>
+              <p>{location}</p>
+            </div>
+          </div>
+        </header>
+
+        <section className="space-y-1.5">
+          {sectionHeading("Professional Profile")}
+          <p className={`${typeScale.body} text-slate-700 leading-relaxed`}>{summary}</p>
+        </section>
+
+        <div className="grid grid-cols-3 gap-5">
+          <section className="col-span-2 space-y-2">
+            {sectionHeading("Experience")}
+            {renderExperience(3)}
+          </section>
+
+          <aside className="space-y-3">
+            <section className="space-y-2">
+              {sectionHeading("Skills")}
+              <div className="space-y-1">
+                {skills.slice(0, 10).map((skill) => (
+                  <p key={skill} className={`${typeScale.fine} text-slate-700`}>{skill}</p>
+                ))}
+              </div>
+            </section>
+            <section className="space-y-2">
+              {sectionHeading("Education")}
+              {renderEducation(2)}
+            </section>
+          </aside>
+        </div>
+      </div>
+    </div>
+  )
+
   const content =
     template === "modern"
       ? renderModernMinimal()
+      : template === "chronological"
+      ? renderChronologicalTimeline()
       : template === "creative"
       ? renderCreativeClean()
-      : template === "graduate" || template === "matric"
-      ? renderEntryLevel()
+      : template === "digital"
+      ? renderDigitalPortfolio()
+      : template === "graduate"
+      ? renderGraduateStarter()
+      : template === "matric"
+      ? renderMatricStarter()
+      : template === "sa-professional"
+      ? renderSAProfessional()
+      : template === "sa-modern"
+      ? renderSAModern()
+      : template === "sa-executive"
+      ? renderSAExecutive()
+      : template === "editorial"
+      ? renderEditorial()
       : template === "sidebar"
       ? renderSidebar()
       : template === "compact"
@@ -639,7 +1026,7 @@ export function CVPreview({ template, className = "", userData, style, noId }: C
       : renderClassic()
 
   return (
-    <div id={noId ? undefined : "cv-preview-container"} className={`relative h-full w-full bg-white overflow-hidden ${className}`} style={style}>
+    <div id={noId ? undefined : "cv-preview-container"} className={`relative h-full w-full bg-white overflow-hidden ${className}`} style={{ fontFamily, ...style }}>
       {content}
     </div>
   )

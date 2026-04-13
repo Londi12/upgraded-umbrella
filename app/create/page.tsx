@@ -6,6 +6,7 @@ import {
  Download,
  Save,
  AlertCircle,
+ Check,
  ChevronLeft,
  ChevronRight
 } from "lucide-react"
@@ -22,8 +23,6 @@ import Link from "next/link"
 import { CVPreview } from "@/components/cv-preview"
 import { generateCVPDF, downloadBlob } from "@/lib/pdf-utils"
 import type { CVData } from "@/types/cv-types"
-import { Progress } from "@/components/ui/progress"
-
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,7 +37,7 @@ import { getUserProfile, createOrUpdateUserProfile, saveCV, getSavedCVs, updateC
 import { useAuth } from "@/contexts/auth-context"
 import { trackCVInteraction } from '@/lib/analytics-service'
 import { parseTextToCV } from "@/lib/cv-parser-client"
-import { CVUploadLoader, CVParsingLoader, SuccessAnimation, ErrorAnimation } from "@/components/loading-animations"
+import { CVUploadLoader, CVParsingLoader } from "@/components/loading-animations"
 
 import { ErrorBoundary } from "@/components/error-boundary"
 
@@ -66,6 +65,7 @@ export default function CreateCVPage() {
     "14": { type: "functional",      name: "Functional / Skills-First" },
     "15": { type: "sidebar",         name: "Sidebar" },
     "16": { type: "matric",          name: "Matric / School Leaver" },
+    "17": { type: "editorial",       name: "Editorial Professional" },
   }
 
   const [selectedTemplate, setSelectedTemplate] = useState(templateMap[templateId] || templateMap["1"])
@@ -185,6 +185,13 @@ export default function CreateCVPage() {
 
   const [activeSection, setActiveSection] = useState<string>('personal')
   const sections = ['personal', 'summary', 'experience', 'education', 'skills']
+  const sectionItems = [
+    { value: 'personal', label: 'Personal' },
+    { value: 'summary', label: 'Summary' },
+    { value: 'experience', label: 'Experience' },
+    { value: 'education', label: 'Education' },
+    { value: 'skills', label: 'Skills' },
+  ]
 
   const getProgress = () => {
     let completed = 0;
@@ -533,10 +540,10 @@ export default function CreateCVPage() {
   return (
     <ErrorBoundary>
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="h-[calc(100vh-4rem)] bg-gray-50 overflow-hidden">
 
         {/* ── Step header bar — matches templates page ── */}
-        <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="bg-white border-b border-gray-200 px-4 py-2.5">
           <div className="container mx-auto max-w-7xl flex items-center justify-between">
             <div className="flex items-center gap-3">
               <Link href="/templates">
@@ -573,7 +580,7 @@ export default function CreateCVPage() {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-8 max-w-7xl">
+        <div className="container mx-auto px-4 py-3 max-w-7xl h-[calc(100%-3.5rem)]">
           {error && (
             <Alert className="mb-4 border-red-300 bg-red-50">
               <AlertCircle className="h-4 w-4 text-red-600" />
@@ -587,10 +594,10 @@ export default function CreateCVPage() {
             </Alert>
           )}
 
-          <div className="flex gap-6 items-start">
+          <div className="flex flex-col gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_25rem] xl:gap-3 xl:h-full xl:items-stretch">
 
             {/* ── LEFT COLUMN — form ── */}
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 xl:h-full">
 
           {isLoadingProfile && (
             <div className="text-center py-8">
@@ -600,95 +607,129 @@ export default function CreateCVPage() {
           )}
 
           {!isLoadingProfile && (
-            <div className="space-y-4">
-                <div className="bg-white p-4 rounded-xl border border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-gray-800">CV Completion</h2>
-                    <span className="text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">{Math.round(getProgress())}% Complete</span>
-                  </div>
-                  <Progress value={getProgress()} className="h-2 bg-gray-100" />
-                </div>
+            <div className="space-y-4 xl:h-full xl:flex xl:flex-col">
+                <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full xl:flex-1 xl:min-h-0">
+                  <div className="flex gap-4 items-start xl:items-stretch xl:h-full">
+                    <div className="hidden lg:block w-44 bg-white border border-gray-200 rounded-xl p-2 xl:h-full xl:overflow-y-auto">
+                      <nav className="space-y-1" aria-label="CV sections">
+                        {sectionItems.map((item, index) => {
+                          const currentIndex = sections.indexOf(activeSection)
+                          const isActive = activeSection === item.value
+                          const isCompleted = sections.indexOf(item.value) < currentIndex
 
-                <div className="bg-white p-4 rounded-xl border border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <h2 className="text-sm font-semibold text-gray-800">Upload Existing CV</h2>
-                    <span className="text-xs text-gray-400">PDF, DOCX, TXT ≤10MB</span>
-                  </div>
-                  
-                  {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
-                  {parseStep === 'parsing' && <CVParsingLoader />}
-                  {parseStep === 'complete' && parseError === null && formData.personalInfo.fullName && (
-                    <SuccessAnimation message="CV parsed successfully! Fields have been auto-filled." />
-                  )}
-                  {parseStep === 'error' && <ErrorAnimation message={parseError || 'Upload failed'} />}
-                  
-                  {(parseStep === 'complete' || parseStep === 'error') && (
-                    <>
-                      <Input 
-                        ref={(el) => {
-                          if (el) {
-                            el.style.display = 'none';
-                          }
-                        }}
-                        type="file" 
-                        id="cv-upload"
-                        accept=".docx,.txt" 
-                        onChange={handleFileUpload} 
-                        className="hidden"
-                      />
-                      <div 
-                        className={`border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 cursor-pointer ${
-                          isDragActive 
-                            ? 'border-green-500 bg-green-50 shadow-2xl ring-4 ring-green-200/50 scale-[1.02]' 
-                            : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50'
-                        }`}
-                        onClick={() => {
-                          const input = document.getElementById('cv-upload') as HTMLInputElement;
-                          if (input) input.click();
-                        }}
-                        onDragEnter={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsDragActive(true);
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setIsDragActive(false);
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          e.dataTransfer.dropEffect = 'copy';
-                          setIsDragActive(true);
-                        }}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setIsDragActive(false);
-                          const files = Array.from(e.dataTransfer.files);
-                          if (files.length > 0) {
-                            const file = files[0];
-                            if (file && (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.txt')) && file.size <= 10 * 1024 * 1024) {
-                              const event = { target: { files: [file] as unknown as FileList } } as React.ChangeEvent<HTMLInputElement>;
-                              handleFileUpload(event);
-                            }
-                          }
-                        }}
-                      >
-                        <p className="text-slate-600 font-medium">{parseStep === 'uploading' || parseStep === 'parsing' ? 'Uploading...' : 'Drag and drop your CV here'}</p>
-                        <p className="text-xs text-slate-500 mt-1">or click to browse files (DOCX or TXT, ≤10MB)</p>
+                          return (
+                            <button
+                              key={item.value}
+                              type="button"
+                              onClick={() => setActiveSection(item.value)}
+                              className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors ${
+                                isActive
+                                  ? 'bg-blue-50 text-blue-700 font-semibold'
+                                  : 'text-gray-600 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span className={`h-5 w-5 rounded-full border flex items-center justify-center text-[11px] shrink-0 ${
+                                isActive
+                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  : isCompleted
+                                    ? 'bg-emerald-500 border-emerald-500 text-white'
+                                    : 'bg-white border-gray-300 text-gray-600'
+                              }`}>
+                                {isCompleted ? <Check className="h-3 w-3" /> : index + 1}
+                              </span>
+                              <span>{item.label}</span>
+                            </button>
+                          )
+                        })}
+                      </nav>
+                    </div>
+
+                    <div className="flex-1 min-w-0 xl:h-full xl:overflow-y-auto xl:pr-1">
+                      <div className="bg-white p-3 rounded-xl border border-gray-200 mb-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h2 className="text-sm font-semibold text-gray-800">Upload Existing CV</h2>
+                          <span className="text-xs text-gray-400">PDF, DOCX, TXT ≤10MB</span>
+                        </div>
+
+                        {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
+                        {parseStep === 'parsing' && <CVParsingLoader />}
+                        {parseStep === 'complete' && parseError === null && formData.personalInfo.fullName && (
+                          <div className="mb-3 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+                            CV parsed successfully. Fields have been auto-filled.
+                          </div>
+                        )}
+                        {parseStep === 'error' && (
+                          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+                            {parseError || 'Upload failed'}
+                          </div>
+                        )}
+
+                        {(parseStep === 'complete' || parseStep === 'error') && (
+                          <>
+                            <Input
+                              ref={(el) => {
+                                if (el) {
+                                  el.style.display = 'none';
+                                }
+                              }}
+                              type="file"
+                              id="cv-upload"
+                              accept=".docx,.txt"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
+                            <div
+                              className={`border-2 border-dashed rounded-xl p-4 md:p-5 text-center transition-all duration-200 cursor-pointer ${
+                                isDragActive
+                                  ? 'border-green-500 bg-green-50 shadow-2xl ring-4 ring-green-200/50 scale-[1.02]'
+                                  : 'border-slate-300 hover:border-blue-400 hover:bg-blue-50'
+                              }`}
+                              onClick={() => {
+                                const input = document.getElementById('cv-upload') as HTMLInputElement;
+                                if (input) input.click();
+                              }}
+                              onDragEnter={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDragActive(true);
+                              }}
+                              onDragLeave={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setIsDragActive(false);
+                              }}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'copy';
+                                setIsDragActive(true);
+                              }}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                setIsDragActive(false);
+                                const files = Array.from(e.dataTransfer.files);
+                                if (files.length > 0) {
+                                  const file = files[0];
+                                  if (file && (file.name.toLowerCase().endsWith('.docx') || file.name.toLowerCase().endsWith('.txt')) && file.size <= 10 * 1024 * 1024) {
+                                    const event = { target: { files: [file] as unknown as FileList } } as React.ChangeEvent<HTMLInputElement>;
+                                    handleFileUpload(event);
+                                  }
+                                }
+                              }}
+                            >
+                              <p className="text-slate-600 font-medium">{parseStep === 'uploading' || parseStep === 'parsing' ? 'Uploading...' : 'Drag and drop your CV here'}</p>
+                              <p className="text-xs text-slate-500 mt-1">or click to browse files (DOCX or TXT, ≤10MB)</p>
+                            </div>
+                          </>
+                        )}
                       </div>
-                    </>
-                  )}
-                </div>
-                <Tabs value={activeSection} onValueChange={setActiveSection} className="w-full">
-                  <TabsList className="mb-4 w-full flex bg-gray-100 p-1 rounded-xl">
-                    <TabsTrigger value="personal" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Personal</TabsTrigger>
-                    <TabsTrigger value="summary" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Summary</TabsTrigger>
-                    <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Experience</TabsTrigger>
-                    <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Education</TabsTrigger>
-                    <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Skills</TabsTrigger>
-                    <TabsTrigger value="extra" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">+ More</TabsTrigger>
-                  </TabsList>
+
+                      <TabsList className="mb-4 w-full flex bg-gray-100 p-1 rounded-xl lg:hidden">
+                        <TabsTrigger value="personal" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Personal</TabsTrigger>
+                        <TabsTrigger value="summary" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Summary</TabsTrigger>
+                        <TabsTrigger value="experience" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Experience</TabsTrigger>
+                        <TabsTrigger value="education" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Education</TabsTrigger>
+                        <TabsTrigger value="skills" className="flex-1 min-w-0 data-[state=active]:bg-white data-[state=active]:text-gray-900 data-[state=active]:shadow-sm text-gray-500 font-medium rounded-lg text-sm px-3 py-2">Skills</TabsTrigger>
+                      </TabsList>
 
                   <TabsContent value="personal" className="space-y-4">
                     <Card className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
@@ -742,71 +783,76 @@ export default function CreateCVPage() {
                             className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
                           />
                         </div>
-                        <div>
-                          <Label htmlFor="location" className="text-sm font-semibold text-slate-700 mb-2 block">Location</Label>
-                          <Input
-                            id="location"
-                            name="location"
-                            value={formData.personalInfo.location}
-                            onChange={handlePersonalInfoChange}
-                            placeholder="e.g., Johannesburg, SA"
-                            onFocus={handleInputFocus('personal')}
-                            className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="idNumber">ID Number (Optional)</Label>
-                          <Input
-                            id="idNumber"
-                            name="idNumber"
-                            value={formData.personalInfo.idNumber || ''}
-                            onChange={handlePersonalInfoChange}
-                            placeholder="e.g., 8001015009087"
-                            onFocus={handleInputFocus('personal')}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="linkedIn">LinkedIn (Optional)</Label>
-                          <Input
-                            id="linkedIn"
-                            name="linkedIn"
-                            value={formData.personalInfo.linkedIn || ''}
-                            onChange={handlePersonalInfoChange}
-                            placeholder="e.g., linkedin.com/in/yourprofile"
-                            onFocus={handleInputFocus('personal')}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="professionalRegistration">Professional Registration (Optional)</Label>
-                          <Input
-                            id="professionalRegistration"
-                            name="professionalRegistration"
-                            value={formData.personalInfo.professionalRegistration || ''}
-                            onChange={handlePersonalInfoChange}
-                            placeholder="e.g., ECSA, SAICA, HPCSA"
-                            onFocus={handleInputFocus('personal')}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="languages">Languages (Optional)</Label>
-                          <Input
-                            id="languages"
-                            name="languages"
-                            value={formData.personalInfo.languages ? formData.personalInfo.languages.join(', ') : ''}
-                            onChange={(e) => {
-                              const languagesArray = e.target.value.split(',').map(lang => lang.trim()).filter(Boolean);
-                              setFormData({
-                                ...formData,
-                                personalInfo: {
-                                  ...formData.personalInfo,
-                                  languages: languagesArray,
-                                },
-                              });
-                            }}
-                            placeholder="e.g., English, Zulu, Afrikaans (comma separated)"
-                            onFocus={handleInputFocus('personal')}
-                          />
-                        </div>
+                        <details className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+                          <summary className="cursor-pointer text-sm font-semibold text-slate-700">Optional Personal Details</summary>
+                          <div className="mt-3 space-y-4">
+                            <div>
+                              <Label htmlFor="location" className="text-sm font-semibold text-slate-700 mb-2 block">Location</Label>
+                              <Input
+                                id="location"
+                                name="location"
+                                value={formData.personalInfo.location}
+                                onChange={handlePersonalInfoChange}
+                                placeholder="e.g., Johannesburg, SA"
+                                onFocus={handleInputFocus('personal')}
+                                className="border-slate-300 focus:border-blue-600 focus:ring-blue-600 rounded-lg h-11"
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="idNumber">ID Number (Optional)</Label>
+                              <Input
+                                id="idNumber"
+                                name="idNumber"
+                                value={formData.personalInfo.idNumber || ''}
+                                onChange={handlePersonalInfoChange}
+                                placeholder="e.g., 8001015009087"
+                                onFocus={handleInputFocus('personal')}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="linkedIn">LinkedIn (Optional)</Label>
+                              <Input
+                                id="linkedIn"
+                                name="linkedIn"
+                                value={formData.personalInfo.linkedIn || ''}
+                                onChange={handlePersonalInfoChange}
+                                placeholder="e.g., linkedin.com/in/yourprofile"
+                                onFocus={handleInputFocus('personal')}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="professionalRegistration">Professional Registration (Optional)</Label>
+                              <Input
+                                id="professionalRegistration"
+                                name="professionalRegistration"
+                                value={formData.personalInfo.professionalRegistration || ''}
+                                onChange={handlePersonalInfoChange}
+                                placeholder="e.g., ECSA, SAICA, HPCSA"
+                                onFocus={handleInputFocus('personal')}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="languages">Languages (Optional)</Label>
+                              <Input
+                                id="languages"
+                                name="languages"
+                                value={formData.personalInfo.languages ? formData.personalInfo.languages.join(', ') : ''}
+                                onChange={(e) => {
+                                  const languagesArray = e.target.value.split(',').map(lang => lang.trim()).filter(Boolean);
+                                  setFormData({
+                                    ...formData,
+                                    personalInfo: {
+                                      ...formData.personalInfo,
+                                      languages: languagesArray,
+                                    },
+                                  });
+                                }}
+                                placeholder="e.g., English, Zulu, Afrikaans (comma separated)"
+                                onFocus={handleInputFocus('personal')}
+                              />
+                            </div>
+                          </div>
+                        </details>
                       </div>
                     </Card>
                   </TabsContent>
@@ -1008,72 +1054,77 @@ export default function CreateCVPage() {
                               onFocus={handleInputFocus(`education-${index}`)}
                             />
                           </div>
-                          <div>
-                            <Label htmlFor={`nqfLevel-${index}`}>NQF Level (Optional)</Label>
-                            <Input
-                              id={`nqfLevel-${index}`}
-                              name="nqfLevel"
-                              type="number"
-                              min="1"
-                              max="10"
-                              value={edu.nqfLevel || ''}
-                              onChange={(e) => {
-                                const updatedEducation = [...formData.education];
-                                updatedEducation[index] = {
-                                  ...updatedEducation[index],
-                                  nqfLevel: e.target.value ? parseInt(e.target.value) : undefined,
-                                };
-                                setFormData({
-                                  ...formData,
-                                  education: updatedEducation,
-                                });
-                              }}
-                              placeholder="e.g., 7"
-                              onFocus={handleInputFocus(`education-${index}`)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`saqa-${index}`}>SAQA ID (Optional)</Label>
-                            <Input
-                              id={`saqa-${index}`}
-                              name="saqa"
-                              value={edu.saqa || ''}
-                              onChange={(e) => {
-                                const updatedEducation = [...formData.education];
-                                updatedEducation[index] = {
-                                  ...updatedEducation[index],
-                                  saqa: e.target.value,
-                                };
-                                setFormData({
-                                  ...formData,
-                                  education: updatedEducation,
-                                });
-                              }}
-                              placeholder="e.g., 62116"
-                              onFocus={handleInputFocus(`education-${index}`)}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor={`internationalEquivalence-${index}`}>International Equivalence (Optional)</Label>
-                            <Input
-                              id={`internationalEquivalence-${index}`}
-                              name="internationalEquivalence"
-                              value={edu.internationalEquivalence || ''}
-                              onChange={(e) => {
-                                const updatedEducation = [...formData.education];
-                                updatedEducation[index] = {
-                                  ...updatedEducation[index],
-                                  internationalEquivalence: e.target.value,
-                                };
-                                setFormData({
-                                  ...formData,
-                                  education: updatedEducation,
-                                });
-                              }}
-                              placeholder="e.g., Bachelor's Degree (UK)"
-                              onFocus={handleInputFocus(`education-${index}`)}
-                            />
-                          </div>
+                          <details className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
+                            <summary className="cursor-pointer text-sm font-semibold text-slate-700">Optional Education Details</summary>
+                            <div className="mt-3 space-y-4">
+                              <div>
+                                <Label htmlFor={`nqfLevel-${index}`}>NQF Level (Optional)</Label>
+                                <Input
+                                  id={`nqfLevel-${index}`}
+                                  name="nqfLevel"
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  value={edu.nqfLevel || ''}
+                                  onChange={(e) => {
+                                    const updatedEducation = [...formData.education];
+                                    updatedEducation[index] = {
+                                      ...updatedEducation[index],
+                                      nqfLevel: e.target.value ? parseInt(e.target.value) : undefined,
+                                    };
+                                    setFormData({
+                                      ...formData,
+                                      education: updatedEducation,
+                                    });
+                                  }}
+                                  placeholder="e.g., 7"
+                                  onFocus={handleInputFocus(`education-${index}`)}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`saqa-${index}`}>SAQA ID (Optional)</Label>
+                                <Input
+                                  id={`saqa-${index}`}
+                                  name="saqa"
+                                  value={edu.saqa || ''}
+                                  onChange={(e) => {
+                                    const updatedEducation = [...formData.education];
+                                    updatedEducation[index] = {
+                                      ...updatedEducation[index],
+                                      saqa: e.target.value,
+                                    };
+                                    setFormData({
+                                      ...formData,
+                                      education: updatedEducation,
+                                    });
+                                  }}
+                                  placeholder="e.g., 62116"
+                                  onFocus={handleInputFocus(`education-${index}`)}
+                                />
+                              </div>
+                              <div>
+                                <Label htmlFor={`internationalEquivalence-${index}`}>International Equivalence (Optional)</Label>
+                                <Input
+                                  id={`internationalEquivalence-${index}`}
+                                  name="internationalEquivalence"
+                                  value={edu.internationalEquivalence || ''}
+                                  onChange={(e) => {
+                                    const updatedEducation = [...formData.education];
+                                    updatedEducation[index] = {
+                                      ...updatedEducation[index],
+                                      internationalEquivalence: e.target.value,
+                                    };
+                                    setFormData({
+                                      ...formData,
+                                      education: updatedEducation,
+                                    });
+                                  }}
+                                  placeholder="e.g., Bachelor's Degree (UK)"
+                                  onFocus={handleInputFocus(`education-${index}`)}
+                                />
+                              </div>
+                            </div>
+                          </details>
                         </div>
                       </Card>
                     ))}
@@ -1162,8 +1213,10 @@ export default function CreateCVPage() {
                       </div>
                     </Card>
                   </TabsContent>
+                    </div>
+                  </div>
                 </Tabs>
-                <div className="flex justify-between gap-3 mt-6">
+                <div className="flex justify-between gap-3 mt-4">
                   <Button
                     variant="outline"
                     onClick={handlePreviousSection}
@@ -1185,14 +1238,14 @@ export default function CreateCVPage() {
         </div>
 
             {/* ── RIGHT COLUMN — sticky live preview ── */}
-            <div className="w-80 xl:w-96 flex-shrink-0 sticky top-6 self-start">
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="w-full xl:w-auto flex-shrink-0 xl:h-full">
+              <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden xl:h-full xl:flex xl:flex-col">
                 <div className="px-4 pt-4 pb-2 border-b border-gray-100 flex items-center justify-between">
-                  <p className="font-semibold text-gray-900 text-sm">Live Preview</p>
+                  <p className="font-semibold text-gray-900 text-base">Live Preview</p>
                   <Dialog open={showPreviewDialog} onOpenChange={setShowPreviewDialog}>
                     <DialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 h-7 px-2">
-                        <Maximize2 className="h-3.5 w-3.5 mr-1" /> Fullscreen
+                      <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700 h-8 px-2 text-sm">
+                        <Maximize2 className="h-4 w-4 mr-1" /> Fullscreen
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-6xl max-h-[90vh] overflow-auto bg-gray-100 p-8">
@@ -1206,7 +1259,7 @@ export default function CreateCVPage() {
                   </Dialog>
                 </div>
                 {/* Sidebar thumbnail — scales A4 content to fit panel width */}
-                <div className="p-3 bg-gray-50 overflow-hidden">
+                <div className="p-2 bg-gray-50 overflow-auto flex-1">
                   <div className="relative mx-auto overflow-hidden rounded bg-white shadow-sm" style={{ paddingBottom: 'calc(100% * 297 / 210)' }}>
                     <div className="absolute inset-0 origin-top-left" style={{ width: '794px', transform: `scale(${1})`, transformOrigin: 'top left' }}
                       ref={(el) => {
@@ -1221,11 +1274,11 @@ export default function CreateCVPage() {
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 space-y-2">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-700">{selectedTemplate.name}</p>
-                    <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">{Math.round(getProgress())}% complete</span>
+                    <p className="text-sm font-medium text-gray-700">{selectedTemplate.name}</p>
+                    <span className="text-sm text-blue-600 bg-blue-50 border border-blue-200 px-2.5 py-0.5 rounded-full">{Math.round(getProgress())}% complete</span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                    <div className="bg-blue-600 h-1.5 rounded-full transition-all duration-300" style={{ width: `${getProgress()}%` }} />
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="bg-blue-600 h-2 rounded-full transition-all duration-300" style={{ width: `${getProgress()}%` }} />
                   </div>
                 </div>
               </div>

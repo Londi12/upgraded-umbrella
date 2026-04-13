@@ -9,7 +9,6 @@ import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { CVPreview } from "@/components/cv-preview"
@@ -123,7 +122,7 @@ function BuildPageContent() {
         description="Fill in your information to create a professional CV. Your progress is automatically saved."
       />
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-6">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -169,9 +168,9 @@ function BuildPageContent() {
           )}
 
           {/* Upload CV */}
-          <Card className="p-6 mb-8">
-            <h2 className="text-lg font-semibold mb-4">Upload Existing CV</h2>
-            <p className="text-sm text-gray-600 mb-4">Upload your existing CV to auto-fill the fields. Supported formats: PDF, DOCX, TXT.</p>
+          <Card className="p-4 mb-6">
+            <h2 className="text-base font-semibold mb-2">Upload Existing CV</h2>
+            <p className="text-sm text-gray-600 mb-3">Upload your existing CV to auto-fill fields (PDF, DOCX, TXT).</p>
             <input 
               type="file" 
               accept=".pdf,.docx,.txt" 
@@ -227,22 +226,13 @@ function BuildPageContent() {
                   setSuccess("Upload failed. Please try a different file or fill manually.")
                 }
               }}
-              className="mb-4 border border-gray-300 rounded-md p-2 w-full"
+              className="mb-1 border border-gray-300 rounded-md p-2 w-full"
             />
-          </Card>
-
-          {/* Progress */}
-          <Card className="p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">CV Completion Progress</h2>
-              <span className="text-sm font-medium text-blue-600">{Math.round(getProgress())}% Complete</span>
-            </div>
-            <Progress value={getProgress()} className="h-3" />
           </Card>
 
           {/* Form */}
           <Tabs value={activeSection} onValueChange={setActiveSection}>
-            <TabsList className="grid w-full grid-cols-5 mb-8">
+            <TabsList className="grid w-full grid-cols-5 mb-6">
               <TabsTrigger value="personal">Personal</TabsTrigger>
               <TabsTrigger value="summary">Summary</TabsTrigger>
               <TabsTrigger value="experience">Experience</TabsTrigger>

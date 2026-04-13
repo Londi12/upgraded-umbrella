@@ -35,6 +35,7 @@ const TEMPLATES: Template[] = [
   { id: 14, name: "Functional / Skills-First", type: "functional",category: "Modern",        tags: ["Modern", "Skills-First"],      bestFor: "Career changers, Skills-heavy roles" },
   { id: 15, name: "Sidebar",             type: "sidebar",         category: "Modern",        tags: ["Modern", "Visual"],            bestFor: "HR, Marketing, Creative roles" },
   { id: 16, name: "Matric / School Leaver", type: "matric",       category: "Simple",        tags: ["Simple", "Entry-Level"],       bestFor: "School leavers, First job, Learnerships", popular: true },
+  { id: 17, name: "Editorial Professional", type: "editorial",    category: "Professional",  tags: ["Professional", "Premium"],     bestFor: "Consulting, Strategy, Communications" },
 ]
 
 const CATEGORIES = ["All Templates", "Professional", "Creative", "ATS-Friendly", "Entry-Level", "South African"]

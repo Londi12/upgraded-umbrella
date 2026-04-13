@@ -46,9 +46,9 @@ const JOB_PROFILES: JobProfile[] = [
   // ── MINING & RESOURCES ──────────────────────────────────────────────────────
   {
     family: 'Mining Engineer',
-    typicalTitles: ['Mining Engineer', 'Mine Planner', 'Geotechnical Engineer', 'Mine Surveyor'],
+    typicalTitles: ['Mining Engineer', 'Mine Planner', 'Geotechnical Engineer', 'Mine Surveyor', 'Mine Overseer', 'Drill & Blast Engineer', 'Underground Manager', 'Shaft Sinker'],
     minNQF: 7,
-    acceptedQualifications: ['BSc Mining Engineering', 'BEng Mining', 'NDip Mining'],
+    acceptedQualifications: ['BSc Mining Engineering', 'BEng Mining', 'NDip Mining', 'Mine Overseer Certificate (MQA)'],
     professionalRegistrations: ['ECSA', 'PLATO', 'MQA'],
     experienceTiers: {
       junior: { minYears: 0, coreSkills: ['VentSim', 'Deswik', 'rock mechanics'] },
@@ -56,7 +56,7 @@ const JOB_PROFILES: JobProfile[] = [
       senior: { minYears: 10, coreSkills: ['mine optimisation', 'safety management', 'mineralogy'] }
     },
     saSpecificFlags: ['Medical fitness', "Driver's license", 'Willing to relocate to Rustenburg/Limpopo'],
-    industryKeywords: ['VentSim', 'Deswik', 'mine planning', 'ECSA', 'PLATO', 'blast design', 'explosives', 'rock mechanics', 'GIS'],
+    industryKeywords: ['VentSim', 'Deswik', 'mine planning', 'ECSA', 'PLATO', 'blast design', 'explosives', 'rock mechanics', 'GIS', 'MQA', 'blasting certificate', 'mineral processing', 'MHSA'],
     sector: 'mining'
   },
   {
@@ -108,9 +108,9 @@ const JOB_PROFILES: JobProfile[] = [
   },
   {
     family: 'Financial Analyst',
-    typicalTitles: ['Financial Analyst', 'Management Accountant', 'Cost Accountant', 'FP&A Analyst', 'Investment Analyst'],
+    typicalTitles: ['Financial Analyst', 'Management Accountant', 'Cost Accountant', 'FP&A Analyst', 'Investment Analyst', 'Bookkeeper', 'Junior Accountant', 'Accounts Payable Clerk', 'Accounts Receivable Clerk'],
     minNQF: 7,
-    acceptedQualifications: ['BCom Accounting', 'BCom Finance', 'CIMA', 'NDip Financial Management'],
+    acceptedQualifications: ['BCom Accounting', 'BCom Finance', 'CIMA', 'NDip Financial Management', 'ICB Bookkeeping to Trial Balance', 'AGA(SA)'],
     professionalRegistrations: ['SAICA trainee', 'CIMA', 'AGA(SA)'],
     experienceTiers: {
       junior: { minYears: 1, coreSkills: ['Excel', 'financial modelling', 'budgeting'] },
@@ -118,7 +118,7 @@ const JOB_PROFILES: JobProfile[] = [
       senior: { minYears: 6, coreSkills: ['ERP systems', 'stakeholder reporting', 'investment analysis'] }
     },
     saSpecificFlags: ['EE candidate'],
-    industryKeywords: ['financial model', 'budget', 'forecast', 'variance', 'Power BI', 'Excel advanced', 'CIMA', 'CFA'],
+    industryKeywords: ['financial model', 'budget', 'forecast', 'variance', 'Power BI', 'Excel advanced', 'CIMA', 'CFA', 'CRM', 'bookkeeping', 'accounts payable', 'accounts receivable'],
     sector: 'finance'
   },
   {
@@ -170,7 +170,7 @@ const JOB_PROFILES: JobProfile[] = [
   // ── INFORMATION TECHNOLOGY ──────────────────────────────────────────────────
   {
     family: 'Software Engineer',
-    typicalTitles: ['Software Developer', 'Full Stack Developer', 'Backend Developer', 'Frontend Developer', 'Software Engineer'],
+    typicalTitles: ['Software Developer', 'Full Stack Developer', 'Backend Developer', 'Frontend Developer', 'Software Engineer', 'Cloud Architect', 'Solutions Architect', 'Application Developer'],
     minNQF: 7,
     acceptedQualifications: ['BSc Computer Science', 'BSc IT', 'BEng Software Engineering', 'BCom IT', 'NDip Information Technology'],
     professionalRegistrations: [],
@@ -180,7 +180,7 @@ const JOB_PROFILES: JobProfile[] = [
       senior: { minYears: 6, coreSkills: ['system architecture', 'technical leadership', 'cloud platforms'] }
     },
     saSpecificFlags: ['Willing to relocate to JHB/DBN'],
-    industryKeywords: ['JavaScript', 'React', 'Node', 'AWS', 'Azure', '.NET', 'SQL', 'API', 'Git', 'Python', 'Java', 'C#', 'agile'],
+    industryKeywords: ['JavaScript', 'React', 'Node', 'AWS', 'Azure', '.NET', 'SQL', 'API', 'Git', 'Python', 'Java', 'C#', 'agile', 'cloud architecture', 'microservices', 'REST API'],
     sector: 'tech'
   },
   {
@@ -200,9 +200,9 @@ const JOB_PROFILES: JobProfile[] = [
   },
   {
     family: 'Cybersecurity Analyst',
-    typicalTitles: ['Cybersecurity Analyst', 'Information Security Analyst', 'SOC Analyst', 'Penetration Tester', 'Cloud Architect'],
+    typicalTitles: ['Cybersecurity Analyst', 'Information Security Analyst', 'SOC Analyst', 'Penetration Tester', 'Security Engineer', 'CISO', 'Information Security Manager'],
     minNQF: 7,
-    acceptedQualifications: ['BSc Computer Science', 'BSc IT', 'CompTIA Security+', 'CISSP', 'AWS/Azure certs'],
+    acceptedQualifications: ['BSc Computer Science', 'BSc IT', 'CompTIA Security+', 'CISSP', 'AWS/Azure certs', 'CEH', 'OSCP'],
     professionalRegistrations: ['CompTIA Security+', 'CISSP', 'CEH'],
     experienceTiers: {
       junior: { minYears: 1, coreSkills: ['networking', 'firewall management', 'SIEM', 'CompTIA A+'] },
@@ -210,7 +210,7 @@ const JOB_PROFILES: JobProfile[] = [
       senior: { minYears: 6, coreSkills: ['security architecture', 'incident response', 'CISO advisory'] }
     },
     saSpecificFlags: ['POPIA compliance knowledge'],
-    industryKeywords: ['cybersecurity', 'SIEM', 'firewall', 'cloud security', 'AWS', 'Azure', 'POPIA', 'penetration testing', 'CISSP', 'Cisco CCNA'],
+    industryKeywords: ['cybersecurity', 'SIEM', 'firewall', 'cloud security', 'AWS', 'Azure', 'POPIA', 'penetration testing', 'CISSP', 'Cisco CCNA', 'vulnerability assessment', 'SOC', 'CEH', 'ethical hacking'],
     sector: 'tech'
   },
   {

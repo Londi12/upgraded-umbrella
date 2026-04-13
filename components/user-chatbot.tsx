@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { usePathname } from "next/navigation"
 import { MessageCircle, Send, X, Bot, User, Minimize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,6 +16,7 @@ interface ChatMessage {
 }
 
 export function UserChatbot() {
+  const pathname = usePathname()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -105,6 +107,10 @@ export function UserChatbot() {
   const openChat = () => {
     setIsOpen(true)
     setHasUnread(false)
+  }
+
+  if (pathname?.startsWith('/create')) {
+    return null
   }
 
   if (!isOpen) {

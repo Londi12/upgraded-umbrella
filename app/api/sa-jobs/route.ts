@@ -13,6 +13,12 @@ interface JobResult {
   qualifications?: string[];
 }
 
+function sanitizeForOrFilter(value: string): string {
+  // PostgREST .or() parser treats commas/parentheses as operators.
+  // Strip them from free-text input so valid user queries do not break the filter.
+  return value.replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const query = searchParams.get('q')
@@ -21,6 +27,20 @@ export async function GET(request: NextRequest) {
   const experience = searchParams.get('experience')
   const datePosted = searchParams.get('datePosted')
   const sortBy = searchParams.get('sortBy') || 'newest'
+  const hasSupabaseConfig =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('demo')
+
+  if (!hasSupabaseConfig) {
+    return NextResponse.json({
+      results: [],
+      total: 0,
+      sources_checked: [],
+      compliance_report: {},
+      error: 'Job search backend not configured. Add Supabase env vars to enable search.'
+    }, { status: 503 })
+  }
 
   try {
     let dbQuery = supabase
@@ -30,7 +50,10 @@ export async function GET(request: NextRequest) {
       .limit(100)
 
     if (query && query !== 'jobs') {
-      dbQuery = dbQuery.or(`title.ilike.%${query}%,snippet.ilike.%${query}%,company.ilike.%${query}%`)
+      const safeQuery = sanitizeForOrFilter(query)
+      if (safeQuery) {
+        dbQuery = dbQuery.or(`title.ilike.%${safeQuery}%,snippet.ilike.%${safeQuery}%,company.ilike.%${safeQuery}%`)
+      }
     }
 
     if (location) {

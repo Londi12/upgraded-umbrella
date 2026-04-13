@@ -1,6 +1,15 @@
+"use client"
+
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 
 export function SiteFooter() {
+  const pathname = usePathname()
+
+  if (pathname?.startsWith('/create')) {
+    return null
+  }
+
   return (
     <footer className="border-t border-slate-200 bg-gradient-to-r from-slate-900 via-blue-900 to-slate-800">
       <div className="container px-4 md:px-6 py-8 mx-auto">

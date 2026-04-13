@@ -92,6 +92,7 @@ export default function CVTemplatesPage() {
     { id: 14, name: "Functional / Skills-First", category: "Modern", template: "functional" as const, popular: false },
     { id: 15, name: "Sidebar", category: "Modern", template: "sidebar" as const, popular: false },
     { id: 16, name: "Matric / School Leaver", category: "Simple", template: "matric" as const, popular: true },
+    { id: 17, name: "Editorial Professional", category: "Professional", template: "editorial" as const, popular: false },
   ]
 
   return (

@@ -118,9 +118,37 @@ export function useJobSearch() {
     setFilteredResults([])
     setSelectedJob(null)
     try {
-      const res = await fetch(buildSearchUrl(overrides))
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
+      const primaryUrl = buildSearchUrl(overrides)
+      let res = await fetch(primaryUrl)
+      let data: any = null
+
+      if (!res.ok) {
+        // Fallback to alternate provider route when SA jobs endpoint is unavailable.
+        const f = { ...filtersRef.current, ...overrides }
+        const fallbackParams = new URLSearchParams()
+        fallbackParams.set('q', f.query || 'jobs')
+        if (f.location) fallbackParams.set('location', f.location)
+        if (f.jobType) fallbackParams.set('jobType', f.jobType)
+        if (f.datePosted) fallbackParams.set('datePosted', f.datePosted)
+        const fallbackUrl = `/api/indeed-jobs?${fallbackParams.toString()}`
+        const fallbackRes = await fetch(fallbackUrl)
+        if (fallbackRes.ok) {
+          res = fallbackRes
+          data = await fallbackRes.json()
+        } else {
+          let message = `Search failed (${res.status})`
+          try {
+            const errBody = await res.json()
+            if (errBody?.error) message = String(errBody.error)
+          } catch {
+            // Keep default message when response body is not JSON.
+          }
+          throw new Error(message)
+        }
+      } else {
+        data = await res.json()
+      }
+
       if (data?.results) {
         setResults(data.results)
         setTotalCount(data.total)
@@ -129,8 +157,9 @@ export function useJobSearch() {
       } else {
         setError("No results returned")
       }
-    } catch {
-      setError("Search failed. Please try again.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Search failed. Please try again."
+      setError(message)
     } finally {
       setLoading(false)
     }

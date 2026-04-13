@@ -109,3 +109,4 @@ export type TemplateType =
   | "functional"
   | "sidebar"
   | "matric"
+  | "editorial"
