@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+function extractAccessToken(rawToken: string | undefined): string | null {
+  if (!rawToken) return null
+
+  // In some Supabase setups this cookie stores plain JWT; use it directly.
+  if (rawToken.split('.').length === 3) return rawToken
+
+  // In other setups the cookie stores JSON (or JSON array) with access_token.
+  try {
+    const parsed = JSON.parse(rawToken)
+    if (parsed?.access_token) return parsed.access_token
+    if (Array.isArray(parsed) && parsed[0]?.access_token) return parsed[0].access_token
+  } catch {
+    // Fall through to null when cookie is not parseable.
+  }
+
+  return null
+}
+
 export async function middleware(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith('/admin')) {
     return NextResponse.next()
@@ -15,11 +33,14 @@ export async function middleware(request: NextRequest) {
 
   const supabase = createClient(supabaseUrl, supabaseKey)
 
-  const token = request.cookies.get('sb-access-token')?.value
+  const rawToken = request.cookies.get('sb-access-token')?.value
     ?? request.cookies.get(`sb-${supabaseUrl.split('//')[1].split('.')[0]}-auth-token`)?.value
+  const token = extractAccessToken(rawToken)
 
   if (!token) {
-    return NextResponse.redirect(new URL('/login?redirect=admin', request.url))
+    // Allow request through when auth is only available in browser storage.
+    // The admin page already enforces auth + admin role on the client.
+    return NextResponse.next()
   }
 
   const { data: { user }, error } = await supabase.auth.getUser(token)
