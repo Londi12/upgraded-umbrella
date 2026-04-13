@@ -696,7 +696,7 @@ function JobsTab() {
   const [isUploadingApplications, setIsUploadingApplications] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [showPotentialDuplicatesOnly, setShowPotentialDuplicatesOnly] = useState(false)
-  const [keepByGroup, setKeepByGroup] = useState<Record<string, string>>({})
+  const [keepByGroup, setKeepByGroup] = useState<Record<string, string[]>>({})
   const [editingJob, setEditingJob] = useState<{ id: string; title: string; company: string; location: string; source: string; snippet: string; posted_date: string; url: string } | null>(null)
 
   const loadJobs = async () => {
@@ -762,11 +762,20 @@ function JobsTab() {
   const getDuplicateKey = (job: { title: string; company: string }) =>
     `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
 
+  const toggleKeepInGroup = (groupKey: string, jobId: string) => {
+    setKeepByGroup((prev) => {
+      const current = prev[groupKey] || []
+      const exists = current.includes(jobId)
+      const next = exists ? current.filter((id) => id !== jobId) : [...current, jobId]
+      return { ...prev, [groupKey]: next }
+    })
+  }
+
   const handleDeleteDupesInGroup = async (jobs: typeof existingJobs, groupKey: string) => {
-    const keepId = keepByGroup[groupKey] || jobs[0]?.id
-    const ids = jobs.filter((j) => j.id !== keepId).map((j) => j.id)
+    const keptIds = keepByGroup[groupKey] || []
+    const ids = jobs.filter((j) => !keptIds.includes(j.id)).map((j) => j.id)
     if (ids.length === 0) return
-    if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep 1?`)) return
+    if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep ${keptIds.length}?`)) return
     for (const id of ids) {
       await deleteJob(id)
     }
@@ -938,7 +947,7 @@ function JobsTab() {
               groupedDuplicates.map((group) => {
                 const rep = group[0]
                 const groupKey = getDuplicateKey(rep)
-                const keepId = keepByGroup[groupKey] || rep.id
+                const keptIds = keepByGroup[groupKey] || []
                 return (
                   <div key={`${rep.title}::${rep.company}`} className="border-b border-slate-700 last:border-0">
                     {/* Group header */}
@@ -976,8 +985,8 @@ function JobsTab() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setKeepByGroup((prev) => ({ ...prev, [groupKey]: job.id }))}
-                            className={keepId === job.id ? "text-green-400 hover:text-green-300 h-8 w-8 p-0" : "text-slate-500 hover:text-green-300 h-8 w-8 p-0"}
+                            onClick={() => toggleKeepInGroup(groupKey, job.id)}
+                            className={keptIds.includes(job.id) ? "text-green-400 hover:text-green-300 h-8 w-8 p-0" : "text-slate-500 hover:text-green-300 h-8 w-8 p-0"}
                             title="Keep this job when deleting duplicates"
                           >
                             <CheckCircle className="h-3.5 w-3.5" />
