@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp, Briefcase } from "lucide-react"
+import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp, Briefcase, ChevronRight } from "lucide-react"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { calculateJobMatch as calculateHeuristicMatch, calculateATSScores, aggregateAtsFeedback } from "@/lib/cv-ats-heuristics"
 import { formatJobCardDate } from "@/lib/date-formatter"
@@ -44,6 +44,8 @@ interface JobDetailPanelProps {
   recommendedFamilies?: string[]
   onAIMatch: (confirmedFamily?: string) => void
   showBackButton?: boolean
+  allJobs?: JobResult[]
+  onSelectJob?: (job: JobResult) => void
 }
 
 export function JobDetailPanel({
@@ -60,6 +62,8 @@ export function JobDetailPanel({
   recommendedFamilies = [],
   onAIMatch,
   showBackButton = true,
+  allJobs,
+  onSelectJob,
 }: JobDetailPanelProps) {
   const { user } = useAuth()
   const [tab, setTab] = useState<Tab>("details")
@@ -111,9 +115,10 @@ export function JobDetailPanel({
     [aiMatchResults, currentJobMatch]
   )
 
-  // Pre-compute low-match content (avoids IIFE-in-JSX scope issues under minification)
-  const lowMatchReasons = useMemo(() => {
-    if (!currentJobMatch || currentJobMatch.matchScore >= 50) return []
+  // Pre-compute low-match content — structured role gap + skill reasons
+  const lowMatchData = useMemo(() => {
+    if (!currentJobMatch || currentJobMatch.matchScore >= 50) return { roleGap: null as null | { cvFamily: string; jobFamily: string }, reasons: [] as string[] }
+    let roleGap: { cvFamily: string; jobFamily: string } | null = null
     const reasons: string[] = []
     if (
       currentJobMatch.detectedCVFamily &&
@@ -121,15 +126,15 @@ export function JobDetailPanel({
       currentJobMatch.detectedJobFamily !== 'unknown' &&
       currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
     ) {
-      reasons.push(`Your experience is in ${currentJobMatch.detectedCVFamily}, not ${currentJobMatch.detectedJobFamily}`)
+      roleGap = { cvFamily: currentJobMatch.detectedCVFamily, jobFamily: currentJobMatch.detectedJobFamily }
     }
     const toolGaps = currentJobMatch.skillsGap.filter(s => s.length > 1).slice(0, 3)
-    if (toolGaps.length > 0) reasons.push(`No evidence of required tools (${toolGaps.join(', ')})`)
+    if (toolGaps.length > 0) reasons.push(`Missing required skills: ${toolGaps.join(', ')}`)
     const humanGap = currentJobMatch.dealBreakers[0] ||
       currentJobMatch.gaps.find(g => !g.toLowerCase().includes('nqf') && !g.toLowerCase().includes('registration'))
     if (humanGap) reasons.push(humanGap)
-    if (reasons.length < 2) reasons.push('Experience level does not match job requirements')
-    return reasons
+    if (reasons.length < 1 && !roleGap) reasons.push('Experience level does not match job requirements')
+    return { roleGap, reasons }
   }, [currentJobMatch])
 
   const betterRoles = useMemo(() => {
@@ -139,6 +144,23 @@ export function JobDetailPanel({
     }
     return []
   }, [recommendedFamilies, currentJobMatch])
+
+  // Find up to 2 real jobs from the list that better match the user's CV family
+  const suggestedJobs = useMemo(() => {
+    if (!currentJobMatch || currentJobMatch.matchScore >= 50 || !allJobs?.length) return []
+    const cvFamily = (currentJobMatch.detectedCVFamily || '').toLowerCase()
+    if (!cvFamily) return []
+    const familyWords = cvFamily.split(/[\s\/&\-]+/).filter((w: string) => w.length > 3)
+    if (!familyWords.length) return []
+    return allJobs
+      .filter(j => {
+        const jId = j.url || j.title || (j as any).id || ''
+        if (jId === selectedJobId) return false
+        const text = `${j.title} ${j.description || j.snippet || ''}`.toLowerCase()
+        return familyWords.some((w: string) => text.includes(w))
+      })
+      .slice(0, 2)
+  }, [allJobs, currentJobMatch, selectedJobId])
 
   const openTrackDialog = () => {
     setTrackForm(f => ({ ...f, cv_id: selectedCVId || '' }))
@@ -313,62 +335,110 @@ export function JobDetailPanel({
             {currentJobMatch && currentJobMatch.matchScore < 50 && (
               <div className="space-y-5">
 
-                {/* Score header — not a fit */}
+                {/* Score header */}
                 <div className="flex items-start gap-4 px-4 py-4 bg-white border border-red-100 rounded-xl">
                   <div className="flex-shrink-0 w-16 h-16 rounded-full border-[3px] border-red-300 flex flex-col items-center justify-center">
                     <span className="text-lg font-bold text-red-500 leading-none">{currentJobMatch.matchScore}%</span>
                     <span className="text-[9px] text-red-400 font-semibold uppercase tracking-wide mt-0.5">Match</span>
                   </div>
                   <div className="min-w-0 flex-1 pt-1">
-                    <p className="text-base font-bold text-slate-800 leading-snug">This role is not a good fit</p>
-                    <p className="text-sm text-slate-500 mt-0.5">This role is not a match</p>
+                    <p className="text-base font-bold text-slate-800 leading-snug">Low match — here&apos;s the gap</p>
+                    <p className="text-sm text-slate-500 mt-0.5">Consider highlighting transferable skills or exploring a closer role.</p>
                   </div>
                 </div>
 
-                {/* Why you're not a match */}
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Why you&apos;re not a match</p>
+                {/* Role alignment — structured two-row display */}
+                {lowMatchData.roleGap && (
                   <div className="space-y-2">
-                    {lowMatchReasons.map((r, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-slate-700">{r}</span>
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Role Alignment</p>
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500 flex-shrink-0">Your background</span>
+                        <span className="text-sm font-semibold text-slate-800 text-right">{lowMatchData.roleGap.cvFamily}</span>
                       </div>
-                    ))}
+                      <div className="border-t border-slate-100" />
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-xs text-slate-500 flex-shrink-0">This role focuses on</span>
+                        <span className="text-sm font-semibold text-slate-800 text-right">{lowMatchData.roleGap.jobFamily}</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+
+                {/* Skill gaps */}
+                {lowMatchData.reasons.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Skill Gaps</p>
+                    <div className="space-y-2">
+                      {lowMatchData.reasons.map((r, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-slate-700">{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <hr className="border-slate-100" />
 
-                {/* What you can do instead */}
+                {/* What to do next — dynamic tips */}
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">What you can do instead</p>
+                  <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">What to do next</p>
                   <div className="space-y-2">
-                    {['Apply to roles closer to your background', 'Or update your CV if you have relevant skills not listed'].map((tip, i) => (
+                    {[
+                      lowMatchData.roleGap
+                        ? `Look for ${lowMatchData.roleGap.cvFamily} roles — they align with your background`
+                        : 'Apply to roles closer to your background',
+                      lowMatchData.roleGap
+                        ? `If you have any ${lowMatchData.roleGap.jobFamily} experience, add it to your CV`
+                        : 'Update your CV to highlight any transferable skills',
+                    ].map((tip, i) => (
                       <div key={i} className="flex items-start gap-2.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400 mt-1.5 flex-shrink-0" />
+                        <Lightbulb className="h-3.5 w-3.5 text-blue-400 mt-0.5 flex-shrink-0" />
                         <span className="text-sm text-slate-700">{tip}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Better matches for you */}
-                {betterRoles.length > 0 && (
+                {/* Better matches for you — real jobs first, role labels as fallback */}
+                {(suggestedJobs.length > 0 || betterRoles.length > 0) && (
                   <>
                     <hr className="border-slate-100" />
                     <div className="space-y-2.5">
                       <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Better matches for you</p>
-                      <div className="space-y-2">
-                        {betterRoles.map((role, i) => (
-                          <div key={i} className="flex items-center gap-3">
-                            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                              <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                      {suggestedJobs.length > 0 ? (
+                        <div className="space-y-2">
+                          {suggestedJobs.map((j, i) => (
+                            <button
+                              key={i}
+                              onClick={() => onSelectJob?.(j)}
+                              className="w-full text-left flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl transition-colors"
+                            >
+                              <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
+                                <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-slate-800 truncate">{j.title}</p>
+                                <p className="text-xs text-slate-500 truncate">{j.company || j.source || 'View job'}</p>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {betterRoles.map((role, i) => (
+                            <div key={i} className="flex items-center gap-3">
+                              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
+                                <Briefcase className="h-3.5 w-3.5 text-slate-500" />
+                              </div>
+                              <span className="text-sm font-medium text-slate-700">{role}</span>
                             </div>
-                            <span className="text-sm font-medium text-slate-700">{role}</span>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </>
                 )}

@@ -71,6 +71,8 @@ export default function SAJobSearch() {
     cvClassification,
     recommendedFamilies,
     onAIMatch: handleAIMatch,
+    allJobs: filteredResults ?? [],
+    onSelectJob: (job: NonNullable<typeof selectedJob>) => selectJob(job),
   } : null
 
   return (
