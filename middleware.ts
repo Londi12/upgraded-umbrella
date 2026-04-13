@@ -38,13 +38,15 @@ export async function middleware(request: NextRequest) {
   const token = extractAccessToken(rawToken)
 
   if (!token) {
-    return NextResponse.redirect(new URL('/login?redirect=admin', request.url))
+    // Browser auth in this app is localStorage-based, so middleware may not see a token cookie.
+    // Allow request through and let the admin page perform the authoritative admin check.
+    return NextResponse.next()
   }
 
   const { data: { user }, error } = await supabase.auth.getUser(token)
 
   if (error || !user) {
-    return NextResponse.redirect(new URL('/login?redirect=admin', request.url))
+    return NextResponse.next()
   }
 
   const { data: adminRecord } = await supabase
