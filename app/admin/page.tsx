@@ -699,7 +699,7 @@ function JobsTab() {
 
   const loadJobs = async () => {
     setIsLoading(true)
-    const { data } = await getJobs()
+    const { data } = await getJobs(undefined, undefined, 1000)
     setExistingJobs(data || [])
     setIsLoading(false)
   }
@@ -732,7 +732,14 @@ function JobsTab() {
       })
       const result = await res.json()
       if (res.ok) {
-        setUploadStatus(`Uploaded ${result.count || 0} jobs`)
+        const inserted = Number(result.insertedCount || 0)
+        const updated = Number(result.updatedCount || 0)
+        const skipped = Number(result.skippedMissingRequired || 0)
+        const duplicates = Number(result.duplicateRowsCollapsed || 0)
+        const parsed = Number(result.parsedRows || result.count || 0)
+        setUploadStatus(
+          `Parsed ${parsed}: inserted ${inserted}, updated ${updated}, skipped ${skipped}, duplicate rows collapsed ${duplicates}`
+        )
         await loadJobs()
       } else {
         setUploadStatus(`Error: ${result.error || "Upload failed"}`)

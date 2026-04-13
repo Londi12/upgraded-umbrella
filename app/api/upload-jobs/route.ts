@@ -100,10 +100,12 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields and collapse duplicate URLs within the uploaded file.
     const dedupedByUrl = new Map<string, any>()
+    let rowsWithRequiredFields = 0
     for (const job of jobs) {
       if (!(job.title && job.company && job.location && job.snippet && job.url && job.source)) {
         continue
       }
+      rowsWithRequiredFields += 1
       const normalizedUrl = String(job.url).trim().toLowerCase()
       if (!normalizedUrl) continue
       dedupedByUrl.set(normalizedUrl, {
@@ -118,12 +120,42 @@ export async function POST(request: NextRequest) {
     }
 
     const validJobs = Array.from(dedupedByUrl.values())
+  const skippedMissingRequired = jobs.length - rowsWithRequiredFields
+  const duplicateRowsCollapsed = rowsWithRequiredFields - validJobs.length
 
     if (validJobs.length === 0) {
       return NextResponse.json({ 
         error: 'No jobs with required fields (title, company, location, snippet, url, source)' 
       }, { status: 400 })
     }
+
+    const normalizedUploadUrls = validJobs
+      .map((job) => String(job.url || '').trim().toLowerCase())
+      .filter(Boolean)
+
+    const existingUrlSet = new Set<string>()
+    const chunkSize = 200
+    for (let i = 0; i < normalizedUploadUrls.length; i += chunkSize) {
+      const chunk = normalizedUploadUrls.slice(i, i + chunkSize)
+      const { data: existingRows, error: existingError } = await supabase
+        .from('scraped_jobs')
+        .select('url')
+        .in('url', chunk)
+
+      if (existingError) {
+        console.error('Error checking existing job URLs:', existingError)
+      } else {
+        for (const row of existingRows || []) {
+          const url = String((row as any).url || '').trim().toLowerCase()
+          if (url) existingUrlSet.add(url)
+        }
+      }
+    }
+
+    const insertedCount = validJobs.filter(
+      (job) => !existingUrlSet.has(String(job.url || '').trim().toLowerCase())
+    ).length
+    const updatedCount = validJobs.length - insertedCount
 
     // Upsert jobs into database by URL so re-uploads update existing rows instead of failing.
     const { data, error } = await supabase
@@ -141,6 +173,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       count: data?.length || 0,
+      parsedRows: jobs.length,
+      insertedCount,
+      updatedCount,
+      skippedMissingRequired,
+      duplicateRowsCollapsed,
       jobs: data || []
     })
 
