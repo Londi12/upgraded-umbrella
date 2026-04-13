@@ -141,28 +141,116 @@ export async function generateCoverLetterPDF(
   userData: CoverLetterData,
   templateName: string,
 ): Promise<Blob> {
-  try {
-    const response = await fetch("/api/generate-cover-letter-pdf", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        template,
-        userData,
-        templateName,
-      }),
-    })
+  let captureRoot: HTMLDivElement | null = null
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
-      throw new Error(errorData.error || `HTTP error! status: ${response.status}`)
+  try {
+    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+      import("html2canvas"),
+      import("jspdf"),
+    ])
+
+    const element = document.getElementById("cover-letter-preview-container")
+    if (!element) {
+      throw new Error("Cover letter preview container not found. Cannot generate PDF.")
     }
 
-    return response.blob()
+    if (document.fonts?.ready) {
+      await document.fonts.ready
+    }
+
+    const A4_WIDTH_PX = 794
+    const sourceHeight = Math.max(Math.ceil(element.scrollHeight), element.offsetHeight)
+
+    captureRoot = document.createElement("div")
+    captureRoot.style.position = "fixed"
+    captureRoot.style.left = "-100000px"
+    captureRoot.style.top = "0"
+    captureRoot.style.width = `${A4_WIDTH_PX}px`
+    captureRoot.style.background = "#ffffff"
+    captureRoot.style.zIndex = "-1"
+
+    const clone = element.cloneNode(true) as HTMLElement
+    clone.style.width = `${A4_WIDTH_PX}px`
+    clone.style.minHeight = `${sourceHeight}px`
+    clone.style.height = "auto"
+    clone.style.background = "#ffffff"
+    captureRoot.appendChild(clone)
+
+    document.body.appendChild(captureRoot)
+
+    const scale = Math.min(3, Math.max(2, window.devicePixelRatio || 2))
+    const canvas = await html2canvas(captureRoot, {
+      scale,
+      useCORS: true,
+      backgroundColor: "#ffffff",
+      logging: false,
+      width: A4_WIDTH_PX,
+      height: captureRoot.scrollHeight,
+      windowWidth: A4_WIDTH_PX,
+      windowHeight: captureRoot.scrollHeight,
+    })
+
+    const pdf = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+      compress: true,
+    })
+
+    const pageWidthMm = 210
+    const pageHeightMm = 297
+    const imageWidthMm = pageWidthMm
+    const pxPerMm = canvas.width / imageWidthMm
+    const pageHeightPx = Math.floor(pageHeightMm * pxPerMm)
+
+    let renderedHeightPx = 0
+    let pageIndex = 0
+
+    while (renderedHeightPx < canvas.height) {
+      const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedHeightPx)
+
+      const sliceCanvas = document.createElement("canvas")
+      sliceCanvas.width = canvas.width
+      sliceCanvas.height = sliceHeightPx
+
+      const ctx = sliceCanvas.getContext("2d")
+      if (!ctx) {
+        throw new Error("Could not create canvas context for PDF slicing.")
+      }
+
+      ctx.drawImage(
+        canvas,
+        0,
+        renderedHeightPx,
+        canvas.width,
+        sliceHeightPx,
+        0,
+        0,
+        canvas.width,
+        sliceHeightPx,
+      )
+
+      const sliceHeightMm = sliceHeightPx / pxPerMm
+      const imgData = sliceCanvas.toDataURL("image/png")
+
+      if (pageIndex > 0) {
+        pdf.addPage()
+      }
+
+      pdf.addImage(imgData, "PNG", 0, 0, imageWidthMm, sliceHeightMm, undefined, "FAST")
+
+      renderedHeightPx += sliceHeightPx
+      pageIndex += 1
+    }
+
+    return pdf.output("blob")
   } catch (error) {
     console.error("Error in generateCoverLetterPDF:", error)
     throw error
+  } finally {
+    if (captureRoot?.parentNode) {
+      captureRoot.parentNode.removeChild(captureRoot)
+    }
   }
 }
 

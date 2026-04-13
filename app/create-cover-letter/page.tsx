@@ -366,7 +366,9 @@ export default function CreateCoverLetterPage() {
             </div>
             <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm bg-gray-50" id="cover-letter-preview">
               <div className="aspect-[1/1.414] overflow-auto p-4">
-                <CoverLetterPreview template={selectedTemplate.type} className="w-full h-full" userData={formData} />
+                <div id="cover-letter-preview-container" className="w-full h-full bg-white">
+                  <CoverLetterPreview template={selectedTemplate.type} className="w-full h-full" userData={formData} />
+                </div>
               </div>
             </div>
           </div>
