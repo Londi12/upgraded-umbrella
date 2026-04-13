@@ -42,6 +42,7 @@ export default function CreateCoverLetterPage() {
       fullName: "",
       email: "",
       phone: "",
+      jobTitle: "",
     },
     recipientInfo: {
       name: "",
