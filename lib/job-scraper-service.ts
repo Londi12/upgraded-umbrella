@@ -54,7 +54,7 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   }
 
   const res = await fetch(
-    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=1&country=za`,
+    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=3&country=za`,
     {
       headers: {
         'X-RapidAPI-Key': apiKey,
@@ -85,7 +85,12 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   }))
 
   return mapped
-    .filter((j: any) => j.url && isSALocation(j._city, j._state, j._country))
+    // Accept job if location fields confirm SA, or if all location fields are blank
+    // (JSearch already filtered by country=za so blank = SA is a safe assumption)
+    .filter((j: any) => j.url && (
+      isSALocation(j._city, j._state, j._country) ||
+      (!j._city && !j._state && !j._country)
+    ))
     .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
 }
 
@@ -280,10 +285,15 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
     const allJobs: ScrapedJob[] = []
     const seen = new Set<string>()
 
+    // 6 queries × ~30 results = up to 180 jobs from JSearch.
+    // 6 calls/day × 31 days = 186 requests/month — within the 200/month free cap.
     const queries = [
       'jobs South Africa',
-      'engineer developer analyst South Africa',
-      'manager accountant nurse teacher South Africa'
+      'software developer engineer IT South Africa',
+      'finance accountant auditor South Africa',
+      'sales marketing manager South Africa',
+      'nurse doctor healthcare South Africa',
+      'driver admin clerk operations South Africa',
     ]
 
     console.log(`Starting multi-source scrape with ${queries.length} JSearch queries...`)
