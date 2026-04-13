@@ -691,6 +691,8 @@ function JobsTab() {
   const [isLoading, setIsLoading] = useState(false)
   const [uploadStatus, setUploadStatus] = useState("")
   const [isUploading, setIsUploading] = useState(false)
+  const [applicationUploadStatus, setApplicationUploadStatus] = useState("")
+  const [isUploadingApplications, setIsUploadingApplications] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [editingJob, setEditingJob] = useState<{ id: string; title: string; company: string; location: string; source: string; snippet: string; posted_date: string; url: string } | null>(null)
 
@@ -734,6 +736,35 @@ function JobsTab() {
     await loadJobs()
   }
 
+  const handleApplicationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingApplications(true)
+    setApplicationUploadStatus("Uploading applications...")
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const res = await fetch("/api/upload-applications", { method: "POST", body: formData })
+      const result = await res.json()
+
+      if (!res.ok) {
+        setApplicationUploadStatus(`Error: ${result.error || "Upload failed"}`)
+        return
+      }
+
+      const inserted = Number(result.inserted || 0)
+      const skipped = Number(result.skipped || 0)
+      const totalRows = Number(result.totalRows || inserted + skipped)
+      setApplicationUploadStatus(`Uploaded ${inserted}/${totalRows} applications (skipped ${skipped})`)
+    } catch {
+      setApplicationUploadStatus("Upload failed")
+    } finally {
+      setIsUploadingApplications(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!editingJob) return
     await updateJob(editingJob.id, editingJob)
@@ -752,6 +783,29 @@ function JobsTab() {
           <p className="text-slate-400 text-sm mb-3">Upload Excel (.xlsx, .xls) or CSV</p>
           <Input type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} disabled={isUploading} className="max-w-xs mx-auto bg-slate-800 border-slate-700 text-slate-300" />
           {uploadStatus && <p className={`text-sm mt-2 ${uploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>{uploadStatus}</p>}
+        </div>
+      </div>
+
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <h2 className="text-white font-medium mb-4">Upload Job Applications</h2>
+        <div className="border-2 border-dashed border-slate-700 rounded-lg p-6 text-center">
+          <Upload className="h-8 w-8 text-slate-500 mx-auto mb-3" />
+          <p className="text-slate-400 text-sm">Upload CSV/Excel of applications</p>
+          <p className="text-slate-500 text-xs mt-1 mb-3">
+            Required columns: title or job_title, company or company_name. Optional: url, application_date, status, source/job_board, notes, ats_score.
+          </p>
+          <Input
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            onChange={handleApplicationFileUpload}
+            disabled={isUploadingApplications}
+            className="max-w-xs mx-auto bg-slate-800 border-slate-700 text-slate-300"
+          />
+          {applicationUploadStatus && (
+            <p className={`text-sm mt-2 ${applicationUploadStatus.includes("Error") ? "text-red-400" : "text-green-400"}`}>
+              {applicationUploadStatus}
+            </p>
+          )}
         </div>
       </div>
 
