@@ -81,6 +81,13 @@ export function useJobSearch() {
     }
   }, [user])
 
+  // Auto-select the first job when results load and no job is currently selected
+  useEffect(() => {
+    if (filteredResults.length > 0 && !selectedJob) {
+      setSelectedJob(filteredResults[0])
+    }
+  }, [filteredResults, selectedJob])
+
   const buildSearchUrl = useCallback((overrides: Partial<SearchFilters> = {}) => {
     // Always read from ref to avoid stale closure
     const f = { ...filtersRef.current, ...overrides }
