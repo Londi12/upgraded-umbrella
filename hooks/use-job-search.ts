@@ -20,7 +20,7 @@ const DEFAULT_FILTERS: SearchFilters = {
   location: "",
   jobType: "",
   experience: "",
-  datePosted: "7",
+  datePosted: "",
   sortBy: "relevant",
   quickFilters: [],
 }

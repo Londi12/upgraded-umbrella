@@ -787,6 +787,36 @@ function JobsTab() {
     })
   }
 
+  const selectAllDupesKeepingFirst = (groups: Array<typeof existingJobs>) => {
+    setSelectedJobIds((prev) => {
+      const next = new Set(prev)
+      groups.forEach((group) => group.slice(1).forEach((j) => next.add(j.id)))
+      return next
+    })
+  }
+
+  const handleDeleteDupesInGroup = async (jobs: typeof existingJobs) => {
+    const ids = jobs.slice(1).map((j) => j.id)
+    if (ids.length === 0) return
+    if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep 1?`)) return
+    for (const id of ids) {
+      await deleteJob(id)
+    }
+    setSelectedJobIds(new Set())
+    await loadJobs()
+  }
+
+  const handleDeleteAllDupesKeepingFirst = async (groups: Array<typeof existingJobs>) => {
+    const ids = groups.flatMap((group) => group.slice(1).map((j) => j.id))
+    if (ids.length === 0) return
+    if (!window.confirm(`Delete ${ids.length} duplicate job(s) across all groups and keep 1 in each group?`)) return
+    for (const id of ids) {
+      await deleteJob(id)
+    }
+    setSelectedJobIds(new Set())
+    await loadJobs()
+  }
+
   const handleApplicationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -920,6 +950,24 @@ function JobsTab() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <h2 className="text-white font-medium">Jobs ({existingJobs.length})</h2>
           <div className="flex items-center gap-2">
+            {showPotentialDuplicatesOnly && groupedDuplicates && groupedDuplicates.length > 0 && (
+              <>
+                <Button
+                  type="button"
+                  onClick={() => selectAllDupesKeepingFirst(groupedDuplicates)}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs"
+                >
+                  Select all dupes
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => void handleDeleteAllDupesKeepingFirst(groupedDuplicates)}
+                  className="bg-red-700 hover:bg-red-800 text-white text-xs"
+                >
+                  Delete all dupes (keep 1 each)
+                </Button>
+              </>
+            )}
             {selectedJobIds.size > 0 && (
               <Button
                 type="button"
@@ -972,6 +1020,14 @@ function JobsTab() {
                         className="text-amber-400 hover:text-amber-300 text-xs h-6 flex-shrink-0"
                       >
                         Select dupes (keep 1st)
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => void handleDeleteDupesInGroup(group)}
+                        className="text-red-400 hover:text-red-300 text-xs h-6 flex-shrink-0"
+                      >
+                        Delete dupes in group
                       </Button>
                     </div>
                     {/* Jobs in group */}

@@ -56,7 +56,7 @@ export default function SAJobSearch() {
     setIsMobileSheetOpen(false)
   }
 
-  const hasActiveFilters = filters.jobType || filters.experience || filters.datePosted !== "7" || filters.quickFilters.length > 0
+  const hasActiveFilters = filters.jobType || filters.experience || filters.datePosted !== "" || filters.quickFilters.length > 0
 
   const detailPanelProps = selectedJob ? {
     job: selectedJob,
