@@ -224,17 +224,22 @@ export function useJobSearch() {
       const selectedCV = savedCVs.find(cv => cv.id === selectedCVId)
       if (!selectedCV) throw new Error("Selected CV not found")
 
-      // Only score the exact job the user is viewing — don't fetch similar jobs,
-      // which caused every click to return the same results.
-      const jobsToMatch = [{
-        id: selectedJob.url || selectedJob.title,
-        url: selectedJob.url,
-        title: selectedJob.title,
-        company: selectedJob.company || selectedJob.source,
-        description: selectedJob.description || selectedJob.snippet || '',
-        location: selectedJob.location,
+      // Score selected job plus a limited set of nearby results to power reliable
+      // "better matches" recommendations without overloading the API.
+      const selectedId = selectedJob.url || selectedJob.title
+      const candidateJobs = filteredResults
+        .filter(j => (j.url || j.title) !== selectedId)
+        .slice(0, 24)
+
+      const jobsToMatch = [selectedJob, ...candidateJobs].map(j => ({
+        id: j.url || j.title,
+        url: j.url,
+        title: j.title,
+        company: j.company || j.source,
+        description: j.description || j.snippet || '',
+        location: j.location,
         requirements: [],
-      }]
+      }))
 
       const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily)
       if ('needsDisambiguation' in result) {

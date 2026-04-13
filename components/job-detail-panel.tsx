@@ -148,6 +148,21 @@ export function JobDetailPanel({
   // Find up to 2 real jobs from the list that better match the user's CV family
   const suggestedJobs = useMemo(() => {
     if (!currentJobMatch || currentJobMatch.matchScore >= 50 || !allJobs?.length) return []
+
+    const minBetterScore = Math.max(55, currentJobMatch.matchScore + 10)
+    const scoredAlternatives = aiMatchResults
+      .filter(m => m.jobId !== selectedJobId && m.matchScore >= minBetterScore)
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 2)
+
+    if (scoredAlternatives.length > 0) {
+      const allJobsById = new Map(allJobs.map(j => [j.url || j.title || (j as any).id || '', j]))
+      const mapped = scoredAlternatives
+        .map(m => allJobsById.get(m.jobId))
+        .filter((j): j is JobResult => Boolean(j))
+      if (mapped.length > 0) return mapped
+    }
+
     const cvFamily = (currentJobMatch.detectedCVFamily || '').toLowerCase()
     if (!cvFamily) return []
     const familyWords = cvFamily.split(/[\s\/&\-]+/).filter((w: string) => w.length > 3)
