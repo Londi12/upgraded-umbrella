@@ -53,8 +53,10 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
     return []
   }
 
+  // num_pages=1 = 1 API request returning up to 10 results.
+  // 6 queries/day × 1 request = 6 req/day = 186 req/month — within the 200/month free cap.
   const res = await fetch(
-    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=3&country=za`,
+    `https://jsearch.p.rapidapi.com/search?query=${encodeURIComponent(query)}&page=1&num_pages=1&country=za`,
     {
       headers: {
         'X-RapidAPI-Key': apiKey,
@@ -71,27 +73,22 @@ async function fetchJSearchJobs(query: string): Promise<ScrapedJob[]> {
   const data = await res.json()
   console.log(`JSearch "${query}": ${data.data?.length || 0} jobs`)
 
-  const mapped = (data.data || []).map((j: any) => ({
-    title: j.job_title,
-    snippet: j.job_description?.substring(0, 1500) || '',
-    url: j.job_apply_link || j.job_google_link || '',
-    source: j.employer_name,
-    company: j.employer_name,
-    location: formatLocation(j.job_city || '', j.job_state || ''),
-    posted_date: j.job_posted_at_datetime_utc || new Date().toISOString(),
-    _city: j.job_city || '',
-    _state: j.job_state || '',
-    _country: j.job_country || '',
-  }))
-
-  return mapped
-    // Accept job if location fields confirm SA, or if all location fields are blank
-    // (JSearch already filtered by country=za so blank = SA is a safe assumption)
-    .filter((j: any) => j.url && (
-      isSALocation(j._city, j._state, j._country) ||
-      (!j._city && !j._state && !j._country)
-    ))
-    .map(({ _city, _state, _country, ...j }: any) => j as ScrapedJob)
+  // Trust country=za — no post-filter needed. Just drop jobs with no URL.
+  return (data.data || [])
+    .filter((j: any) => !!(j.job_apply_link || j.job_google_link))
+    .map((j: any): ScrapedJob => ({
+      title: j.job_title || 'Untitled',
+      snippet: j.job_description?.substring(0, 1500) || '',
+      url: j.job_apply_link || j.job_google_link,
+      source: 'JSearch',
+      company: j.employer_name || 'Unknown',
+      location: [
+        j.job_city,
+        j.job_state,
+        j.job_country || 'South Africa',
+      ].filter(Boolean).join(', '),
+      posted_date: j.job_posted_at_datetime_utc || new Date().toISOString(),
+    }))
 }
 
 function isSouthAfricaText(value: string): boolean {
