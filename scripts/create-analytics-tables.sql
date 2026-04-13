@@ -71,63 +71,86 @@ ALTER TABLE job_search_analytics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE industry_performance ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for application_tracking
+DROP POLICY IF EXISTS "Users can view own applications" ON application_tracking;
 CREATE POLICY "Users can view own applications" ON application_tracking
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own applications" ON application_tracking;
 CREATE POLICY "Users can insert own applications" ON application_tracking
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own applications" ON application_tracking;
 CREATE POLICY "Users can update own applications" ON application_tracking
   FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own applications" ON application_tracking;
 CREATE POLICY "Users can delete own applications" ON application_tracking
   FOR DELETE USING (auth.uid() = user_id);
 
 -- Create policies for cv_interactions
+DROP POLICY IF EXISTS "Users can view own interactions" ON cv_interactions;
 CREATE POLICY "Users can view own interactions" ON cv_interactions
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own interactions" ON cv_interactions;
 CREATE POLICY "Users can insert own interactions" ON cv_interactions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Create policies for ats_score_history
+DROP POLICY IF EXISTS "Users can view own ATS history" ON ats_score_history;
 CREATE POLICY "Users can view own ATS history" ON ats_score_history
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own ATS history" ON ats_score_history;
 CREATE POLICY "Users can insert own ATS history" ON ats_score_history
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Create policies for job_search_analytics
+DROP POLICY IF EXISTS "Users can view own search analytics" ON job_search_analytics;
 CREATE POLICY "Users can view own search analytics" ON job_search_analytics
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own search analytics" ON job_search_analytics;
 CREATE POLICY "Users can insert own search analytics" ON job_search_analytics
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- Create policies for industry_performance
+DROP POLICY IF EXISTS "Users can view own industry performance" ON industry_performance;
 CREATE POLICY "Users can view own industry performance" ON industry_performance
   FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own industry performance" ON industry_performance;
 CREATE POLICY "Users can insert own industry performance" ON industry_performance
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own industry performance" ON industry_performance;
 CREATE POLICY "Users can update own industry performance" ON industry_performance
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- Create indexes for better performance
-CREATE INDEX idx_application_tracking_user_id ON application_tracking(user_id);
-CREATE INDEX idx_application_tracking_cv_id ON application_tracking(cv_id);
-CREATE INDEX idx_application_tracking_status ON application_tracking(status);
-CREATE INDEX idx_application_tracking_date ON application_tracking(application_date);
+CREATE INDEX IF NOT EXISTS idx_application_tracking_user_id ON application_tracking(user_id);
+CREATE INDEX IF NOT EXISTS idx_application_tracking_cv_id ON application_tracking(cv_id);
+CREATE INDEX IF NOT EXISTS idx_application_tracking_status ON application_tracking(status);
+CREATE INDEX IF NOT EXISTS idx_application_tracking_date ON application_tracking(application_date);
 
-CREATE INDEX idx_cv_interactions_user_id ON cv_interactions(user_id);
-CREATE INDEX idx_cv_interactions_cv_id ON cv_interactions(cv_id);
-CREATE INDEX idx_cv_interactions_type ON cv_interactions(interaction_type);
+CREATE INDEX IF NOT EXISTS idx_cv_interactions_user_id ON cv_interactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_cv_interactions_cv_id ON cv_interactions(cv_id);
+CREATE INDEX IF NOT EXISTS idx_cv_interactions_type ON cv_interactions(interaction_type);
 
-CREATE INDEX idx_ats_score_history_user_id ON ats_score_history(user_id);
-CREATE INDEX idx_ats_score_history_cv_id ON ats_score_history(cv_id);
+CREATE INDEX IF NOT EXISTS idx_ats_score_history_user_id ON ats_score_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_ats_score_history_cv_id ON ats_score_history(cv_id);
+
+-- Create updated_at helper trigger function (safe to re-run)
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ language 'plpgsql';
 
 -- Create triggers for updated_at
+DROP TRIGGER IF EXISTS update_application_tracking_updated_at ON application_tracking;
 CREATE TRIGGER update_application_tracking_updated_at BEFORE UPDATE ON application_tracking
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -142,12 +165,13 @@ END;
 $$ language 'plpgsql';
 
 -- Create trigger for industry performance updates
+DROP TRIGGER IF EXISTS update_industry_performance_trigger ON application_tracking;
 CREATE TRIGGER update_industry_performance_trigger
   AFTER INSERT OR UPDATE ON application_tracking
   FOR EACH ROW EXECUTE FUNCTION update_industry_performance();
 
 -- Create materialized view for dashboard analytics
-CREATE MATERIALIZED VIEW user_dashboard_analytics AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS user_dashboard_analytics AS
 SELECT 
   u.id as user_id,
   COUNT(DISTINCT sc.id) as total_cvs,
@@ -167,7 +191,7 @@ LEFT JOIN application_tracking at ON u.id = at.user_id
 GROUP BY u.id;
 
 -- Create index on materialized view
-CREATE UNIQUE INDEX idx_user_dashboard_analytics_user_id ON user_dashboard_analytics(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_user_dashboard_analytics_user_id ON user_dashboard_analytics(user_id);
 
 -- Function to refresh analytics
 CREATE OR REPLACE FUNCTION refresh_dashboard_analytics()
