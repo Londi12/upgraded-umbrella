@@ -36,6 +36,7 @@ import {
   getAdminUsers,
   getJobs,
   getLiveActivity,
+  supabase,
   updateJob,
   deleteJob,
   setAdminUserStatus,
@@ -713,9 +714,22 @@ function JobsTab() {
     setIsUploading(true)
     setUploadStatus("Uploading...")
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      if (!accessToken) {
+        setUploadStatus("Error: Unauthorized")
+        return
+      }
+
       const formData = new FormData()
       formData.append("file", file)
-      const res = await fetch("/api/upload-jobs", { method: "POST", body: formData })
+      const res = await fetch("/api/upload-jobs", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
+      })
       const result = await res.json()
       if (res.ok) {
         setUploadStatus(`Uploaded ${result.count || 0} jobs`)
@@ -744,9 +758,22 @@ function JobsTab() {
     setApplicationUploadStatus("Uploading applications...")
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const accessToken = session?.access_token
+      if (!accessToken) {
+        setApplicationUploadStatus("Error: Unauthorized")
+        return
+      }
+
       const formData = new FormData()
       formData.append("file", file)
-      const res = await fetch("/api/upload-applications", { method: "POST", body: formData })
+      const res = await fetch("/api/upload-applications", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: formData,
+      })
       const result = await res.json()
 
       if (!res.ok) {

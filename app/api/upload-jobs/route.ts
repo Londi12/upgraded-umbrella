@@ -1,10 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 
 function createRequestClient(request: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  const authHeader = request.headers.get('authorization')
+  const bearerToken = authHeader?.toLowerCase().startsWith('bearer ')
+    ? authHeader.slice(7).trim()
+    : null
+
+  if (bearerToken) {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${bearerToken}`,
+        },
+      },
+    })
+    return { supabase, bearerToken }
+  }
+
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    supabaseUrl,
+    supabaseAnonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
@@ -16,8 +35,14 @@ function createRequestClient(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   // Require authenticated admin
-  const supabase = createRequestClient(request)
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  const requestClient = createRequestClient(request) as any
+  const supabase = requestClient.supabase || requestClient
+  const bearerToken = requestClient.bearerToken as string | undefined
+
+  const { data: { user }, error: authError } = bearerToken
+    ? await supabase.auth.getUser(bearerToken)
+    : await supabase.auth.getUser()
+
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
