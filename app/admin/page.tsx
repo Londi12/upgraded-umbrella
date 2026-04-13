@@ -695,6 +695,7 @@ function JobsTab() {
   const [applicationUploadStatus, setApplicationUploadStatus] = useState("")
   const [isUploadingApplications, setIsUploadingApplications] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
+  const [showPotentialDuplicatesOnly, setShowPotentialDuplicatesOnly] = useState(false)
   const [editingJob, setEditingJob] = useState<{ id: string; title: string; company: string; location: string; source: string; snippet: string; posted_date: string; url: string } | null>(null)
 
   const loadJobs = async () => {
@@ -806,7 +807,39 @@ function JobsTab() {
     await loadJobs()
   }
 
-  const filtered = existingJobs.filter((j) => j.title?.toLowerCase().includes(searchTerm.toLowerCase()) || j.company?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const duplicateKeyCounts = useMemo(() => {
+    const counts = new Map<string, number>()
+    for (const job of existingJobs) {
+      const key = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
+      if (!key || key === '::') continue
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+    return counts
+  }, [existingJobs])
+
+  const duplicateGroups = useMemo(
+    () => Array.from(duplicateKeyCounts.values()).filter((count) => count > 1).length,
+    [duplicateKeyCounts]
+  )
+
+  const filtered = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase()
+
+    return existingJobs.filter((job) => {
+      const duplicateKey = `${String(job.title || '').trim().toLowerCase()}::${String(job.company || '').trim().toLowerCase()}`
+      const isPotentialDuplicate = (duplicateKeyCounts.get(duplicateKey) || 0) > 1
+
+      if (showPotentialDuplicatesOnly && !isPotentialDuplicate) {
+        return false
+      }
+
+      if (!query) return true
+
+      return [job.title, job.company, job.location, job.source, job.url, job.snippet]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(query))
+    })
+  }, [existingJobs, searchTerm, showPotentialDuplicatesOnly, duplicateKeyCounts])
 
   return (
     <div className="space-y-6">
@@ -847,7 +880,20 @@ function JobsTab() {
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
           <h2 className="text-white font-medium">Jobs ({existingJobs.length})</h2>
           <div className="flex items-center gap-2">
-            <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-48 bg-slate-800 border-slate-700 text-slate-300 text-sm" />
+            <Input
+              placeholder="Search title/company/source/location/url..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-72 bg-slate-800 border-slate-700 text-slate-300 text-sm"
+            />
+            <Button
+              type="button"
+              variant={showPotentialDuplicatesOnly ? "default" : "outline"}
+              onClick={() => setShowPotentialDuplicatesOnly((prev) => !prev)}
+              className={showPotentialDuplicatesOnly ? "bg-amber-600 hover:bg-amber-700 text-white" : "border-slate-700 text-slate-300"}
+            >
+              Duplicates {duplicateGroups > 0 ? `(${duplicateGroups})` : ''}
+            </Button>
             <Button variant="ghost" size="sm" onClick={() => void loadJobs()} className="text-slate-400 hover:text-white">
               <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
             </Button>
@@ -888,6 +934,15 @@ function JobsTab() {
                   <Input value={(editingJob as any)[field] || ""} onChange={(e) => setEditingJob({ ...editingJob, [field]: e.target.value } as any)} className="bg-slate-800 border-slate-700 text-white mt-1" />
                 </div>
               ))}
+              <div>
+                <label className="text-xs text-slate-400">Posted Date</label>
+                <Input
+                  type="date"
+                  value={editingJob.posted_date ? String(editingJob.posted_date).slice(0, 10) : ""}
+                  onChange={(e) => setEditingJob({ ...editingJob, posted_date: e.target.value })}
+                  className="bg-slate-800 border-slate-700 text-white mt-1"
+                />
+              </div>
               <div>
                 <label className="text-xs text-slate-400">Description</label>
                 <textarea value={editingJob.snippet || ""} onChange={(e) => setEditingJob({ ...editingJob, snippet: e.target.value })} className="w-full mt-1 p-2 bg-slate-800 border border-slate-700 rounded-md text-white text-sm min-h-[80px]" />
