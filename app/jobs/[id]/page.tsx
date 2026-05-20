@@ -121,38 +121,33 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
   }
 
   const company = job.company || job.source || "CVKonnekt"
+  const location = job.location || "South Africa"
 
   return (
-    <main className="bg-slate-50">
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-        <div className="rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <div className="border-b border-slate-200 bg-slate-900 px-6 py-8 text-white sm:px-8">
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">Shared job</p>
-            <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-4xl">{job.title}</h1>
-            <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-200">
-              <span className="rounded-full bg-white/10 px-3 py-1">{company}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">{job.location || "South Africa"}</span>
-              <span className="rounded-full bg-white/10 px-3 py-1">Posted {formatPostedDate(job.posted_date)}</span>
+    <main className="bg-slate-50 min-h-screen">
+      <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+          <div className="px-5 pt-4 pb-3 border-b">
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Shared job</p>
+            <h1 className="mt-2 font-semibold text-slate-900 text-xl leading-snug">{job.title}</h1>
+            <p className="text-sm text-slate-500 mt-1">{company}</p>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">{location}</span>
+              <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">Posted {formatPostedDate(job.posted_date)}</span>
             </div>
           </div>
 
-          <div className="px-6 py-8 sm:px-8">
-            <div className="flex flex-wrap gap-3 border-b border-slate-200 pb-6">
-              <a href={job.url} target="_blank" rel="noopener noreferrer">
-                <Button className="bg-blue-600 hover:bg-blue-700">Apply on {job.source}</Button>
-              </a>
-              <Link href="/jobs">
-                <Button variant="outline">Browse more jobs</Button>
-              </Link>
-            </div>
+          <div className="p-5 border-b">
+            <MarkdownRenderer
+              content={job.description || job.snippet || "No description available."}
+              className="text-sm text-slate-700 leading-relaxed"
+            />
+          </div>
 
-            <section className="pt-6">
-              <h2 className="text-lg font-semibold text-slate-900">Job description</h2>
-              <MarkdownRenderer
-                content={job.description || job.snippet || "No description available."}
-                className="mt-4 text-sm text-slate-700 leading-relaxed"
-              />
-            </section>
+          <div className="px-5 py-3 bg-white">
+            <a href={job.url} target="_blank" rel="noopener noreferrer">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700">Apply on {job.source}</Button>
+            </a>
           </div>
         </div>
       </div>
