@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Search, SlidersHorizontal, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
 import { JobCard } from "@/components/job-card"
 import { JobDetailPanel } from "@/components/job-detail-panel"
 import { useJobSearch } from "@/hooks/use-job-search"
@@ -15,8 +16,10 @@ const QUICK_FILTERS = [
   { label: "Learnership", value: "learnership" },
 ]
 
-export default function SAJobSearch() {
+export default function SAJobSearch({ expiredNotice }: { expiredNotice?: boolean }) {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false)
+  const searchParams = useSearchParams()
+  const preselectedJobId = searchParams.get("job")
   const [showFilters, setShowFilters] = useState(false)
   const {
     filters,
@@ -50,6 +53,13 @@ export default function SAJobSearch() {
     setSelectedJob(job)
     if (window.innerWidth < 1024) setIsMobileSheetOpen(true)
   }
+
+  // Auto-select job from ?job= param once results are available
+  useEffect(() => {
+    if (!preselectedJobId || !filteredResults.length || selectedJob) return
+    const match = filteredResults.find((j: any) => j.id === preselectedJobId)
+    if (match) selectJob(match)
+  }, [preselectedJobId, filteredResults])
 
   const clearJob = () => {
     setSelectedJob(null)
@@ -206,6 +216,11 @@ export default function SAJobSearch() {
             </span>
           </div>
           <div className="flex-1 overflow-y-auto">
+            {expiredNotice && (
+              <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700">
+                That job listing has expired. Here are the latest jobs.
+              </div>
+            )}
             {filteredResults.map((job, idx) => (
               <JobCard
                 key={idx}

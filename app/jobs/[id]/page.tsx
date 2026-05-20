@@ -145,10 +145,13 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
             />
           </div>
 
-          <div className="px-5 py-3 bg-white">
+          <div className="px-5 py-3 bg-white flex flex-col gap-2">
             <a href={job.url} target="_blank" rel="noopener noreferrer">
               <Button className="w-full bg-blue-600 hover:bg-blue-700">Apply on {job.source}</Button>
             </a>
+            <Link href={`/jobs?job=${job.id}`}>
+              <Button variant="outline" className="w-full">View in CVKonnekt job search</Button>
+            </Link>
           </div>
         </div>
       </div>
