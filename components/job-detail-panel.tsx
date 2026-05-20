@@ -104,7 +104,7 @@ export function JobDetailPanel({
     if (!job.url) return ''
 
     try {
-      const params = new URLSearchParams({ url: job.url, title: job.title })
+      const params = new URLSearchParams({ url: job.url })
       const response = await fetch(`/api/jobs/share-link?${params.toString()}`)
       if (!response.ok) return ''
       const data = await response.json()
