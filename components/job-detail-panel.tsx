@@ -92,12 +92,27 @@ export function JobDetailPanel({
   const jobDescription = job.description || job.snippet || ''
   const publicJobId = (job as { id?: string | number }).id
   const publicJobPath = publicJobId ? `/jobs/${publicJobId}` : null
-  const canShareJob = Boolean(job.url || publicJobPath)
+  const canShareJob = Boolean(publicJobPath || job.url)
 
-  const getShareUrl = () => {
-    if (typeof window === 'undefined') return publicJobPath || job.url || ''
-    if (publicJobPath) return new URL(publicJobPath, window.location.origin).toString()
-    return job.url
+  const resolveShareUrl = async () => {
+    if (typeof window === 'undefined') return ''
+
+    if (publicJobPath) {
+      return new URL(publicJobPath, window.location.origin).toString()
+    }
+
+    if (!job.url) return ''
+
+    try {
+      const params = new URLSearchParams({ url: job.url, title: job.title })
+      const response = await fetch(`/api/jobs/share-link?${params.toString()}`)
+      if (!response.ok) return ''
+      const data = await response.json()
+      if (!data?.path) return ''
+      return new URL(data.path, window.location.origin).toString()
+    } catch {
+      return ''
+    }
   }
 
   // Heuristic ATS data — auto-updates when CV changes, no button needed
@@ -255,8 +270,12 @@ export function JobDetailPanel({
   }
 
   const handleShare = async () => {
-    const targetUrl = getShareUrl()
-    if (!targetUrl) return
+    const targetUrl = await resolveShareUrl()
+    if (!targetUrl) {
+      setShareToast('Unable to create a shareable job page yet.')
+      window.setTimeout(() => setShareToast(''), 3000)
+      return
+    }
     if (typeof window === 'undefined') return
 
     const browserNavigator = window.navigator
