@@ -16,10 +16,11 @@ const QUICK_FILTERS = [
   { label: "Learnership", value: "learnership" },
 ]
 
-export default function SAJobSearch({ expiredNotice }: { expiredNotice?: boolean }) {
+export default function SAJobSearch() {
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false)
   const searchParams = useSearchParams()
   const preselectedJobId = searchParams.get("job")
+  const expiredNotice = searchParams.get("expired") === "1"
   const [showFilters, setShowFilters] = useState(false)
   const {
     filters,
