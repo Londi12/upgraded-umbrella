@@ -90,7 +90,8 @@ export function JobDetailPanel({
   const tags = [job.job_type, job.experience_level].filter(Boolean) as string[]
   const selectedCvData = selectedCVId ? savedCVs.find(cv => cv.id === selectedCVId)?.cv_data : undefined
   const jobDescription = job.description || job.snippet || ''
-  const publicJobPath = job.id ? `/jobs/${job.id}` : null
+  const publicJobId = (job as { id?: string | number }).id
+  const publicJobPath = publicJobId ? `/jobs/${publicJobId}` : null
   const canShareJob = Boolean(job.url || publicJobPath)
 
   const getShareUrl = () => {
@@ -256,10 +257,13 @@ export function JobDetailPanel({
   const handleShare = async () => {
     const targetUrl = getShareUrl()
     if (!targetUrl) return
+    if (typeof window === 'undefined') return
+
+    const browserNavigator = window.navigator
 
     try {
-      if (typeof navigator !== 'undefined' && 'share' in navigator) {
-        await navigator.share({
+      if (typeof browserNavigator.share === 'function') {
+        await browserNavigator.share({
           title: `${job.title} | CVKonnekt`,
           text: `${job.title} at ${company}`,
           url: targetUrl,
@@ -267,7 +271,14 @@ export function JobDetailPanel({
         return
       }
 
-      await navigator.clipboard.writeText(targetUrl)
+      if (browserNavigator.clipboard?.writeText) {
+        await browserNavigator.clipboard.writeText(targetUrl)
+      } else {
+        setShareToast('Sharing is not supported on this browser.')
+        window.setTimeout(() => setShareToast(''), 3000)
+        return
+      }
+
       setShareToast(publicJobPath ? 'Share link copied.' : 'Job link copied.')
       window.setTimeout(() => setShareToast(''), 3000)
     } catch (error) {
