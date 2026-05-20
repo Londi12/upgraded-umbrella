@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabase'
 
 interface JobResult {
+  id?: string;
   title: string;
   snippet: string;
   url: string;
@@ -110,6 +111,7 @@ export async function GET(request: NextRequest) {
     }
 
     const results: JobResult[] = (data || []).map(job => ({
+      id: job.id,
       title: job.title,
       snippet: job.snippet,
       url: job.url,

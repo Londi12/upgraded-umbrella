@@ -2,6 +2,7 @@
 import { formatJobCardDate } from "@/lib/date-formatter"
 
 export interface JobResult {
+  id?: string
   title: string
   snippet: string
   url: string
