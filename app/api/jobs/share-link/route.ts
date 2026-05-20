@@ -19,7 +19,8 @@ export async function GET(request: NextRequest) {
         .maybeSingle()
 
       if (!byUrl.error && byUrl.data?.id) {
-        return NextResponse.json({ path: `/jobs/${byUrl.data.id}` })
+        const urlParam = encodeURIComponent(url)
+        return NextResponse.json({ path: `/jobs/${byUrl.data.id}?u=${urlParam}` })
       }
     }
 
@@ -33,7 +34,8 @@ export async function GET(request: NextRequest) {
 
       const id = byTitle.data?.[0]?.id
       if (!byTitle.error && id) {
-        return NextResponse.json({ path: `/jobs/${id}` })
+        const urlSuffix = url ? `?u=${encodeURIComponent(url)}` : ""
+        return NextResponse.json({ path: `/jobs/${id}${urlSuffix}` })
       }
     }
 

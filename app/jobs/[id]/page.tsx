@@ -8,6 +8,7 @@ import { generateMetadata as generateSEOMetadata } from "@/lib/utils"
 
 interface JobPageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ u?: string }>
 }
 
 interface PublicJob {
@@ -37,6 +38,21 @@ async function getJob(id: string): Promise<PublicJob | null> {
   return data
 }
 
+async function getJobByUrl(url: string): Promise<PublicJob | null> {
+  const { data, error } = await supabase
+    .from("scraped_jobs")
+    .select("id,title,snippet,url,source,company,location,posted_date,description")
+    .eq("url", url)
+    .maybeSingle()
+
+  if (error) {
+    console.error("Failed to load shared job by URL", error)
+    return null
+  }
+
+  return data
+}
+
 function getJobDescription(job: PublicJob) {
   const summary = job.snippet?.trim() || job.description?.trim() || "View this South African job opportunity on CVKonnekt."
   return summary.length > 160 ? `${summary.slice(0, 157)}...` : summary
@@ -58,9 +74,14 @@ function formatPostedDate(value?: string | null) {
   return new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium" }).format(date)
 }
 
-export async function generateMetadata({ params }: JobPageProps): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: JobPageProps): Promise<Metadata> {
   const { id } = await params
-  const job = await getJob(id)
+  const { u } = await searchParams
+  let job = await getJob(id)
+
+  if (!job && u) {
+    job = await getJobByUrl(u)
+  }
 
   if (!job) {
     return generateSEOMetadata({
@@ -86,9 +107,14 @@ export async function generateMetadata({ params }: JobPageProps): Promise<Metada
   })
 }
 
-export default async function JobPublicPage({ params }: JobPageProps) {
+export default async function JobPublicPage({ params, searchParams }: JobPageProps) {
   const { id } = await params
-  const job = await getJob(id)
+  const { u } = await searchParams
+  let job = await getJob(id)
+
+  if (!job && u) {
+    job = await getJobByUrl(u)
+  }
 
   if (!job) {
     notFound()
