@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { notFound, redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { supabase } from "@/lib/supabase"
@@ -117,7 +117,8 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
   }
 
   if (!job) {
-    notFound()
+    // Job may have been purged — redirect to search so the user isn't stranded
+    redirect(`/jobs?expired=1`)
   }
 
   const company = job.company || job.source || "CVKonnekt"

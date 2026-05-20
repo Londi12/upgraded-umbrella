@@ -400,7 +400,7 @@ async scrapeAllSites(): Promise<{ inserted: number; errors: string[] }> {
   async purgeOldJobs(): Promise<void> {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - PURGE_DAYS)
-    await supabase.from('scraped_jobs').delete().lt('posted_date', cutoff.toISOString())
+    await supabase.from('scraped_jobs').delete().lt('created_at', cutoff.toISOString())
   }
 
   async searchJobs(query: string, location?: string): Promise<ScrapedJob[]> {
