@@ -1,5 +1,6 @@
 "use client"
 import { useState, useMemo } from "react"
+import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -7,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp, Briefcase, ChevronRight } from "lucide-react"
+import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, ChevronDown, ChevronUp, Briefcase, ChevronRight, Share2 } from "lucide-react"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { calculateJobMatch as calculateHeuristicMatch, calculateATSScores, aggregateAtsFeedback } from "@/lib/cv-ats-heuristics"
 import { formatJobCardDate } from "@/lib/date-formatter"
@@ -83,11 +84,20 @@ export function JobDetailPanel({
   const [trackSaving, setTrackSaving] = useState(false)
   const [trackSuccess, setTrackSuccess] = useState(false)
   const [applyToast, setApplyToast] = useState(false)
+  const [shareToast, setShareToast] = useState("")
 
   const company = job.company || job.source || ""
   const tags = [job.job_type, job.experience_level].filter(Boolean) as string[]
   const selectedCvData = selectedCVId ? savedCVs.find(cv => cv.id === selectedCVId)?.cv_data : undefined
   const jobDescription = job.description || job.snippet || ''
+  const publicJobPath = job.id ? `/jobs/${job.id}` : null
+  const canShareJob = Boolean(job.url || publicJobPath)
+
+  const getShareUrl = () => {
+    if (typeof window === 'undefined') return publicJobPath || job.url || ''
+    if (publicJobPath) return new URL(publicJobPath, window.location.origin).toString()
+    return job.url
+  }
 
   // Heuristic ATS data — auto-updates when CV changes, no button needed
   const atsScores = useMemo(() => selectedCvData ? calculateATSScores(selectedCvData) : null, [selectedCvData])
@@ -243,6 +253,30 @@ export function JobDetailPanel({
     window.open(job.url, '_blank')
   }
 
+  const handleShare = async () => {
+    const targetUrl = getShareUrl()
+    if (!targetUrl) return
+
+    try {
+      if (typeof navigator !== 'undefined' && 'share' in navigator) {
+        await navigator.share({
+          title: `${job.title} | CVKonnekt`,
+          text: `${job.title} at ${company}`,
+          url: targetUrl,
+        })
+        return
+      }
+
+      await navigator.clipboard.writeText(targetUrl)
+      setShareToast(publicJobPath ? 'Share link copied.' : 'Job link copied.')
+      window.setTimeout(() => setShareToast(''), 3000)
+    } catch (error) {
+      console.error('Failed to copy job link:', error)
+      setShareToast('Could not copy link.')
+      window.setTimeout(() => setShareToast(''), 3000)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -254,7 +288,18 @@ export function JobDetailPanel({
             </button>
           )}
           <div className="flex-1 min-w-0">
-            <h2 className="font-semibold text-gray-900 text-base leading-snug">{job.title}</h2>
+            <div className="flex items-start gap-2">
+              <h2 className="flex-1 font-semibold text-gray-900 text-base leading-snug">{job.title}</h2>
+              <Button
+                onClick={handleShare}
+                variant="outline"
+                size="sm"
+                className="flex-none"
+                disabled={!canShareJob}
+              >
+                <Share2 className="w-3.5 h-3.5 mr-1" /> Share
+              </Button>
+            </div>
             <p className="text-sm text-gray-500 mt-0.5">{company}</p>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               {tags.map(tag => (
@@ -596,6 +641,13 @@ export function JobDetailPanel({
             <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />
             <span className="flex-1 text-green-800">Application tracked!</span>
             <a href="/dashboard" className="text-green-700 underline text-xs whitespace-nowrap">View →</a>
+          </div>
+        )}
+        {shareToast && (
+          <div className="flex items-center gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+            <CheckCircle className="h-4 w-4 text-blue-600 flex-shrink-0" />
+            <span className="flex-1 text-blue-800">{shareToast}</span>
+            {publicJobPath ? <Link href={publicJobPath} className="text-blue-700 underline text-xs whitespace-nowrap">Open →</Link> : null}
           </div>
         )}
         <div className="flex gap-2">
