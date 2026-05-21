@@ -96,15 +96,14 @@ export function JobDetailPanel({
 
   const resolveShareUrl = async () => {
     if (typeof window === 'undefined') return ''
-
-    if (publicJobPath) {
-      return new URL(publicJobPath, window.location.origin).toString()
-    }
-
-    if (!job.url) return ''
+    if (!publicJobId && !job.url) return ''
 
     try {
-      const params = new URLSearchParams({ url: job.url })
+      // Always go through the share API so a snapshot is saved to shared_jobs,
+      // meaning the link will work even after scraped_jobs is purged.
+      const params = new URLSearchParams()
+      if (publicJobId) params.set('id', String(publicJobId))
+      if (job.url) params.set('url', job.url)
       const response = await fetch(`/api/jobs/share-link?${params.toString()}`)
       if (!response.ok) return ''
       const data = await response.json()

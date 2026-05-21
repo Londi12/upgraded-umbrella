@@ -35,7 +35,17 @@ async function getJob(id: string): Promise<PublicJob | null> {
     return null
   }
 
-  return data
+  if (data) return data
+
+  // Fall back to the snapshot saved at share-time so purged jobs still resolve
+  const { data: snapshot, error: snapError } = await supabase
+    .from("shared_jobs")
+    .select("id,title,snippet,url,source,company,location,posted_date,description")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (snapError) console.error("Failed to load shared_jobs snapshot", snapError)
+  return snapshot ?? null
 }
 
 async function getJobByUrl(url: string): Promise<PublicJob | null> {
@@ -50,7 +60,17 @@ async function getJobByUrl(url: string): Promise<PublicJob | null> {
     return null
   }
 
-  return data
+  if (data) return data
+
+  // Fall back to snapshot
+  const { data: snapshot, error: snapError } = await supabase
+    .from("shared_jobs")
+    .select("id,title,snippet,url,source,company,location,posted_date,description")
+    .eq("url", url)
+    .maybeSingle()
+
+  if (snapError) console.error("Failed to load shared_jobs snapshot by URL", snapError)
+  return snapshot ?? null
 }
 
 function getJobDescription(job: PublicJob) {
@@ -117,7 +137,34 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
   }
 
   if (!job) {
-    // Job may have been purged — redirect to search so the user isn't stranded
+    // Job may have been purged.
+    // If we have the original source URL, show a helpful expired page rather than
+    // silently dropping the user at the search page with no context.
+    if (u) {
+      return (
+        <main className="bg-slate-50 min-h-screen">
+          <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+            <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+              <div className="px-5 pt-5 pb-4 border-b">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-500">Listing Expired</p>
+                <h1 className="mt-2 font-semibold text-slate-900 text-xl leading-snug">This job is no longer in our database</h1>
+                <p className="mt-2 text-sm text-slate-500">
+                  The listing may have been filled or removed. You can try viewing it directly on the original job board — it may still be active there.
+                </p>
+              </div>
+              <div className="px-5 py-4 flex flex-col gap-2">
+                <a href={u} target="_blank" rel="noopener noreferrer nofollow">
+                  <Button className="w-full bg-blue-600 hover:bg-blue-700">View on original job board</Button>
+                </a>
+                <Link href="/jobs">
+                  <Button variant="outline" className="w-full">Browse latest jobs on CVKonnekt</Button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </main>
+      )
+    }
     redirect(`/jobs?expired=1`)
   }
 
