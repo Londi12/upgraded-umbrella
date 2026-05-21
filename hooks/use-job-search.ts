@@ -33,6 +33,31 @@ const JOB_SUGGESTIONS = [
   "CRM", "Python", "SQL", "Retail", "Call Centre", "Learnership",
 ]
 
+function deriveRequirements(job: JobResult): string[] {
+  const fromQualifications = Array.isArray((job as any).qualifications)
+    ? ((job as any).qualifications as string[]).map(q => q?.trim()).filter(Boolean)
+    : []
+  const fromRequirements = Array.isArray((job as any).requirements)
+    ? ((job as any).requirements as string[]).map(r => r?.trim()).filter(Boolean)
+    : []
+
+  if (fromQualifications.length > 0 || fromRequirements.length > 0) {
+    return [...new Set([...fromQualifications, ...fromRequirements])]
+  }
+
+  const description = `${job.description || job.snippet || ''}`
+  if (!description) return []
+
+  const bulletLines = description
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => /^[-*•]|^\d+[.)]/.test(line))
+    .map(line => line.replace(/^[-*•\d).\s]+/, '').trim())
+    .filter(line => line.length >= 8)
+
+  return bulletLines.slice(0, 12)
+}
+
 export function useJobSearch() {
   const { user } = useAuth()
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS)
@@ -258,7 +283,7 @@ export function useJobSearch() {
         company: j.company || j.source,
         description: j.description || j.snippet || '',
         location: j.location,
-        requirements: [],
+        requirements: deriveRequirements(j),
       }))
 
       const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily)
@@ -307,7 +332,7 @@ export function useJobSearch() {
         company: j.company || j.source,
         description: j.description || j.snippet || '',
         location: j.location,
-        requirements: [],
+        requirements: deriveRequirements(j),
       }))
 
       const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily)

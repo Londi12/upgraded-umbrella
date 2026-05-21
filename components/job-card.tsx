@@ -12,6 +12,8 @@ export interface JobResult {
   company?: string
   location?: string
   description?: string
+  qualifications?: string[]
+  requirements?: string[]
   job_type?: string
   experience_level?: string
 }
