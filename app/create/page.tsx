@@ -129,7 +129,17 @@ export default function CreateCVPage() {
   const [hasReusableDraft, setHasReusableDraft] = useState(false)
   const [savedCVOptions, setSavedCVOptions] = useState<SavedCVOption[]>([])
   const [selectedSavedCVId, setSelectedSavedCVId] = useState("")
+  const [currentExperienceIndex, setCurrentExperienceIndex] = useState(0)
+  const [currentEducationIndex, setCurrentEducationIndex] = useState(0)
   const { user, isConfigured } = useAuth()
+
+  useEffect(() => {
+    setCurrentExperienceIndex((prev) => Math.min(prev, Math.max(formData.experience.length - 1, 0)))
+  }, [formData.experience.length])
+
+  useEffect(() => {
+    setCurrentEducationIndex((prev) => Math.min(prev, Math.max(formData.education.length - 1, 0)))
+  }, [formData.education.length])
 
   const hasMeaningfulCVData = (data: typeof formData) => {
     const hasPersonal = Boolean(
@@ -350,10 +360,10 @@ export default function CreateCVPage() {
   }
 
   const addExperience = () => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       experience: [
-        ...formData.experience,
+        ...prev.experience,
         {
           title: "",
           company: "",
@@ -365,7 +375,18 @@ export default function CreateCVPage() {
           isInternship: false,
         },
       ],
+    }))
+    setCurrentExperienceIndex(formData.experience.length)
+  }
+
+  const removeExperience = (index: number) => {
+    if (formData.experience.length <= 1) return
+    const updatedExperience = formData.experience.filter((_, i) => i !== index)
+    setFormData({
+      ...formData,
+      experience: updatedExperience,
     })
+    setCurrentExperienceIndex((prev) => Math.min(prev, updatedExperience.length - 1))
   }
 
   const handleEducationChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -385,10 +406,10 @@ export default function CreateCVPage() {
   }
 
   const addEducation = () => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       education: [
-        ...formData.education,
+        ...prev.education,
         {
           degree: "",
           institution: "",
@@ -399,7 +420,18 @@ export default function CreateCVPage() {
           internationalEquivalence: "",
         },
       ],
+    }))
+    setCurrentEducationIndex(formData.education.length)
+  }
+
+  const removeEducation = (index: number) => {
+    if (formData.education.length <= 1) return
+    const updatedEducation = formData.education.filter((_, i) => i !== index)
+    setFormData({
+      ...formData,
+      education: updatedEducation,
     })
+    setCurrentEducationIndex((prev) => Math.min(prev, updatedEducation.length - 1))
   }
 
   const handleSkillsChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1095,7 +1127,33 @@ export default function CreateCVPage() {
                   </TabsContent>
 
                   <TabsContent value="experience" className="space-y-4">
-                    {formData.experience.map((exp, index) => (
+                    {(() => {
+                      const index = Math.min(currentExperienceIndex, Math.max(formData.experience.length - 1, 0))
+                      const exp = formData.experience[index]
+                      if (!exp) return null
+                      return (
+                      <>
+                      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+                        <div className="text-sm text-gray-600">Experience {index + 1} of {formData.experience.length}</div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentExperienceIndex((prev) => Math.max(0, prev - 1))}
+                            disabled={index === 0}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentExperienceIndex((prev) => Math.min(formData.experience.length - 1, prev + 1))}
+                            disabled={index >= formData.experience.length - 1}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                       <Card key={index} className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                         <div className="space-y-4">
                           <div>
@@ -1219,14 +1277,52 @@ export default function CreateCVPage() {
                           </div>
                         </div>
                       </Card>
-                    ))}
-                    <Button variant="outline" onClick={addExperience} className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
-                      Add Another Experience
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={addExperience} className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
+                        Add Another Experience
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => removeExperience(index)}
+                        disabled={formData.experience.length <= 1}
+                        className="border-red-200 text-red-600 hover:bg-red-50 rounded-lg py-2.5 font-medium"
+                      >
+                        Remove Current
+                      </Button>
+                    </div>
+                    </>
+                    )
+                    })()}
                   </TabsContent>
 
                   <TabsContent value="education" className="space-y-4">
-                    {formData.education.map((edu, index) => (
+                    {(() => {
+                      const index = Math.min(currentEducationIndex, Math.max(formData.education.length - 1, 0))
+                      const edu = formData.education[index]
+                      if (!edu) return null
+                      return (
+                      <>
+                      <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2">
+                        <div className="text-sm text-gray-600">Education {index + 1} of {formData.education.length}</div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentEducationIndex((prev) => Math.max(0, prev - 1))}
+                            disabled={index === 0}
+                          >
+                            <ChevronLeft className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setCurrentEducationIndex((prev) => Math.min(formData.education.length - 1, prev + 1))}
+                            disabled={index >= formData.education.length - 1}
+                          >
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                       <Card key={index} className="p-5 rounded-xl border border-gray-200 bg-white shadow-none">
                         <div className="space-y-4">
                           <div>
@@ -1346,10 +1442,22 @@ export default function CreateCVPage() {
                           </details>
                         </div>
                       </Card>
-                    ))}
-                    <Button variant="outline" onClick={addEducation} className="w-full border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
-                      Add Another Education
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={addEducation} className="flex-1 border-gray-200 text-gray-600 hover:bg-gray-50 rounded-lg py-2.5 font-medium">
+                        Add Another Education
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => removeEducation(index)}
+                        disabled={formData.education.length <= 1}
+                        className="border-red-200 text-red-600 hover:bg-red-50 rounded-lg py-2.5 font-medium"
+                      >
+                        Remove Current
+                      </Button>
+                    </div>
+                    </>
+                    )
+                    })()}
                   </TabsContent>
 
                   <TabsContent value="skills" className="space-y-4">
