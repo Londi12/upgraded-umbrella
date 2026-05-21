@@ -113,7 +113,17 @@ export default function CreateCVPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [editingCVId, setEditingCVId] = useState<string | null>(editId)
+  const [hasReusableDraft, setHasReusableDraft] = useState(false)
   const { user, isConfigured } = useAuth()
+
+  const hasMeaningfulCVData = (data: typeof formData) => {
+    const hasPersonal = Boolean(
+      data.personalInfo.fullName || data.personalInfo.jobTitle || data.personalInfo.email || data.personalInfo.phone,
+    )
+    const hasExperience = data.experience.some((item) => item.title || item.company || item.description)
+    const hasEducation = data.education.some((item) => item.degree || item.institution || item.graduationDate)
+    return Boolean(hasPersonal || data.summary || hasExperience || hasEducation || data.skills)
+  }
 
   const persistReusableDraft = async (data: typeof formData) => {
     localStorage.setItem('cv-draft', JSON.stringify(data))
@@ -137,6 +147,7 @@ export default function CreateCVPage() {
   useEffect(() => {
     const loadData = async () => {
       const savedData = localStorage.getItem('cv-draft')
+      setHasReusableDraft(Boolean(savedData))
       if (savedData && !editId) {
         try {
           setFormData(JSON.parse(savedData))
@@ -180,12 +191,22 @@ export default function CreateCVPage() {
 
   // Auto-save to localStorage periodically
   useEffect(() => {
+    const saveDraft = () => {
+      if (hasMeaningfulCVData(formData)) {
+        localStorage.setItem('cv-draft', JSON.stringify(formData));
+        setHasReusableDraft(true)
+      } else {
+        localStorage.removeItem('cv-draft')
+        setHasReusableDraft(false)
+      }
+    }
+
     // Save immediately on form changes
-    localStorage.setItem('cv-draft', JSON.stringify(formData));
+    saveDraft()
 
     // Also set up periodic saving
     const autoSaveInterval = setInterval(() => {
-      localStorage.setItem('cv-draft', JSON.stringify(formData));
+      saveDraft()
     }, 30000); // Every 30 seconds
 
     return () => clearInterval(autoSaveInterval);
@@ -432,6 +453,30 @@ export default function CreateCVPage() {
     setSuccess("CV saved successfully!")
     setTimeout(() => router.push("/profile/cvs"), 1000)
     setIsSaving(false)
+  }
+
+  const handleUseSavedUpload = () => {
+    const savedData = localStorage.getItem('cv-draft')
+    if (!savedData) {
+      setError('No saved uploaded CV data found yet.')
+      return
+    }
+
+    try {
+      const parsed = JSON.parse(savedData)
+      setFormData(parsed)
+      setSuccess('Saved uploaded CV data loaded for this template.')
+      setTimeout(() => setSuccess(null), 3000)
+    } catch {
+      setError('Saved uploaded CV data is corrupted. Please upload again.')
+    }
+  }
+
+  const handleClearSavedUpload = () => {
+    localStorage.removeItem('cv-draft')
+    setHasReusableDraft(false)
+    setSuccess('Saved uploaded CV data cleared from this browser.')
+    setTimeout(() => setSuccess(null), 3000)
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -696,6 +741,34 @@ export default function CreateCVPage() {
                         <div className="flex items-center justify-between mb-2">
                           <h2 className="text-sm font-semibold text-gray-800">Upload Existing CV</h2>
                           <span className="text-xs text-gray-400">PDF, DOCX, TXT ≤10MB</span>
+                        </div>
+
+                        <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+                          <p className="text-xs text-blue-800">
+                            Uploaded CV data can be reused across templates.
+                          </p>
+                          <div className="mt-2 flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              onClick={handleUseSavedUpload}
+                              disabled={!hasReusableDraft}
+                            >
+                              Use Saved Upload
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-slate-200 text-slate-600 hover:bg-slate-100"
+                              onClick={handleClearSavedUpload}
+                              disabled={!hasReusableDraft}
+                            >
+                              Clear Saved Upload
+                            </Button>
+                          </div>
                         </div>
 
                         {parseStep === 'uploading' && <CVUploadLoader progress={uploadProgress} />}
