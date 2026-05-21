@@ -115,14 +115,34 @@ export default function CreateCVPage() {
   const [editingCVId, setEditingCVId] = useState<string | null>(editId)
   const { user, isConfigured } = useAuth()
 
+  const persistReusableDraft = async (data: typeof formData) => {
+    localStorage.setItem('cv-draft', JSON.stringify(data))
+
+    if (!isConfigured || !user) return
+
+    try {
+      await createOrUpdateUserProfile({
+        personal_info: data.personalInfo,
+        experience: data.experience,
+        education: data.education,
+        skills: data.skills,
+        summary: data.summary,
+      })
+    } catch (error) {
+      console.error('Failed to persist reusable CV draft:', error)
+    }
+  }
+
   // Load user profile or existing CV on mount
   useEffect(() => {
     const loadData = async () => {
-      if (!isConfigured || !user) {
-        const savedData = localStorage.getItem('cv-draft')
-        if (savedData) {
-          try { setFormData(JSON.parse(savedData)) } catch (e) {}
-        }
+      const savedData = localStorage.getItem('cv-draft')
+      if (savedData && !editId) {
+        try {
+          setFormData(JSON.parse(savedData))
+          if (!isConfigured || !user) return
+        } catch (e) {}
+      } else if (!isConfigured || !user) {
         return
       }
 
@@ -467,7 +487,7 @@ export default function CreateCVPage() {
       setUploadProgress(100);
 
       if (result.success && result.data?.personalInfo) {
-        setFormData({
+        const parsedData = {
           personalInfo: {
             fullName: result.data.personalInfo?.fullName || "",
             jobTitle: result.data.personalInfo?.jobTitle || "",
@@ -505,7 +525,10 @@ export default function CreateCVPage() {
             : formData.education,
           skills: normalizeSkillsForForm(result.data.skills),
           customSections: formData.customSections,
-        });
+        }
+
+        setFormData(parsedData)
+        await persistReusableDraft(parsedData)
         setParseStep('complete');
       } else {
         setParseError(result.error || "Failed to parse CV. Please enter your details manually.");
