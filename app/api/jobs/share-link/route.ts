@@ -1,6 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+type ShareableJob = {
+  id: string | number
+  title: string
+  snippet: string
+  url: string
+  source: string
+  company?: string | null
+  location?: string | null
+  posted_date?: string | null
+  description?: string | null
+}
+
 async function snapshotJob(job: {
   id: string | number
   title: string
@@ -31,6 +43,28 @@ async function snapshotJob(job: {
   )
 }
 
+async function findJobByIdOrUrl(table: "scraped_jobs" | "shared_jobs", id?: string, url?: string): Promise<ShareableJob | null> {
+  if (id) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id,title,snippet,url,source,company,location,posted_date,description")
+      .eq("id", id)
+      .maybeSingle()
+    if (!error && data) return data
+  }
+
+  if (url) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("id,title,snippet,url,source,company,location,posted_date,description")
+      .eq("url", url)
+      .maybeSingle()
+    if (!error && data) return data
+  }
+
+  return null
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const id = searchParams.get("id")?.trim()
@@ -41,38 +75,18 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    let job: {
-      id: string | number
-      title: string
-      snippet: string
-      url: string
-      source: string
-      company?: string | null
-      location?: string | null
-      posted_date?: string | null
-      description?: string | null
-    } | null = null
+    let job = await findJobByIdOrUrl("scraped_jobs", id, url)
 
-    if (id) {
-      const { data, error } = await supabase
-        .from("scraped_jobs")
-        .select("id,title,snippet,url,source,company,location,posted_date,description")
-        .eq("id", id)
-        .maybeSingle()
-      if (!error && data) job = data
-    }
-
-    if (!job && url) {
-      const { data, error } = await supabase
-        .from("scraped_jobs")
-        .select("id,title,snippet,url,source,company,location,posted_date,description")
-        .eq("url", url)
-        .maybeSingle()
-      if (!error && data) job = data
+    // If already purged from scraped_jobs, check existing snapshots.
+    if (!job) {
+      job = await findJobByIdOrUrl("shared_jobs", id, url)
     }
 
     if (!job) {
-      return NextResponse.json({ error: "Job not found" }, { status: 404 })
+      return NextResponse.json(
+        { error: "Job not found in scraped_jobs or shared_jobs" },
+        { status: 404 }
+      )
     }
 
     // Snapshot so the link keeps working after the job is purged
