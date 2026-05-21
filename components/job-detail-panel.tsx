@@ -94,6 +94,14 @@ export function JobDetailPanel({
   const publicJobPath = publicJobId ? `/jobs/${publicJobId}` : null
   const canShareJob = Boolean(publicJobPath || job.url)
 
+  const buildInternalShareUrl = () => {
+    if (typeof window === 'undefined' || (!publicJobId && !job.url)) return ''
+    const fallbackPath = publicJobPath || '/jobs/shared'
+    const internalUrl = new URL(fallbackPath, window.location.origin)
+    if (job.url) internalUrl.searchParams.set('u', job.url)
+    return internalUrl.toString()
+  }
+
   const resolveShareUrl = async () => {
     if (typeof window === 'undefined') return ''
     if (!publicJobId && !job.url) return ''
@@ -105,12 +113,12 @@ export function JobDetailPanel({
       if (publicJobId) params.set('id', String(publicJobId))
       if (job.url) params.set('url', job.url)
       const response = await fetch(`/api/jobs/share-link?${params.toString()}`)
-      if (!response.ok) return ''
+      if (!response.ok) return buildInternalShareUrl()
       const data = await response.json()
-      if (!data?.path) return ''
+      if (!data?.path) return buildInternalShareUrl()
       return new URL(data.path, window.location.origin).toString()
     } catch {
-      return ''
+      return buildInternalShareUrl()
     }
   }
 

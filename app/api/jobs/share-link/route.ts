@@ -98,10 +98,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (!job) {
-      // If we can't resolve to an internal record, still allow sharing the
-      // external source URL so users are never blocked by a 404.
+      // If we can't resolve to an internal record, keep users on CVKonnekt
+      // by sending them to a fallback shared-job page that includes the
+      // original source URL in ?u=.
       if (url) {
-        return NextResponse.json({ path: url, fallback: true })
+        const fallbackId = id || "shared"
+        const urlParam = encodeURIComponent(url)
+        return NextResponse.json({ path: `/jobs/${fallbackId}?u=${urlParam}`, fallback: true })
       }
 
       return NextResponse.json(

@@ -78,13 +78,27 @@ function getJobDescription(job: PublicJob) {
   return summary.length > 160 ? `${summary.slice(0, 157)}...` : summary
 }
 
+function formatSharePostedDate(value?: string | null) {
+  if (!value) return "recently posted"
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "recently posted"
+  return new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium" }).format(date)
+}
+
 function getMetaDescription(job: PublicJob) {
   const company = job.company || job.source || "CVKonnekt"
   const location = job.location || "South Africa"
+  const source = job.source || "CVKonnekt"
+  const posted = formatSharePostedDate(job.posted_date)
   const summary = getJobDescription(job)
-  const prefix = `${job.title} at ${company} in ${location}.`
-  const combined = `${prefix} ${summary}`
-  return combined.length > 200 ? `${combined.slice(0, 197)}...` : combined
+  const parts = [
+    `${job.title} at ${company} in ${location}`,
+    summary,
+    `Source: ${source}`,
+    `Posted ${posted}`,
+  ]
+  const combined = parts.join(". ")
+  return combined.length > 260 ? `${combined.slice(0, 257)}...` : combined
 }
 
 function formatPostedDate(value?: string | null) {
@@ -123,7 +137,7 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
     ogImage: `/jobs/${job.id}/opengraph-image`,
     ogType: "article",
     twitterCard: "summary_large_image",
-    keywords: [job.title, company, location, "South Africa jobs", "job vacancy"],
+    keywords: [job.title, company, location, job.source || "", job.posted_date || "", "South Africa jobs", "job vacancy"].filter(Boolean),
   })
 }
 

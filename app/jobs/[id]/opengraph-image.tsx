@@ -19,6 +19,7 @@ interface PublicJob {
   id: string
   title: string
   snippet: string
+  description?: string | null
   source: string
   company?: string | null
   location?: string | null
@@ -52,6 +53,13 @@ function formatPostedDate(value?: string | null) {
   return `Posted ${new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium" }).format(date)}`
 }
 
+function buildSummary(job: PublicJob | null) {
+  const snippet = job?.snippet?.trim() || job?.description?.trim() || "Browse this role on CVKonnekt and apply directly from the original job source."
+  const source = job?.source || "CVKonnekt Jobs"
+  const posted = formatPostedDate(job?.posted_date)
+  return clamp(`${snippet} Source: ${source}. ${posted}.`, 168)
+}
+
 export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
   const { id } = await params
   const job = await getJob(id)
@@ -59,7 +67,7 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
   const title = clamp(job?.title || "South African job opportunity", 90)
   const company = clamp(job?.company || job?.source || "CVKonnekt Jobs", 42)
   const location = clamp(job?.location || "South Africa", 38)
-  const summary = clamp(job?.snippet || "Browse this role on CVKonnekt and apply directly from the original job source.", 150)
+  const summary = buildSummary(job)
   const posted = formatPostedDate(job?.posted_date)
 
   return new ImageResponse(
