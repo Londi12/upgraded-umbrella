@@ -145,6 +145,12 @@ export function JobDetailPanel({
     aiMatchResults.find(m => m.jobId === selectedJobId) ?? null,
     [aiMatchResults, selectedJobId]
   )
+  const atsScoreAtApplication = useMemo(() => {
+    if (currentJobMatch?.matchScore != null) return currentJobMatch.matchScore
+    if (atsJobMatch?.overallScore != null) return atsJobMatch.overallScore
+    if (atsScores?.overallScore != null) return atsScores.overallScore
+    return 0
+  }, [currentJobMatch, atsJobMatch, atsScores])
   // otherMatches unused now (we only score 1 job); kept for SimilarRoles component
   const otherMatches = useMemo(() =>
     currentJobMatch ? aiMatchResults.filter(m => m.jobId !== currentJobMatch.jobId).slice(0, 4) : [],
@@ -242,7 +248,7 @@ export function JobDetailPanel({
           job_board: trackForm.job_board,
           application_date: trackForm.application_date,
           status: trackForm.status,
-          ats_score_at_application: 0,
+          ats_score_at_application: atsScoreAtApplication,
           job_description: trackForm.job_description,
           notes: trackForm.notes + (trackForm.cover_letter ? `\n\nCover Letter: ${trackForm.cover_letter}` : ''),
         }),
@@ -266,7 +272,7 @@ export function JobDetailPanel({
           job_board: 'SA Job Search',
           application_date: new Date().toISOString().split('T')[0],
           status: 'applied',
-          ats_score_at_application: 0,
+          ats_score_at_application: atsScoreAtApplication,
           job_description: job.description || job.snippet,
           notes: `Applied via SA Job Search: ${job.url}`,
         }),

@@ -60,6 +60,7 @@ export function useJobSearch() {
   const [bestFitError, setBestFitError] = useState("")
   const [bestFitJobs, setBestFitJobs] = useState<JobResult[]>([])
   const [bestFitScores, setBestFitScores] = useState<Record<string, number>>({})
+  const selectedJobKey = selectedJob ? (selectedJob.url || selectedJob.title || String((selectedJob as any).id || '')) : ''
 
   // Clear stale match state when user picks a different CV or a different job
   useEffect(() => {
@@ -83,7 +84,7 @@ export function useJobSearch() {
     setDisambiguationOptions([])
     setCvClassification(null)
     setRecommendedFamilies([])
-  }, [selectedJob?.url])
+  }, [selectedJobKey])
 
   useEffect(() => {
     setBestFitMode(false)

@@ -39,7 +39,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Jobs array required', matches: [] })
     }
 
-    const cvFamily = guessCVFamily(cvData)
+    const normalizedConfirmedFamily = typeof confirmedFamily === 'string' ? confirmedFamily.trim() : ''
+    const hasConfirmedFamily = normalizedConfirmedFamily.length > 0 &&
+      (SA_JOB_PROFILES || []).some(profile => profile.family.toLowerCase() === normalizedConfirmedFamily.toLowerCase())
+    const detectedFamily = guessCVFamily(cvData)
+    // Use user-confirmed family when valid so API scoring stays in sync with user disambiguation choice.
+    const cvFamily = hasConfirmedFamily ? normalizedConfirmedFamily : detectedFamily
 
     const results: JobMatchResult[] = jobs.map((job, index) => {
       try {
