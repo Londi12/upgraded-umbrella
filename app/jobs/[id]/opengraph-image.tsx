@@ -53,11 +53,27 @@ function formatPostedDate(value?: string | null) {
   return `Posted ${new Intl.DateTimeFormat("en-ZA", { dateStyle: "medium" }).format(date)}`
 }
 
+function extractShareSnippet(job: PublicJob | null) {
+  const raw = (job?.description?.trim() || job?.snippet?.trim() || "").replace(/\r\n/g, "\n")
+  if (!raw) return "Browse this role on CVKonnekt and apply directly from the original job source."
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean)
+
+  if (!lines.length) return "Browse this role on CVKonnekt and apply directly from the original job source."
+
+  const targetLines = Math.min(8, Math.max(5, lines.length))
+  const excerpt = lines.slice(0, targetLines).join(" ")
+  return excerpt.length > 620 ? `${excerpt.slice(0, 617)}...` : excerpt
+}
+
 function buildSummary(job: PublicJob | null) {
-  const snippet = job?.snippet?.trim() || job?.description?.trim() || "Browse this role on CVKonnekt and apply directly from the original job source."
+  const snippet = extractShareSnippet(job)
   const source = job?.source || "CVKonnekt Jobs"
   const posted = formatPostedDate(job?.posted_date)
-  return clamp(`${snippet} Source: ${source}. ${posted}.`, 168)
+  return clamp(`${snippet} Source: ${source}. ${posted}.`, 360)
 }
 
 export default async function OpenGraphImage({ params }: OpenGraphImageProps) {

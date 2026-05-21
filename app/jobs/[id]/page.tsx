@@ -74,8 +74,19 @@ async function getJobByUrl(url: string): Promise<PublicJob | null> {
 }
 
 function getJobDescription(job: PublicJob) {
-  const summary = job.snippet?.trim() || job.description?.trim() || "View this South African job opportunity on CVKonnekt."
-  return summary.length > 160 ? `${summary.slice(0, 157)}...` : summary
+  const raw = (job.description?.trim() || job.snippet?.trim() || "").replace(/\r\n/g, "\n")
+  if (!raw) return "View this South African job opportunity on CVKonnekt."
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean)
+
+  if (!lines.length) return "View this South African job opportunity on CVKonnekt."
+
+  const targetLines = Math.min(8, Math.max(5, lines.length))
+  const excerpt = lines.slice(0, targetLines).join(" ")
+  return excerpt.length > 620 ? `${excerpt.slice(0, 617)}...` : excerpt
 }
 
 function formatSharePostedDate(value?: string | null) {
