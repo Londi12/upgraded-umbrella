@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og"
 import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 import { supabase } from "@/lib/supabase"
+import { parseJobIdFromRouteParam } from "@/lib/job-share-url"
 
 export const runtime = "edge"
 
@@ -30,16 +31,31 @@ interface PublicJob {
 async function getJob(id: string): Promise<PublicJob | null> {
   const { data, error } = await supabase
     .from("scraped_jobs")
-    .select("id,title,snippet,source,company,location,posted_date")
+    .select("id,title,snippet,description,source,company,location,posted_date")
     .eq("id", id)
     .maybeSingle()
 
   if (error) {
     console.error("Failed to load job preview", error)
-    return null
   }
 
-  return data
+  if (data) return data
+
+  const { data: snapshot, error: snapshotError } = await supabase
+    .from("shared_jobs")
+    .select("id,title,snippet,description,source,company,location,posted_date")
+    .eq("id", id)
+    .maybeSingle()
+
+  if (snapshotError) {
+    console.error("Failed to load shared job preview", snapshotError)
+  }
+
+  return snapshot ?? null
+}
+
+function getSiteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL || "https://cvkonnekt.co.za"
 }
 
 function clamp(text: string, maxLength: number) {
@@ -78,8 +94,10 @@ function buildSummary(job: PublicJob | null) {
 }
 
 export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
-  const { id } = await params
+  const { id: routeId } = await params
+  const id = parseJobIdFromRouteParam(routeId)
   const job = await getJob(id)
+  const logoUrl = `${getSiteUrl()}/icon.svg`
 
   const title = clamp(cleanJobTitle(job?.title, "South African job opportunity"), 90)
   const company = clamp(cleanJobCompany(job?.company || job?.source || "CVKonnekt Jobs", "CVKonnekt Jobs"), 42)
@@ -133,6 +151,12 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
                 textTransform: "uppercase",
               }}
             >
+              <img
+                src={logoUrl}
+                width={34}
+                height={34}
+                style={{ borderRadius: 8, background: "rgba(255,255,255,0.12)", padding: 4 }}
+              />
               <span style={{ color: "#bfdbfe" }}>CVKonnekt</span>
               <span style={{ color: "rgba(255,255,255,0.7)" }}>Shared job</span>
             </div>
