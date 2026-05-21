@@ -23,6 +23,6 @@
 - [ ] **3.2** `git commit/push` → Vercel deploy
 - [ ] **3.3** Monitor logs, live test
 
-**Next Step:** Fix sa-job-knowledgebase.ts exports + robust detectJobFamily
+**Next Step:** Phase 2 scoring improvements (synonyms, recency, fuzzy location) and CV-job pair validation
 
 

@@ -19,7 +19,7 @@ function extractAccessToken(rawToken: string | undefined): string | null {
   return null
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   if (!request.nextUrl.pathname.startsWith('/admin')) {
     return NextResponse.next()
   }
@@ -38,7 +38,7 @@ export async function middleware(request: NextRequest) {
   const token = extractAccessToken(rawToken)
 
   if (!token) {
-    // Browser auth in this app is localStorage-based, so middleware may not see a token cookie.
+    // Browser auth in this app is localStorage-based, so proxy may not see a token cookie.
     // Allow request through and let the admin page perform the authoritative admin check.
     return NextResponse.next()
   }

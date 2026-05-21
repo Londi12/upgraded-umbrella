@@ -15,7 +15,7 @@ CV builder, job search, and application tracker for South African job seekers. F
 
 ## Stack
 
-- Next.js 15 (App Router)
+- Next.js 16 (App Router)
 - Supabase (auth + database)
 - Tailwind CSS + shadcn/ui
 - Google Gemini API
