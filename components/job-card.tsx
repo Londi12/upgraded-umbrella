@@ -20,9 +20,10 @@ interface JobCardProps {
   job: JobResult
   isSelected: boolean
   onClick: () => void
+  matchScore?: number
 }
 
-export function JobCard({ job, isSelected, onClick }: JobCardProps) {
+export function JobCard({ job, isSelected, onClick, matchScore }: JobCardProps) {
   const title = cleanJobTitle(job.title)
   const company = cleanJobCompany(job.company || job.source)
   const location = cleanJobLocation(job.location)
@@ -38,6 +39,11 @@ export function JobCard({ job, isSelected, onClick }: JobCardProps) {
       }`}
     >
       <p className="font-semibold text-gray-900 text-sm leading-snug mb-0.5 truncate">{title}</p>
+      {typeof matchScore === "number" && (
+        <span className="inline-flex mb-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+          {matchScore}% suited
+        </span>
+      )}
       <p className="text-sm text-gray-500 mb-1.5 truncate">{company}</p>
       <div className="flex items-center gap-2 flex-wrap">
         {tags.slice(0, 2).map(tag => (

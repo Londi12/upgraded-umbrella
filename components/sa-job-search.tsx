@@ -27,6 +27,7 @@ export default function SAJobSearch() {
     suggestions,
     showSuggestions,
     setShowSuggestions,
+    displayedResults,
     filteredResults,
     totalCount,
     loading,
@@ -42,12 +43,18 @@ export default function SAJobSearch() {
     disambiguationOptions,
     cvClassification,
     recommendedFamilies,
+    bestFitMode,
+    setBestFitMode,
+    bestFitLoading,
+    bestFitError,
+    bestFitScores,
     search,
     updateFilter,
     toggleQuickFilter,
     resetFilters,
     handleQueryChange,
     handleAIMatch,
+    rankBestFitJobs,
   } = useJobSearch()
 
   const selectJob = (job: typeof selectedJob) => {
@@ -68,6 +75,7 @@ export default function SAJobSearch() {
   }
 
   const hasActiveFilters = filters.jobType || filters.experience || filters.datePosted !== "" || filters.quickFilters.length > 0
+  const selectedCvLabel = savedCVs.find(cv => cv.id === selectedCVId)?.name || "Selected CV"
 
   const detailPanelProps = selectedJob ? {
     job: selectedJob,
@@ -82,7 +90,7 @@ export default function SAJobSearch() {
     cvClassification,
     recommendedFamilies,
     onAIMatch: handleAIMatch,
-    allJobs: filteredResults ?? [],
+    allJobs: displayedResults ?? [],
     onSelectJob: (job: NonNullable<typeof selectedJob>) => selectJob(job),
   } : null
 
@@ -196,6 +204,52 @@ export default function SAJobSearch() {
             </div>
           </div>
         )}
+
+        <div className="max-w-7xl mx-auto mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={selectedCVId}
+            onChange={(e) => setSelectedCVId(e.target.value)}
+            className="h-8 px-3 border rounded-md text-xs min-w-[170px]"
+          >
+            <option value="">Select CV for matching</option>
+            {savedCVs.map(cv => (
+              <option key={cv.id} value={cv.id}>{cv.name || "Saved CV"}</option>
+            ))}
+          </select>
+
+          <Button
+            size="sm"
+            className="h-8"
+            variant={bestFitMode ? "outline" : "default"}
+            disabled={bestFitLoading || loading || !selectedCVId || displayedResults.length === 0}
+            onClick={() => rankBestFitJobs()}
+          >
+            {bestFitLoading ? "Ranking..." : "Best Suited For Me"}
+          </Button>
+
+          {bestFitMode && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8"
+              onClick={() => setBestFitMode(false)}
+            >
+              Show Original Order
+            </Button>
+          )}
+
+          {bestFitMode && (
+            <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">
+              Ranked for {selectedCvLabel}
+            </span>
+          )}
+        </div>
+
+        {bestFitError && (
+          <div className="max-w-7xl mx-auto mt-2 text-xs text-red-600">
+            {bestFitError}
+          </div>
+        )}
       </div>
 
       {/* Error */}
@@ -212,8 +266,9 @@ export default function SAJobSearch() {
         <div className="w-80 xl:w-96 flex-shrink-0 border-r flex flex-col min-h-0">
           <div className="px-4 py-2 border-b bg-gray-50 flex-shrink-0">
             <span className="text-xs text-gray-500">
-              {loading ? "Searching..." : `${filteredResults.length} jobs`}
-              {totalCount > filteredResults.length && ` of ${totalCount}`}
+              {loading ? "Searching..." : `${displayedResults.length} jobs`}
+              {totalCount > displayedResults.length && ` of ${totalCount}`}
+              {bestFitMode && " · Ranked by CV fit"}
             </span>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -222,15 +277,16 @@ export default function SAJobSearch() {
                 That job listing has expired. Here are the latest jobs.
               </div>
             )}
-            {filteredResults.map((job, idx) => (
+            {displayedResults.map((job, idx) => (
               <JobCard
                 key={idx}
                 job={job}
                 isSelected={selectedJob?.url === job.url}
                 onClick={() => selectJob(job)}
+                matchScore={bestFitScores[job.url || job.title]}
               />
             ))}
-            {filteredResults.length === 0 && !loading && (
+            {displayedResults.length === 0 && !loading && (
               <div className="p-8 text-center text-sm text-gray-400">
                 <p>No jobs found.</p>
                 <p className="mt-1">Try different keywords or reset filters.</p>
@@ -255,15 +311,16 @@ export default function SAJobSearch() {
 
       {/* Mobile: list */}
       <div className="lg:hidden flex-1 overflow-y-auto">
-        {filteredResults.map((job, idx) => (
+        {displayedResults.map((job, idx) => (
           <JobCard
             key={idx}
             job={job}
             isSelected={selectedJob?.url === job.url}
             onClick={() => selectJob(job)}
+            matchScore={bestFitScores[job.url || job.title]}
           />
         ))}
-        {filteredResults.length === 0 && !loading && (
+        {displayedResults.length === 0 && !loading && (
           <div className="p-8 text-center text-sm text-gray-400">
             <p>No jobs found.</p>
             <p className="mt-1">Try different keywords or reset filters.</p>

@@ -55,6 +55,11 @@ export function useJobSearch() {
   const [disambiguationOptions, setDisambiguationOptions] = useState<DisambiguationOption[]>([])
   const [cvClassification, setCvClassification] = useState<{ detectedFamily: string; confidence: string; tier: string } | null>(null)
   const [recommendedFamilies, setRecommendedFamilies] = useState<string[]>([])
+  const [bestFitMode, setBestFitMode] = useState(false)
+  const [bestFitLoading, setBestFitLoading] = useState(false)
+  const [bestFitError, setBestFitError] = useState("")
+  const [bestFitJobs, setBestFitJobs] = useState<JobResult[]>([])
+  const [bestFitScores, setBestFitScores] = useState<Record<string, number>>({})
 
   // Clear stale match state when user picks a different CV or a different job
   useEffect(() => {
@@ -66,12 +71,26 @@ export function useJobSearch() {
   }, [selectedCVId])
 
   useEffect(() => {
+    setBestFitMode(false)
+    setBestFitJobs([])
+    setBestFitScores({})
+    setBestFitError("")
+  }, [selectedCVId])
+
+  useEffect(() => {
     setAiMatchResults([])
     setAiMatchError("")
     setDisambiguationOptions([])
     setCvClassification(null)
     setRecommendedFamilies([])
   }, [selectedJob?.url])
+
+  useEffect(() => {
+    setBestFitMode(false)
+    setBestFitJobs([])
+    setBestFitScores({})
+    setBestFitError("")
+  }, [filteredResults])
 
   useEffect(() => {
     if (user) {
@@ -257,6 +276,77 @@ export function useJobSearch() {
     }
   }
 
+  const rankBestFitJobs = async (confirmedFamily?: string) => {
+    if (!user) {
+      setBestFitError("Please sign in to rank jobs for your profile.")
+      return
+    }
+    if (!selectedCVId) {
+      setBestFitError("Select a saved CV first.")
+      return
+    }
+    if (!filteredResults.length) {
+      setBestFitError("No jobs available to rank yet.")
+      return
+    }
+
+    setBestFitLoading(true)
+    setBestFitError("")
+    setDisambiguationOptions([])
+
+    try {
+      const selectedCV = savedCVs.find(cv => cv.id === selectedCVId)
+      if (!selectedCV) throw new Error("Selected CV not found")
+
+      // Keep payload bounded while still giving enough data for useful ranking.
+      const jobsToMatch = filteredResults.slice(0, 60).map(j => ({
+        id: j.url || j.title,
+        url: j.url,
+        title: j.title,
+        company: j.company || j.source,
+        description: j.description || j.snippet || '',
+        location: j.location,
+        requirements: [],
+      }))
+
+      const result = await getJobMatches(selectedCV.cv_data, jobsToMatch, confirmedFamily)
+      if ('needsDisambiguation' in result) {
+        setDisambiguationOptions(result.topMatches)
+        setBestFitMode(false)
+        return
+      }
+
+      const scoreById: Record<string, number> = {}
+      result.matches.forEach(m => {
+        scoreById[m.jobId] = m.matchScore
+      })
+
+      const ranked = [...filteredResults].sort((a, b) => {
+        const aId = a.url || a.title
+        const bId = b.url || b.title
+        const scoreDelta = (scoreById[bId] || 0) - (scoreById[aId] || 0)
+        if (scoreDelta !== 0) return scoreDelta
+        return new Date(b.posted_date || 0).getTime() - new Date(a.posted_date || 0).getTime()
+      })
+
+      setCvClassification(result.cvClassification)
+      setRecommendedFamilies(result.recommendedFamilies || [])
+      setBestFitScores(scoreById)
+      setBestFitJobs(ranked)
+      setBestFitMode(true)
+      if (ranked.length > 0) {
+        setSelectedJob(ranked[0])
+      }
+    } catch (error) {
+      setBestFitError(error instanceof Error ? error.message : "Unable to rank jobs right now.")
+      setBestFitMode(false)
+    } finally {
+      setBestFitLoading(false)
+    }
+  }
+
+  const displayedResults = bestFitMode ? bestFitJobs : filteredResults
+
   return {
     filters,
     suggestions,
@@ -264,6 +354,7 @@ export function useJobSearch() {
     setShowSuggestions,
     results,
     filteredResults,
+    displayedResults,
     totalCount,
     loading,
     error,
@@ -278,12 +369,18 @@ export function useJobSearch() {
     disambiguationOptions,
     cvClassification,
     recommendedFamilies,
+    bestFitMode,
+    setBestFitMode,
+    bestFitLoading,
+    bestFitError,
+    bestFitScores,
     search,
     updateFilter,
     toggleQuickFilter,
     resetFilters,
     handleQueryChange,
     handleAIMatch,
+    rankBestFitJobs,
     JOB_SUGGESTIONS,
   }
 }
