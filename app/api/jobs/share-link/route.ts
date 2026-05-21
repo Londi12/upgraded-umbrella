@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
+import { buildJobSharePath } from "@/lib/job-share-url"
 
 type ShareableJob = {
   id: string | number
@@ -116,8 +117,7 @@ export async function GET(request: NextRequest) {
     // Snapshot so the link keeps working after the job is purged
     await snapshotJob(job)
 
-    const urlParam = encodeURIComponent(job.url)
-    return NextResponse.json({ path: `/jobs/${job.id}?u=${urlParam}` })
+    return NextResponse.json({ path: buildJobSharePath(job) })
   } catch {
     return NextResponse.json({ error: "Failed to resolve share link" }, { status: 500 })
   }

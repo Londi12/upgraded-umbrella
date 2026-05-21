@@ -6,6 +6,7 @@ import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 import { supabase } from "@/lib/supabase"
 import { generateMetadata as generateSEOMetadata } from "@/lib/utils"
+import { buildJobSharePath, parseJobIdFromRouteParam } from "@/lib/job-share-url"
 
 interface JobPageProps {
   params: Promise<{ id: string }>
@@ -122,8 +123,9 @@ function formatPostedDate(value?: string | null) {
 }
 
 export async function generateMetadata({ params, searchParams }: JobPageProps): Promise<Metadata> {
-  const { id } = await params
+  const { id: routeId } = await params
   const { u } = await searchParams
+  const id = parseJobIdFromRouteParam(routeId)
   let job = await getJob(id)
 
   if (!job && u) {
@@ -134,7 +136,7 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
     return generateSEOMetadata({
       title: "Job Not Found | CVKonnekt",
       description: "This job is no longer available.",
-      canonical: `/jobs/${id}`,
+      canonical: `/jobs/${routeId}`,
       ogImage: "/og-image-jobs.png",
       noIndex: true,
     })
@@ -144,11 +146,13 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
   const company = cleanJobCompany(job.company || job.source || "CVKonnekt")
   const location = cleanJobLocation(job.location)
 
+  const canonicalPath = buildJobSharePath({ id: job.id, title: job.title, company: job.company })
+
   return generateSEOMetadata({
     title: `${title} at ${company} | CVKonnekt`,
     description: getMetaDescription(job),
-    canonical: `/jobs/${job.id}`,
-    ogImage: `/jobs/${job.id}/opengraph-image`,
+    canonical: canonicalPath,
+    ogImage: `${canonicalPath}/opengraph-image`,
     ogType: "article",
     twitterCard: "summary_large_image",
     keywords: [title, company, location, job.source || "", job.posted_date || "", "South Africa jobs", "job vacancy"].filter(Boolean),
@@ -156,8 +160,9 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
 }
 
 export default async function JobPublicPage({ params, searchParams }: JobPageProps) {
-  const { id } = await params
+  const { id: routeId } = await params
   const { u } = await searchParams
+  const id = parseJobIdFromRouteParam(routeId)
   let job = await getJob(id)
 
   if (!job && u) {
@@ -194,6 +199,12 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
       )
     }
     redirect(`/jobs?expired=1`)
+  }
+
+  const canonicalPath = buildJobSharePath({ id: job.id, title: job.title, company: job.company })
+  const requestedPath = `/jobs/${routeId}`
+  if (requestedPath !== canonicalPath && !u) {
+    redirect(canonicalPath)
   }
 
   const title = cleanJobTitle(job.title)
