@@ -195,19 +195,20 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   const gaps: string[] = []
 
   // 1. Title/experience alignment (25 pts)
-  // Include personalInfo.jobTitle — it is the most important self-identification signal
   const cvTitles = [
     (cvData.personalInfo?.jobTitle || '').toLowerCase(),
     ...(cvData.experience || []).map((e: any) => (e.title || '').toLowerCase()),
-  ].filter(t => t.length >= 4)
-  const jobTitleLower = (job.title || '').toLowerCase()
-  const titleMatch = jobTitleLower.length >= 4 && cvTitles.some(t =>
-    jobTitleLower.includes(t) || t.includes(jobTitleLower)
-  )
-  if (titleMatch) {
-    score += 25
+  ].filter(t => t.length >= 3)
+  const jobTitleLower: string = `${job.title || ''}`.toLowerCase()
+  const jobTitleWords = jobTitleLower.split(/\s+/).filter((w: string) => w.length >= 3)
+  const titleWordMatches = jobTitleWords.filter((w: string) => cvTitles.some(t => t.includes(w)))
+  const titleScore = jobTitleWords.length
+    ? Math.round((titleWordMatches.length / jobTitleWords.length) * 25)
+    : 0
+  score += titleScore
+  if (titleScore >= 15) {
     strengths.push('Title/experience alignment')
-  } else {
+  } else if (titleScore === 0) {
     gaps.push('Limited matching experience')
   }
 
@@ -233,14 +234,22 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   const jobSkillsSet: Set<string> = new Set([...profileSkills, ...descriptionSkills])
   const jobSkills = Array.from(jobSkillsSet)
   const matchedSkills = cvSkills.filter(s =>
-    s.length >= 4 && jobSkills.some(js => js.length >= 4 && (js === s || js.includes(s)))
-  )
-  const skillsPts = Math.min(matchedSkills.length * 8, 40)
+    s.length >= 2 && jobSkills.some(js => js.length >= 2 && (js === s || js.includes(s) || s.includes(js)))
+  ).filter((s, _, arr) => {
+    // Remove short tokens that are substrings of another matched skill to avoid false positives
+    // e.g. 'it' inside 'audit', 'net' inside '.net'
+    if (s.length <= 3) return arr.every(other => other === s || !other.includes(s))
+    return true
+  })
+  // Scale: 1 match = 10pts, 2 = 18, 3 = 25, 4 = 31, 5+ = 40 (diminishing returns)
+  const skillsPts = matchedSkills.length === 0 ? 0
+    : Math.min(Math.round(40 * (1 - Math.pow(0.75, matchedSkills.length))), 40)
   score += skillsPts
   strengths.push(...matchedSkills.slice(0, 3).map(s => `Skill: ${s}`))
   if (matchedSkills.length === 0) gaps.push('No matching skills detected')
 
   // 3. Profile-based NQF (10 pts) + registration (10 pts)
+  // Fall back to a text-based education/registration check when no profile resolves
   let nqfScore = 0
   let registrationsScore = 0
   if (jobProfile) {
@@ -248,11 +257,15 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
     const tier = cvYears >= jobProfile.experienceTiers.senior.minYears ? 'senior'
       : cvYears >= jobProfile.experienceTiers.mid.minYears ? 'mid' : 'junior'
     const profScore = knowledgebase.scoreAgainstProfile(cvData, jobProfile, tier) as any
-    nqfScore = profScore.meetsNQF ? 10 : 0
+    nqfScore = profScore.meetsNQF ? 10 : 5
     registrationsScore = profScore.hasRegistration ? 10 : 0
     score += nqfScore + registrationsScore
     strengths.push(...(profScore.strengths as string[]).filter(s => !strengths.includes(s)).slice(0, 2))
     gaps.push(...(profScore.gaps as string[]).filter(g => !gaps.includes(g)).slice(0, 2))
+  } else {
+    // No profile matched — award partial NQF credit if CV has any education
+    nqfScore = cvData.education?.length ? 5 : 0
+    score += nqfScore
   }
 
   // 4. Seniority (10 pts)
@@ -269,8 +282,8 @@ function scoreJobAgainstCV(cvData: CVData, job: any, cvFamily: string): JobMatch
   return {
     jobId: job.id || job.url || job.title || 'unknown',
     matchScore: score,
-    confidence: score >= 70 ? 'high' : score >= 50 ? 'medium' : 'low' as const,
-    recommendation: score >= 75 ? 'Strong match' : score >= 55 ? 'Good match' : score >= 35 ? 'Moderate' : 'Review manually',
+    confidence: score >= 65 ? 'high' : score >= 45 ? 'medium' : 'low' as const,
+    recommendation: score >= 68 ? 'Strong match' : score >= 50 ? 'Good match' : score >= 30 ? 'Moderate' : 'Review manually',
     reasoning: buildSimpleReasoning(score, job.title || 'Job', matchedSkills, seniorityScore, cvYears),
     strengths,
     gaps,
@@ -295,7 +308,7 @@ function resolveJobProfile(job: any) {
   const jobTitle = `${job?.title || ''}`.trim()
   if (!jobTitle) return null
 
-  const titleMatch = knowledgebase.getClosestProfile(jobTitle, { threshold: 0.55 })
+  const titleMatch = knowledgebase.getClosestProfile(jobTitle, { threshold: 0.35 })
   if (titleMatch) return titleMatch
 
   const jobText = `${jobTitle} ${job?.description || ''} ${(job?.requirements || []).join(' ')}`.toLowerCase()
