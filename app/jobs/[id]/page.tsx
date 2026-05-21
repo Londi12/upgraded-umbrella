@@ -3,6 +3,7 @@ import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
+import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 import { supabase } from "@/lib/supabase"
 import { generateMetadata as generateSEOMetadata } from "@/lib/utils"
 
@@ -97,13 +98,14 @@ function formatSharePostedDate(value?: string | null) {
 }
 
 function getMetaDescription(job: PublicJob) {
-  const company = job.company || job.source || "CVKonnekt"
-  const location = job.location || "South Africa"
+  const title = cleanJobTitle(job.title)
+  const company = cleanJobCompany(job.company || job.source || "CVKonnekt")
+  const location = cleanJobLocation(job.location)
   const source = job.source || "CVKonnekt"
   const posted = formatSharePostedDate(job.posted_date)
   const summary = getJobDescription(job)
   const parts = [
-    `${job.title} at ${company} in ${location}`,
+    `${title} at ${company} in ${location}`,
     summary,
     `Source: ${source}`,
     `Posted ${posted}`,
@@ -138,17 +140,18 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
     })
   }
 
-  const company = job.company || job.source || "CVKonnekt"
-  const location = job.location || "South Africa"
+  const title = cleanJobTitle(job.title)
+  const company = cleanJobCompany(job.company || job.source || "CVKonnekt")
+  const location = cleanJobLocation(job.location)
 
   return generateSEOMetadata({
-    title: `${job.title} at ${company} | CVKonnekt`,
+    title: `${title} at ${company} | CVKonnekt`,
     description: getMetaDescription(job),
     canonical: `/jobs/${job.id}`,
     ogImage: `/jobs/${job.id}/opengraph-image`,
     ogType: "article",
     twitterCard: "summary_large_image",
-    keywords: [job.title, company, location, job.source || "", job.posted_date || "", "South Africa jobs", "job vacancy"].filter(Boolean),
+    keywords: [title, company, location, job.source || "", job.posted_date || "", "South Africa jobs", "job vacancy"].filter(Boolean),
   })
 }
 
@@ -193,8 +196,9 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
     redirect(`/jobs?expired=1`)
   }
 
-  const company = job.company || job.source || "CVKonnekt"
-  const location = job.location || "South Africa"
+  const title = cleanJobTitle(job.title)
+  const company = cleanJobCompany(job.company || job.source || "CVKonnekt")
+  const location = cleanJobLocation(job.location)
 
   return (
     <main className="bg-slate-50 min-h-screen">
@@ -202,7 +206,7 @@ export default async function JobPublicPage({ params, searchParams }: JobPagePro
         <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="px-5 pt-4 pb-3 border-b">
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Shared job</p>
-            <h1 className="mt-2 font-semibold text-slate-900 text-xl leading-snug">{job.title}</h1>
+            <h1 className="mt-2 font-semibold text-slate-900 text-xl leading-snug">{title}</h1>
             <p className="text-sm text-slate-500 mt-1">{company}</p>
             <div className="flex items-center gap-2 mt-2 flex-wrap">
               <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">{location}</span>

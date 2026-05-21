@@ -71,7 +71,7 @@ export function formatJobDate(dateString: string | undefined | null, options: Da
 export function formatJobCardDate(dateString: string | undefined | null): string {
   return formatJobDate(dateString, {
     format: 'relative',
-    fallback: 'Date not available'
+    fallback: 'Recently'
   });
 }
 

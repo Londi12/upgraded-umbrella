@@ -1,5 +1,6 @@
 "use client"
 import { formatJobCardDate } from "@/lib/date-formatter"
+import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 
 export interface JobResult {
   id?: string
@@ -22,7 +23,9 @@ interface JobCardProps {
 }
 
 export function JobCard({ job, isSelected, onClick }: JobCardProps) {
-  const company = job.company || job.source
+  const title = cleanJobTitle(job.title)
+  const company = cleanJobCompany(job.company || job.source)
+  const location = cleanJobLocation(job.location)
   const tags = [job.job_type, job.experience_level].filter(Boolean) as string[]
 
   return (
@@ -34,7 +37,7 @@ export function JobCard({ job, isSelected, onClick }: JobCardProps) {
           : "hover:bg-gray-50 border-l-2 border-l-transparent"
       }`}
     >
-      <p className="font-semibold text-gray-900 text-sm leading-snug mb-0.5 truncate">{job.title}</p>
+      <p className="font-semibold text-gray-900 text-sm leading-snug mb-0.5 truncate">{title}</p>
       <p className="text-sm text-gray-500 mb-1.5 truncate">{company}</p>
       <div className="flex items-center gap-2 flex-wrap">
         {tags.slice(0, 2).map(tag => (
@@ -43,7 +46,7 @@ export function JobCard({ job, isSelected, onClick }: JobCardProps) {
           </span>
         ))}
         <span className="text-xs text-gray-400 ml-auto whitespace-nowrap">
-          {job.location?.split(",")[0] || "South Africa"} · {formatJobCardDate(job.posted_date)}
+          {location} · {formatJobCardDate(job.posted_date)}
         </span>
       </div>
     </button>

@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og"
+import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 import { supabase } from "@/lib/supabase"
 
 export const runtime = "edge"
@@ -80,9 +81,9 @@ export default async function OpenGraphImage({ params }: OpenGraphImageProps) {
   const { id } = await params
   const job = await getJob(id)
 
-  const title = clamp(job?.title || "South African job opportunity", 90)
-  const company = clamp(job?.company || job?.source || "CVKonnekt Jobs", 42)
-  const location = clamp(job?.location || "South Africa", 38)
+  const title = clamp(cleanJobTitle(job?.title, "South African job opportunity"), 90)
+  const company = clamp(cleanJobCompany(job?.company || job?.source || "CVKonnekt Jobs", "CVKonnekt Jobs"), 42)
+  const location = clamp(cleanJobLocation(job?.location), 38)
   const summary = buildSummary(job)
   const posted = formatPostedDate(job?.posted_date)
 

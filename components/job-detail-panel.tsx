@@ -12,6 +12,7 @@ import { Save, Send, CheckCircle, X, ArrowLeft, Check, AlertCircle, Lightbulb, C
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { calculateJobMatch as calculateHeuristicMatch, calculateATSScores, aggregateAtsFeedback } from "@/lib/cv-ats-heuristics"
 import { formatJobCardDate } from "@/lib/date-formatter"
+import { cleanJobCompany, cleanJobLocation, cleanJobTitle } from "@/lib/job-display"
 import { saveJob } from "@/lib/user-data-service"
 import type { JobResult } from "@/components/job-card"
 import type { JobMatchResult, DisambiguationOption } from "@/lib/ai-job-service"
@@ -86,7 +87,9 @@ export function JobDetailPanel({
   const [applyToast, setApplyToast] = useState(false)
   const [shareToast, setShareToast] = useState("")
 
-  const company = job.company || job.source || ""
+  const displayTitle = cleanJobTitle(job.title)
+  const company = cleanJobCompany(job.company || job.source || "")
+  const locationLabel = cleanJobLocation(job.location)
   const tags = [job.job_type, job.experience_level].filter(Boolean) as string[]
   const selectedCvData = selectedCVId ? savedCVs.find(cv => cv.id === selectedCVId)?.cv_data : undefined
   const jobDescription = job.description || job.snippet || ''
@@ -290,8 +293,8 @@ export function JobDetailPanel({
     try {
       if (typeof browserNavigator.share === 'function') {
         await browserNavigator.share({
-          title: `${job.title} | CVKonnekt`,
-          text: `${job.title} at ${company}`,
+          title: `${displayTitle} | CVKonnekt`,
+          text: `${displayTitle} at ${company}`,
           url: targetUrl,
         })
         return
@@ -326,7 +329,7 @@ export function JobDetailPanel({
           )}
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-2">
-              <h2 className="flex-1 font-semibold text-gray-900 text-base leading-snug">{job.title}</h2>
+              <h2 className="flex-1 font-semibold text-gray-900 text-base leading-snug">{displayTitle}</h2>
               <Button
                 onClick={handleShare}
                 variant="outline"
@@ -343,7 +346,7 @@ export function JobDetailPanel({
                 <span key={tag} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded capitalize">{tag}</span>
               ))}
               <span className="text-xs text-gray-400">
-                {job.location?.split(",")[0] || "South Africa"} · {formatJobCardDate(job.posted_date)}
+                {locationLabel} · {formatJobCardDate(job.posted_date)}
               </span>
             </div>
           </div>
