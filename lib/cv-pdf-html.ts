@@ -28,7 +28,7 @@ export function generateCVHTML(template: string, userData: any): string {
   <!-- Add summary, experience, education, skills HTML... -->
 </div>`;
   }
-  // TODO: Add other templates...
+  // Additional templates currently fall back to base output until expanded.
   html += '</body></html>';
   return html;
 }

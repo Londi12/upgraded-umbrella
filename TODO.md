@@ -1,28 +1,16 @@
-# Job Matching Fix & Improvement - Step-by-Step
+# Job Matching Fix & Improvement - Completion Summary
 
-## Current Status
-✅ Plan approved  
-✅ 1.1 fuse.js confirmed in package.json  
-🔄 Phase 1: Fix crashes (exports + safe scoring)
+## Status
+- [x] Phase 1 crash fixes completed
+- [x] Matching accuracy improvements shipped
+- [x] Share URL SEO refactor shipped
+- [x] Rich social preview cards shipped
+- [x] Experience/Education one-card navigation shipped
+- [x] Typecheck/build validations completed
+- [x] Changes committed and pushed to main
 
-## TODO Steps
-
-### Phase 1: Fix 'Job matching failed' (2 files)
-- [x] **1.1** package.json: fuse.js present ✅
-- [x] **1.2** lib/sa-job-knowledgebase.ts exports OK ✅
-- [x] **1.3** app/api/ai-job-match/route.ts: Per-job try-catch + new scoreJobAgainstCV() ✅
-- [x] **1.4** scoreJobAgainstCV: knowledgebase profile keywords, NQF/registration scoring, breakdown populated ✅
-
-
-### Phase 2: Improve Accuracy (1 file)
-- [ ] **2.1** Enhance scoring: Synonyms, recency, fuzzy location
-- [ ] **2.2** Test 5 CV-job pairs for realistic scores
-
-### Phase 3: Deploy
-- [ ] **3.1** `npm run build`
-- [ ] **3.2** `git commit/push` → Vercel deploy
-- [ ] **3.3** Monitor logs, live test
-
-**Next Step:** Phase 2 scoring improvements (synonyms, recency, fuzzy location) and CV-job pair validation
+## Notes
+- This file is now a completion record rather than an active task list.
+- Operational runbooks in SECURITY.md and DEPLOYMENT.md still contain environment-specific checklists by design.
 
 

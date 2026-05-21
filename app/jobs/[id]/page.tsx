@@ -152,7 +152,7 @@ export async function generateMetadata({ params, searchParams }: JobPageProps): 
     title: `${title} at ${company} | CVKonnekt`,
     description: getMetaDescription(job),
     canonical: canonicalPath,
-    ogImage: `${canonicalPath}/opengraph-image`,
+    ogImage: `/api/og-image/${job.id}`,
     ogType: "article",
     twitterCard: "summary_large_image",
     keywords: [title, company, location, job.source || "", job.posted_date || "", "South Africa jobs", "job vacancy"].filter(Boolean),
