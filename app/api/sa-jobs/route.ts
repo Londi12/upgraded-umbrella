@@ -47,7 +47,8 @@ export async function GET(request: NextRequest) {
     let dbQuery = supabase
       .from('scraped_jobs')
       .select('*')
-      .order('posted_date', { ascending: false })
+      .order('posted_date', { ascending: false, nullsFirst: false })
+      .order('created_at', { ascending: false, nullsFirst: false })
       .limit(500)
 
     if (query && query !== 'jobs') {
@@ -94,7 +95,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (sortBy === 'newest') {
-      dbQuery = dbQuery.order('posted_date', { ascending: false })
+      dbQuery = dbQuery
+        .order('posted_date', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false, nullsFirst: false })
     }
 
     const { data, error } = await dbQuery

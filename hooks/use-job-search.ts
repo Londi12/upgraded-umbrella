@@ -21,7 +21,7 @@ const DEFAULT_FILTERS: SearchFilters = {
   jobType: "",
   experience: "",
   datePosted: "",
-  sortBy: "relevant",
+  sortBy: "newest",
   quickFilters: [],
 }
 
