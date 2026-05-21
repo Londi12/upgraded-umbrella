@@ -159,6 +159,11 @@ export default function CreateCVPage() {
 
       setIsLoadingProfile(true)
 
+      if (!user) {
+        setIsLoadingProfile(false)
+        return
+      }
+
       // If editing an existing CV, load it from Supabase
       if (editId) {
         const { data: cvs } = await getSavedCVs(user.id)
