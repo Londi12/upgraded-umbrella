@@ -359,7 +359,13 @@ export default function CreateCVPage() {
     }
 
     setIsSaving(true)
-    const { error } = await createOrUpdateUserProfile(formData)
+    const { error } = await createOrUpdateUserProfile({
+      personal_info: formData.personalInfo,
+      experience: formData.experience,
+      education: formData.education,
+      skills: formData.skills,
+      summary: formData.summary,
+    })
 
     if (error) {
       console.error("Error saving profile:", error)
@@ -905,7 +911,7 @@ export default function CreateCVPage() {
                               value={exp.title}
                               onChange={(e) => handleExperienceChange(index, e)}
                               placeholder="e.g., Senior Financial Analyst"
-                              onFocus={handleInputFocus(`experience-${index}`)}
+                              onFocus={handleInputFocus('experience')}
                             />
                           </div>
                           <div>
@@ -916,7 +922,7 @@ export default function CreateCVPage() {
                               value={exp.company}
                               onChange={(e) => handleExperienceChange(index, e)}
                               placeholder="e.g., ABC Corporation"
-                              onFocus={handleInputFocus(`experience-${index}`)}
+                              onFocus={handleInputFocus('experience')}
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
@@ -928,7 +934,7 @@ export default function CreateCVPage() {
                                 value={exp.startDate}
                                 onChange={(e) => handleExperienceChange(index, e)}
                                 placeholder="e.g., Jan 2020"
-                                onFocus={handleInputFocus(`experience-${index}`)}
+                                onFocus={handleInputFocus('experience')}
                               />
                             </div>
                             <div>
@@ -939,7 +945,7 @@ export default function CreateCVPage() {
                                 value={exp.endDate}
                                 onChange={(e) => handleExperienceChange(index, e)}
                                 placeholder="e.g., Present"
-                                onFocus={handleInputFocus(`experience-${index}`)}
+                                onFocus={handleInputFocus('experience')}
                               />
                             </div>
                           </div>
@@ -951,7 +957,7 @@ export default function CreateCVPage() {
                               value={exp.location}
                               onChange={(e) => handleExperienceChange(index, e)}
                               placeholder="e.g., Johannesburg, SA"
-                              onFocus={handleInputFocus(`experience-${index}`)}
+                              onFocus={handleInputFocus('experience')}
                             />
                           </div>
                           <div>
@@ -963,7 +969,7 @@ export default function CreateCVPage() {
                               onChange={(e) => handleExperienceChange(index, e)}
                               placeholder="Describe your responsibilities and achievements..."
                               className="min-h-[100px]"
-                              onFocus={handleInputFocus(`experience-${index}`)}
+                              onFocus={handleInputFocus('experience')}
                             />
                           </div>
                           <div className="grid grid-cols-2 gap-4">
@@ -985,7 +991,7 @@ export default function CreateCVPage() {
                                   });
                                 }}
                                 className="h-4 w-4 rounded border-gray-300"
-                                onFocus={handleInputFocus(`experience-${index}`)}
+                                onFocus={handleInputFocus('experience')}
                               />
                               <Label htmlFor={`isLearnership-${index}`} className="text-sm font-normal">
                                 This is a Learnership
@@ -1009,7 +1015,7 @@ export default function CreateCVPage() {
                                   });
                                 }}
                                 className="h-4 w-4 rounded border-gray-300"
-                                onFocus={handleInputFocus(`experience-${index}`)}
+                                onFocus={handleInputFocus('experience')}
                               />
                               <Label htmlFor={`isInternship-${index}`} className="text-sm font-normal">
                                 This is an Internship
@@ -1036,7 +1042,7 @@ export default function CreateCVPage() {
                               value={edu.degree}
                               onChange={(e) => handleEducationChange(index, e)}
                               placeholder="e.g., Bachelor of Commerce"
-                              onFocus={handleInputFocus(`education-${index}`)}
+                              onFocus={handleInputFocus('education')}
                             />
                           </div>
                           <div>
@@ -1047,7 +1053,7 @@ export default function CreateCVPage() {
                               value={edu.institution}
                               onChange={(e) => handleEducationChange(index, e)}
                               placeholder="e.g., University of Cape Town"
-                              onFocus={handleInputFocus(`education-${index}`)}
+                              onFocus={handleInputFocus('education')}
                             />
                           </div>
                           <div>
@@ -1058,7 +1064,7 @@ export default function CreateCVPage() {
                               value={edu.location}
                               onChange={(e) => handleEducationChange(index, e)}
                               placeholder="e.g., Cape Town, SA"
-                              onFocus={handleInputFocus(`education-${index}`)}
+                              onFocus={handleInputFocus('education')}
                             />
                           </div>
                           <div>
@@ -1069,7 +1075,7 @@ export default function CreateCVPage() {
                               value={edu.graduationDate}
                               onChange={(e) => handleEducationChange(index, e)}
                               placeholder="e.g., 2020"
-                              onFocus={handleInputFocus(`education-${index}`)}
+                              onFocus={handleInputFocus('education')}
                             />
                           </div>
                           <details className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2">
@@ -1096,7 +1102,7 @@ export default function CreateCVPage() {
                                     });
                                   }}
                                   placeholder="e.g., 7"
-                                  onFocus={handleInputFocus(`education-${index}`)}
+                                  onFocus={handleInputFocus('education')}
                                 />
                               </div>
                               <div>
@@ -1117,7 +1123,7 @@ export default function CreateCVPage() {
                                     });
                                   }}
                                   placeholder="e.g., 62116"
-                                  onFocus={handleInputFocus(`education-${index}`)}
+                                  onFocus={handleInputFocus('education')}
                                 />
                               </div>
                               <div>
@@ -1138,7 +1144,7 @@ export default function CreateCVPage() {
                                     });
                                   }}
                                   placeholder="e.g., Bachelor's Degree (UK)"
-                                  onFocus={handleInputFocus(`education-${index}`)}
+                                  onFocus={handleInputFocus('education')}
                                 />
                               </div>
                             </div>
