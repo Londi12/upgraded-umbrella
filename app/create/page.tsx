@@ -40,6 +40,19 @@ import { CVUploadLoader, CVParsingLoader } from "@/components/loading-animations
 
 import { ErrorBoundary } from "@/components/error-boundary"
 
+interface SavedCVOption {
+  id: string
+  name: string
+  source: "cloud" | "local"
+  cvData: CVData
+}
+
+interface LocalSavedCV {
+  id: string
+  name: string
+  cvData: CVData
+}
+
 export default function CreateCVPage() {
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -114,6 +127,8 @@ export default function CreateCVPage() {
   const [isSaving, setIsSaving] = useState(false)
   const [editingCVId, setEditingCVId] = useState<string | null>(editId)
   const [hasReusableDraft, setHasReusableDraft] = useState(false)
+  const [savedCVOptions, setSavedCVOptions] = useState<SavedCVOption[]>([])
+  const [selectedSavedCVId, setSelectedSavedCVId] = useState("")
   const { user, isConfigured } = useAuth()
 
   const hasMeaningfulCVData = (data: typeof formData) => {
@@ -216,6 +231,39 @@ export default function CreateCVPage() {
 
     return () => clearInterval(autoSaveInterval);
   }, [formData])
+
+  useEffect(() => {
+    const loadSavedCVOptions = async () => {
+      const localRaw = JSON.parse(localStorage.getItem("saved_cvs") || "[]") as LocalSavedCV[]
+      const localOptions: SavedCVOption[] = localRaw
+        .filter((entry) => entry?.id && entry?.cvData)
+        .map((entry) => ({
+          id: `local:${entry.id}`,
+          name: entry.name || "Local CV",
+          source: "local",
+          cvData: entry.cvData,
+        }))
+
+      if (!isConfigured || !user) {
+        setSavedCVOptions(localOptions)
+        return
+      }
+
+      const { data: cloudCVs } = await getSavedCVs(user.id)
+      const cloudOptions: SavedCVOption[] = (cloudCVs || [])
+        .filter((cv: any) => cv?.id && cv?.cv_data)
+        .map((cv: any) => ({
+          id: `cloud:${cv.id}`,
+          name: cv.name || "Saved CV",
+          source: "cloud",
+          cvData: cv.cv_data,
+        }))
+
+      setSavedCVOptions([...cloudOptions, ...localOptions])
+    }
+
+    loadSavedCVOptions()
+  }, [user, isConfigured])
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -477,10 +525,42 @@ export default function CreateCVPage() {
     }
   }
 
-  const handleClearSavedUpload = () => {
-    localStorage.removeItem('cv-draft')
-    setHasReusableDraft(false)
-    setSuccess('Saved uploaded CV data cleared from this browser.')
+  const handleLoadSelectedSavedCV = async () => {
+    if (!selectedSavedCVId) {
+      setError("Please choose a saved CV from the dropdown first.")
+      return
+    }
+
+    const selected = savedCVOptions.find((option) => option.id === selectedSavedCVId)
+    if (!selected) {
+      setError("Selected CV could not be found. Refresh and try again.")
+      return
+    }
+
+    const sourceData = selected.cvData as any
+    const normalizedFormData = {
+      personalInfo: sourceData.personalInfo || formData.personalInfo,
+      summary: sourceData.summary || "",
+      experience: Array.isArray(sourceData.experience) && sourceData.experience.length > 0
+        ? sourceData.experience
+        : formData.experience,
+      education: Array.isArray(sourceData.education) && sourceData.education.length > 0
+        ? sourceData.education
+        : formData.education,
+      skills: typeof sourceData.skills === "string"
+        ? sourceData.skills
+        : Array.isArray(sourceData.skills)
+          ? sourceData.skills
+              .map((skill: any) => (typeof skill === "string" ? skill : skill?.name || ""))
+              .filter(Boolean)
+              .join(", ")
+          : "",
+      customSections: Array.isArray(sourceData.customSections) ? sourceData.customSections : formData.customSections,
+    }
+
+    setFormData(normalizedFormData)
+    await persistReusableDraft(normalizedFormData)
+    setSuccess(`Loaded "${selected.name}" into this template.`)
     setTimeout(() => setSuccess(null), 3000)
   }
 
@@ -752,6 +832,30 @@ export default function CreateCVPage() {
                           <p className="text-xs text-blue-800">
                             Uploaded CV data can be reused across templates.
                           </p>
+                          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                            <select
+                              value={selectedSavedCVId}
+                              onChange={(e) => setSelectedSavedCVId(e.target.value)}
+                              className="h-8 rounded-md border border-blue-200 bg-white px-2 text-xs text-slate-700"
+                            >
+                              <option value="">Select a saved CV...</option>
+                              {savedCVOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                  {option.name} {option.source === "local" ? "(local)" : "(cloud)"}
+                                </option>
+                              ))}
+                            </select>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-8 border-blue-200 text-blue-700 hover:bg-blue-100"
+                              onClick={handleLoadSelectedSavedCV}
+                              disabled={!savedCVOptions.length}
+                            >
+                              Load Selected CV
+                            </Button>
+                          </div>
                           <div className="mt-2 flex gap-2">
                             <Button
                               type="button"
@@ -762,16 +866,6 @@ export default function CreateCVPage() {
                               disabled={!hasReusableDraft}
                             >
                               Use Saved Upload
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-8 border-slate-200 text-slate-600 hover:bg-slate-100"
-                              onClick={handleClearSavedUpload}
-                              disabled={!hasReusableDraft}
-                            >
-                              Clear Saved Upload
                             </Button>
                           </div>
                         </div>
