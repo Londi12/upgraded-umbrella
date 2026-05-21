@@ -54,12 +54,27 @@ async function findJobByIdOrUrl(table: "scraped_jobs" | "shared_jobs", id?: stri
   }
 
   if (url) {
-    const { data, error } = await supabase
-      .from(table)
-      .select("id,title,snippet,url,source,company,location,posted_date,description")
-      .eq("url", url)
-      .maybeSingle()
-    if (!error && data) return data
+    // Some sources store canonical URLs differently (e.g. encoded vs decoded).
+    // Try both forms so share-link resolution is more tolerant.
+    const urlCandidates = Array.from(new Set([
+      url,
+      (() => {
+        try {
+          return decodeURIComponent(url)
+        } catch {
+          return url
+        }
+      })(),
+    ]))
+
+    for (const candidate of urlCandidates) {
+      const { data, error } = await supabase
+        .from(table)
+        .select("id,title,snippet,url,source,company,location,posted_date,description")
+        .eq("url", candidate)
+        .maybeSingle()
+      if (!error && data) return data
+    }
   }
 
   return null
@@ -83,6 +98,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!job) {
+      // If we can't resolve to an internal record, still allow sharing the
+      // external source URL so users are never blocked by a 404.
+      if (url) {
+        return NextResponse.json({ path: url, fallback: true })
+      }
+
       return NextResponse.json(
         { error: "Job not found in scraped_jobs or shared_jobs" },
         { status: 404 }
