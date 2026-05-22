@@ -1,3 +1,7 @@
+// NOTE: This service does NOT perform real web scraping.
+// It aggregates jobs from external APIs (JSearch, etc.) and stores them in the Supabase database.
+// All job search, retention, and share-link logic operates on the database, not on live scraping.
+
 import { supabase } from '@/lib/supabase'
 
 interface ScrapedJob {
@@ -164,16 +168,41 @@ export class JobScraperService {
       }
     }
 
+    // Robust posted_date handling and logging
+    const nowIso = new Date().toISOString();
+    for (const job of allJobs) {
+      if (!job.posted_date || isNaN(Date.parse(job.posted_date))) {
+        console.warn(`[JobScraperEnhanced] Invalid or missing posted_date for job:`, job.title, job.url);
+        job.posted_date = nowIso;
+      }
+    }
+
     console.log(`Total unique jobs collected: ${allJobs.length} from ${queries.length} queries`)
 
     if (allJobs.length > 0) {
-      const { error } = await supabase.from('scraped_jobs').upsert(
-        allJobs.map(j => ({ ...j, created_at: new Date().toISOString() })),
+      const { error, data } = await supabase.from('scraped_jobs').upsert(
+        allJobs.map(j => ({ ...j, created_at: nowIso })),
         { onConflict: 'url' }
-      )
+      ).select();
       if (error) {
-        console.error('DB upsert error:', error)
-        errors.push(`DB insert: ${error.message}`)
+        console.error('DB upsert error:', error);
+        errors.push(`DB insert: ${error.message}`);
+      } else if (data) {
+        // Automatic snapshotting for all jobs
+        for (const job of data) {
+          await supabase.from('shared_jobs').upsert({
+            id: String(job.id),
+            title: job.title,
+            snippet: job.snippet ?? '',
+            url: job.url,
+            source: job.source,
+            company: job.company ?? null,
+            location: job.location ?? null,
+            posted_date: job.posted_date ?? null,
+            description: job.description ?? null,
+            updated_at: nowIso,
+          }, { onConflict: 'id' });
+        }
       }
     }
 
