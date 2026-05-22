@@ -339,30 +339,12 @@ export function JobDetailPanel({
                   </div>
                 </div>
 
-                {/* Role alignment — structured two-row display */}
-                {lowMatchData.roleGap && (
-                  <div className="space-y-2">
-                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Role Alignment</p>
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-500 flex-shrink-0">Your background</span>
-                        <span className="text-sm font-semibold text-slate-800 text-right">{lowMatchData.roleGap.cvFamily}</span>
-                      </div>
-                      <div className="border-t border-slate-100" />
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-500 flex-shrink-0">This role focuses on</span>
-                        <span className="text-sm font-semibold text-slate-800 text-right">{lowMatchData.roleGap.jobFamily}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Skill gaps */}
-                {lowMatchData.reasons.length > 0 && (
+                {currentJobMatch.reasons.length > 0 && (
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Skill Gaps</p>
                     <div className="space-y-2">
-                      {lowMatchData.reasons.map((r, i) => (
+                      {currentJobMatch.reasons.map((r, i) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
                           <span className="text-sm text-slate-700">{r}</span>
@@ -379,11 +361,11 @@ export function JobDetailPanel({
                   <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">What to do next</p>
                   <div className="space-y-2">
                     {[
-                      lowMatchData.roleGap
-                        ? `Look for ${lowMatchData.roleGap.cvFamily} roles — they align with your background`
+                      currentJobMatch
+                        ? `Look for ${currentJobMatch.cvFamily} roles — they align with your background`
                         : 'Apply to roles closer to your background',
-                      lowMatchData.roleGap
-                        ? `If you have any ${lowMatchData.roleGap.jobFamily} experience, add it to your CV`
+                      currentJobMatch
+                        ? `If you have any ${currentJobMatch.jobFamily} experience, add it to your CV`
                         : 'Update your CV to highlight any transferable skills',
                     ].map((tip, i) => (
                       <div key={i} className="flex items-start gap-2.5">
