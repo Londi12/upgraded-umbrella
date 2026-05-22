@@ -157,163 +157,49 @@ export function JobDetailPanel({
     [aiMatchResults, currentJobMatch]
   )
 
-  // Pre-compute low-match content — structured role gap + skill reasons
-  const lowMatchData = useMemo(() => {
-    if (!currentJobMatch || currentJobMatch.matchScore >= 50) return { roleGap: null as null | { cvFamily: string; jobFamily: string }, reasons: [] as string[] }
-    let roleGap: { cvFamily: string; jobFamily: string } | null = null
-    const reasons: string[] = []
-    if (
-      currentJobMatch.detectedCVFamily &&
-      currentJobMatch.detectedJobFamily &&
-      currentJobMatch.detectedJobFamily !== 'unknown' &&
-      currentJobMatch.detectedCVFamily.toLowerCase() !== currentJobMatch.detectedJobFamily.toLowerCase()
-    ) {
-      roleGap = { cvFamily: currentJobMatch.detectedCVFamily, jobFamily: currentJobMatch.detectedJobFamily }
+  // Pre-resolve the share URL on hover/focus for instant user gesture
+  const [resolvedShareUrl, setResolvedShareUrl] = useState<string>("")
+  const [resolvingShareUrl, setResolvingShareUrl] = useState(false)
+
+  const preResolveShareUrl = async () => {
+    if (!resolvedShareUrl && !resolvingShareUrl) {
+      setResolvingShareUrl(true)
+      const url = await resolveShareUrl()
+      setResolvedShareUrl(url)
+      setResolvingShareUrl(false)
     }
-    const toolGaps = currentJobMatch.skillsGap.filter(s => s.length > 1).slice(0, 3)
-    if (toolGaps.length > 0) reasons.push(`Missing required skills: ${toolGaps.join(', ')}`)
-    const humanGap = currentJobMatch.dealBreakers[0] ||
-      currentJobMatch.gaps.find(g => !g.toLowerCase().includes('nqf') && !g.toLowerCase().includes('registration'))
-    if (humanGap) reasons.push(humanGap)
-    if (reasons.length < 1 && !roleGap) reasons.push('Experience level does not match job requirements')
-    return { roleGap, reasons }
-  }, [currentJobMatch])
-
-  const betterRoles = useMemo(() => {
-    if (recommendedFamilies.length > 0) return recommendedFamilies
-    if (currentJobMatch?.detectedCVFamily) {
-      return [`${currentJobMatch.detectedCVFamily} roles`, 'Related industry positions']
-    }
-    return []
-  }, [recommendedFamilies, currentJobMatch])
-
-  // Find up to 2 real jobs from the list that better match the user's CV family
-  const suggestedJobs = useMemo(() => {
-    if (!currentJobMatch || currentJobMatch.matchScore >= 50 || !allJobs?.length) return []
-
-    const minBetterScore = Math.max(55, currentJobMatch.matchScore + 10)
-    const scoredAlternatives = aiMatchResults
-      .filter(m => m.jobId !== selectedJobId && m.matchScore >= minBetterScore)
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, 2)
-
-    if (scoredAlternatives.length > 0) {
-      const allJobsById = new Map(allJobs.map(j => [j.url || j.title || (j as any).id || '', j]))
-      const mapped = scoredAlternatives
-        .map(m => allJobsById.get(m.jobId))
-        .filter((j): j is JobResult => Boolean(j))
-      if (mapped.length > 0) return mapped
-    }
-
-    const cvFamily = (currentJobMatch.detectedCVFamily || '').toLowerCase()
-    if (!cvFamily) return []
-    const familyWords = cvFamily.split(/[\s\/&\-]+/).filter((w: string) => w.length > 3)
-    if (!familyWords.length) return []
-    return allJobs
-      .filter(j => {
-        const jId = j.url || j.title || (j as any).id || ''
-        if (jId === selectedJobId) return false
-        const text = `${j.title} ${j.description || j.snippet || ''}`.toLowerCase()
-        return familyWords.some((w: string) => text.includes(w))
-      })
-      .slice(0, 2)
-  }, [allJobs, currentJobMatch, selectedJobId])
-
-  const openTrackDialog = () => {
-    setTrackForm(f => ({ ...f, cv_id: selectedCVId || '' }))
-    setTrackSuccess(false)
-    setTrackDialogOpen(true)
   }
 
-  const handleTrackSave = async () => {
-    if (!user) return
-    setTrackSaving(true)
-    try {
-      await saveJob({
-        job_title: trackForm.job_title,
-        company_name: trackForm.company_name,
-        job_url: trackForm.job_url,
-        job_description: trackForm.job_description,
-        location: job.location || '',
-        posted_date: job.posted_date || '',
-        source: trackForm.job_board,
-      })
-      await fetch('/api/track-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cv_id: trackForm.cv_id || null,
-          job_title: trackForm.job_title,
-          company_name: trackForm.company_name,
-          job_board: trackForm.job_board,
-          application_date: trackForm.application_date,
-          status: trackForm.status,
-          ats_score_at_application: atsScoreAtApplication,
-          job_description: trackForm.job_description,
-          notes: trackForm.notes + (trackForm.cover_letter ? `\n\nCover Letter: ${trackForm.cover_letter}` : ''),
-        }),
-      })
-      setTrackSuccess(true)
-    } catch (e) {
-      console.error(e)
+  const handleShare = async (e: React.MouseEvent) => {
+    // Always use the latest resolved URL, or resolve if not ready
+    let targetUrl = resolvedShareUrl
+    if (!targetUrl) {
+      targetUrl = await resolveShareUrl()
+      setResolvedShareUrl(targetUrl)
     }
-    setTrackSaving(false)
-  }
-
-  const handleApply = async () => {
-    try {
-      await fetch('/api/track-application', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cv_id: selectedCVId || null,
-          job_title: job.title,
-          company_name: company,
-          job_board: 'SA Job Search',
-          application_date: new Date().toISOString().split('T')[0],
-          status: 'applied',
-          ats_score_at_application: atsScoreAtApplication,
-          job_description: job.description || job.snippet,
-          notes: `Applied via SA Job Search: ${job.url}`,
-        }),
-      })
-      setApplyToast(true)
-      setTimeout(() => setApplyToast(false), 5000)
-    } catch (error) {
-      console.error('Error tracking application:', error)
-    }
-    window.open(job.url, '_blank')
-  }
-
-  const handleShare = async () => {
-    const targetUrl = await resolveShareUrl()
     if (!targetUrl) {
       setShareToast('Unable to create a shareable job page yet.')
       window.setTimeout(() => setShareToast(''), 3000)
       return
     }
     if (typeof window === 'undefined') return
-
     const browserNavigator = window.navigator
-
     try {
       if (typeof browserNavigator.share === 'function') {
-        await browserNavigator.share({
+        browserNavigator.share({
           title: `${displayTitle} | CVKonnekt`,
           text: `${displayTitle} at ${company}`,
           url: targetUrl,
         })
         return
       }
-
       if (browserNavigator.clipboard?.writeText) {
-        await browserNavigator.clipboard.writeText(targetUrl)
+        browserNavigator.clipboard.writeText(targetUrl)
       } else {
         setShareToast('Sharing is not supported on this browser.')
         window.setTimeout(() => setShareToast(''), 3000)
         return
       }
-
       setShareToast(publicJobPath ? 'Share link copied.' : 'Job link copied.')
       window.setTimeout(() => setShareToast(''), 3000)
     } catch (error) {
