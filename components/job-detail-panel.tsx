@@ -384,10 +384,10 @@ export function JobDetailPanel({
                   <div className="space-y-2">
                     {[
                       currentJobMatch
-                        ? `Look for ${currentJobMatch.cvFamily} roles — they align with your background`
+                        ? `Look for ${currentJobMatch.detectedCVFamily} roles — they align with your background`
                         : 'Apply to roles closer to your background',
                       currentJobMatch
-                        ? `If you have any ${currentJobMatch.jobFamily} experience, add it to your CV`
+                        ? `If you have any ${currentJobMatch.detectedJobFamily} experience, add it to your CV`
                         : 'Update your CV to highlight any transferable skills',
                     ].map((tip, i) => (
                       <div key={i} className="flex items-start gap-2.5">
