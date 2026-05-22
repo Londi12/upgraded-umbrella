@@ -398,46 +398,7 @@ export function JobDetailPanel({
                   </div>
                 </div>
 
-                {/* Better matches for you — real jobs first, role labels as fallback */}
-                {(suggestedJobs.length > 0 || betterRoles.length > 0) && (
-                  <>
-                    <hr className="border-slate-100" />
-                    <div className="space-y-2.5">
-                      <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Better matches for you</p>
-                      {suggestedJobs.length > 0 ? (
-                        <div className="space-y-2">
-                          {suggestedJobs.map((j, i) => (
-                            <button
-                              key={i}
-                              onClick={() => onSelectJob?.(j)}
-                              className="w-full text-left flex items-center gap-3 px-3 py-2.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-xl transition-colors"
-                            >
-                              <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center flex-shrink-0">
-                                <Briefcase className="h-3.5 w-3.5 text-slate-500" />
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-sm font-medium text-slate-800 truncate">{j.title}</p>
-                                <p className="text-xs text-slate-500 truncate">{j.company || j.source || 'View job'}</p>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {betterRoles.map((role, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                              <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center flex-shrink-0">
-                                <Briefcase className="h-3.5 w-3.5 text-slate-500" />
-                              </div>
-                              <span className="text-sm font-medium text-slate-700">{role}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </>
-                )}
+                {/* Better matches for you — feature not implemented */}
               </div>
             )}
 
@@ -587,11 +548,8 @@ export function JobDetailPanel({
           </div>
         )}
         <div className="flex gap-2">
-          <Button onClick={openTrackDialog} disabled={!user} variant="outline" size="sm" className="flex-none">
+          <Button onClick={() => setTrackDialogOpen(true)} disabled={!user} variant="outline" size="sm" className="flex-none">
             <Save className="w-3.5 h-3.5 mr-1" /> Save
-          </Button>
-          <Button onClick={handleApply} size="sm" className="flex-1">
-            <Send className="w-3.5 h-3.5 mr-1.5" /> Apply Now
           </Button>
         </div>
       </div>
@@ -659,9 +617,6 @@ export function JobDetailPanel({
               </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button variant="outline" onClick={() => setTrackDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleTrackSave} disabled={trackSaving} className="bg-blue-600 hover:bg-blue-700">
-                  {trackSaving ? 'Saving...' : 'Save & Track'}
-                </Button>
               </div>
             </div>
           )}
