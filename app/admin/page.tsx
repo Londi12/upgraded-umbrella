@@ -772,19 +772,23 @@ function JobsTab() {
   }
 
   const handleDeleteDupesInGroup = async (jobs: typeof existingJobs, groupKey: string) => {
-    const keptIds = keepByGroup[groupKey] || []
-    const ids = jobs.filter((j) => !keptIds.includes(j.id)).map((j) => j.id)
-    if (ids.length === 0) return
-    if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep ${keptIds.length}?`)) return
+    let keptIds = keepByGroup[groupKey] || [];
+    // Always keep at least one job
+    if (keptIds.length === 0 && jobs.length > 0) {
+      keptIds = [jobs[0].id];
+    }
+    const ids = jobs.filter((j) => !keptIds.includes(j.id)).map((j) => j.id);
+    if (ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} duplicate job(s) in this group and keep ${keptIds.length}?`)) return;
     for (const id of ids) {
-      await deleteJob(id)
+      await deleteJob(id);
     }
     setKeepByGroup((prev) => {
-      const next = { ...prev }
-      delete next[groupKey]
-      return next
-    })
-    await loadJobs()
+      const next = { ...prev };
+      delete next[groupKey];
+      return next;
+    });
+    await loadJobs();
   }
 
   const handleApplicationFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
