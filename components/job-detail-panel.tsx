@@ -340,19 +340,41 @@ export function JobDetailPanel({
                 </div>
 
                 {/* Skill gaps */}
-                {currentJobMatch.reasons.length > 0 && (
+                {(currentJobMatch.gaps && currentJobMatch.gaps.length > 0) ? (
                   <div className="space-y-2">
                     <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Skill Gaps</p>
                     <div className="space-y-2">
-                      {currentJobMatch.reasons.map((r, i) => (
+                      {currentJobMatch.gaps.map((gap, i) => (
                         <div key={i} className="flex items-start gap-2.5">
                           <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
-                          <span className="text-sm text-slate-700">{r}</span>
+                          <span className="text-sm text-slate-700">{gap}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-                )}
+                ) : (currentJobMatch.skillsGap && currentJobMatch.skillsGap.length > 0) ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Skill Gaps</p>
+                    <div className="space-y-2">
+                      {currentJobMatch.skillsGap.map((gap, i) => (
+                        <div key={i} className="flex items-start gap-2.5">
+                          <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-slate-700">{gap}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (currentJobMatch.reasoning ? (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-slate-700 uppercase tracking-wider">Skill Gaps</p>
+                    <div className="space-y-2">
+                      <div className="flex items-start gap-2.5">
+                        <AlertCircle className="h-3.5 w-3.5 text-amber-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-slate-700">{currentJobMatch.reasoning}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : null)}
 
                 <hr className="border-slate-100" />
 
